@@ -525,11 +525,41 @@ router.post('/:teamId/end-season', async (req, res) => {
   db.run('UPDATE teams SET season = ?, division = ?, points = 0, wins = 0, draws = 0, losses = 0, goals_for = 0, goals_against = 0 WHERE id = ?',
     [newSeason, newDivision, req.params.teamId]);
 
-  // Remove old AI teams (they will be regenerated for the new division)
-  const oldAiTeams = queryAll("SELECT id FROM teams WHERE manager_id = 'AI'");
-  for (const ai of oldAiTeams) {
-    db.run('DELETE FROM players WHERE team_id = ?', [ai.id]);
-    db.run('DELETE FROM teams WHERE id = ?', [ai.id]);
+  // AI promotion/relegation in the same division
+  const aiInDiv = queryAll("SELECT id, name, points, goals_for, goals_against FROM teams WHERE manager_id = 'AI' AND division = ? ORDER BY points DESC, (goals_for - goals_against) DESC", [division]);
+
+  // Top 2 AI teams get promoted (if division < 7)
+  if (division < 7) {
+    const promoted = aiInDiv.slice(0, 2);
+    for (const ai of promoted) {
+      db.run('UPDATE teams SET division = ?, points = 0, wins = 0, draws = 0, losses = 0, goals_for = 0, goals_against = 0 WHERE id = ?', [division + 1, ai.id]);
+    }
+  }
+
+  // Bottom 2 AI teams get relegated (if division > 1)
+  if (division > 1) {
+    const relegated = aiInDiv.slice(-2);
+    for (const ai of relegated) {
+      db.run('UPDATE teams SET division = ?, points = 0, wins = 0, draws = 0, losses = 0, goals_for = 0, goals_against = 0 WHERE id = ?', [division - 1, ai.id]);
+    }
+  }
+
+  // Reset remaining AI teams in this division for new season
+  db.run("UPDATE teams SET points = 0, wins = 0, draws = 0, losses = 0, goals_for = 0, goals_against = 0 WHERE manager_id = 'AI' AND division = ?", [division]);
+
+  // Make sure the new division has enough AI teams (seed if needed)
+  const aiInNewDiv = queryAll("SELECT id FROM teams WHERE manager_id = 'AI' AND division = ?", [newDivision]);
+  if (aiInNewDiv.length < 10) {
+    // Remove teams that are too few and reseed
+    for (const ai of aiInNewDiv) {
+      db.run('DELETE FROM players WHERE team_id = ?', [ai.id]);
+      db.run('DELETE FROM teams WHERE id = ?', [ai.id]);
+    }
+    saveDb();
+    await seedDivision(newDivision);
+  } else {
+    // Reset their stats for new season
+    db.run("UPDATE teams SET points = 0, wins = 0, draws = 0, losses = 0, goals_for = 0, goals_against = 0 WHERE manager_id = 'AI' AND division = ?", [newDivision]);
   }
 
   // Reset Champions League state for new season
@@ -540,9 +570,6 @@ router.post('/:teamId/end-season', async (req, res) => {
   db.run('UPDATE players SET age = age + 1 WHERE team_id = ?', [req.params.teamId]);
 
   saveDb();
-
-  // Seed new AI teams for the new division
-  await seedDivision(newDivision);
 
   const newDivisionInfo = getDivisionInfo(newDivision);
   const updatedManager = queryOne('SELECT * FROM managers WHERE id = ?', [managerId]);

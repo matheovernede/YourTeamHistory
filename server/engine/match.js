@@ -13,26 +13,42 @@ function calculateTeamStrength(players, { isAI = false } = {}) {
   const starters = players.filter(p => p.is_starter);
   if (starters.length === 0) return 50;
 
-  // Calculate per-player effective overall (penalized by low stamina)
-  const effectiveOveralls = starters.map(p => {
-    let effective = p.overall;
-    if (p.stamina < 50) {
-      // Below 50: lose 0.1 overall per point missing
-      effective -= (50 - p.stamina) * 0.1;
+  let totalAttack = 0;
+  let totalDefense = 0;
+  let totalMidfield = 0;
+  let totalPhysical = 0;
+  let totalMorale = 0;
+
+  for (const p of starters) {
+    let staminaFactor = 1.0;
+    if (p.stamina < 50) staminaFactor -= (50 - p.stamina) * 0.008;
+    if (p.stamina < 25) staminaFactor -= (25 - p.stamina) * 0.012;
+    staminaFactor = Math.max(0.5, staminaFactor);
+
+    const pos = p.position;
+    if (pos === 'GAR') {
+      totalDefense += (p.defending * 0.8 + p.physical * 0.2) * staminaFactor;
+    } else if (['DC', 'ARG', 'ARD', 'PG', 'PD'].includes(pos)) {
+      totalDefense += (p.defending * 0.5 + p.pace * 0.2 + p.physical * 0.3) * staminaFactor;
+    } else if (['MC', 'MOC', 'MDF', 'MG', 'MD'].includes(pos)) {
+      totalMidfield += (p.passing * 0.4 + p.dribbling * 0.3 + p.pace * 0.15 + p.shooting * 0.15) * staminaFactor;
+    } else {
+      totalAttack += (p.shooting * 0.4 + p.pace * 0.25 + p.dribbling * 0.25 + p.physical * 0.1) * staminaFactor;
     }
-    if (p.stamina < 25) {
-      // Below 25: severe additional penalty
-      effective -= (25 - p.stamina) * 0.25;
-    }
-    return Math.max(35, effective);
-  });
 
-  const avgOverall = effectiveOveralls.reduce((sum, o) => sum + o, 0) / effectiveOveralls.length;
-  const avgMorale = starters.reduce((sum, p) => sum + p.morale, 0) / starters.length;
+    totalPhysical += p.physical * staminaFactor;
+    totalMorale += p.morale;
+  }
 
-  let strength = avgOverall * 0.8 + avgMorale * 0.2;
+  const numStarters = starters.length;
+  const avgAttack = totalAttack / Math.max(1, starters.filter(p => ['BU', 'AIG', 'AID'].includes(p.position)).length);
+  const avgDefense = totalDefense / Math.max(1, starters.filter(p => ['GAR', 'DC', 'ARG', 'ARD', 'PG', 'PD'].includes(p.position)).length);
+  const avgMidfield = totalMidfield / Math.max(1, starters.filter(p => ['MC', 'MOC', 'MDF', 'MG', 'MD'].includes(p.position)).length);
+  const avgPhysical = totalPhysical / numStarters;
+  const avgMorale = totalMorale / numStarters;
 
-  // Difficulty modifier: AI teams get a boost
+  let strength = avgAttack * 0.3 + avgDefense * 0.25 + avgMidfield * 0.25 + avgPhysical * 0.1 + avgMorale * 0.1;
+
   if (isAI) {
     strength += 3;
   }
