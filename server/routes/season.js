@@ -68,6 +68,11 @@ router.post('/:teamId/play-matchday', async (req, res) => {
     return res.status(400).json({ error: 'Saison terminée ! Allez au mercato.', seasonOver: true });
   }
 
+  const starterCount = queryOne('SELECT COUNT(*) as count FROM players WHERE team_id = ? AND is_starter = 1', [team.id]);
+  if (!starterCount || starterCount.count < 11) {
+    return res.status(400).json({ error: 'Composez votre équipe (11 titulaires) dans l\'onglet Compo avant de jouer !' });
+  }
+
   const division = getTeamDivision(team);
 
   // Pick an opponent from the same division
@@ -94,11 +99,20 @@ router.post('/:teamId/play-matchday', async (req, res) => {
 
   let pointsEarned = 0;
   let resultText = '';
-  if (result.homeGoals > result.awayGoals) {
+  let matchBonus = 0;
+  const goalDiff = result.homeGoals - result.awayGoals;
+
+  // Win bonus scales with division
+  const winBonusByDiv = [100000, 200000, 400000, 700000, 1200000, 2500000, 5000000];
+  const baseWinBonus = winBonusByDiv[division - 1] || 1000000;
+
+  if (goalDiff > 0) {
     pointsEarned = 3;
     resultText = 'Victoire';
+    matchBonus = goalDiff >= 4 ? baseWinBonus * 3 : goalDiff >= 2 ? baseWinBonus * 2 : baseWinBonus;
     db.run('UPDATE teams SET wins = wins + 1, points = points + 3, goals_for = goals_for + ?, goals_against = goals_against + ? WHERE id = ?', [result.homeGoals, result.awayGoals, team.id]);
-  } else if (result.homeGoals === result.awayGoals) {
+    db.run('UPDATE managers SET budget = budget + ? WHERE id = ?', [matchBonus, team.manager_id]);
+  } else if (goalDiff === 0) {
     pointsEarned = 1;
     resultText = 'Match nul';
     db.run('UPDATE teams SET draws = draws + 1, points = points + 1, goals_for = goals_for + ?, goals_against = goals_against + ? WHERE id = ?', [result.homeGoals, result.awayGoals, team.id]);
@@ -135,6 +149,7 @@ router.post('/:teamId/play-matchday', async (req, res) => {
       events: result.events,
       pointsEarned,
       resultText,
+      matchBonus,
       matchday: week,
     },
     team: updatedTeam,
@@ -407,7 +422,10 @@ router.post('/:teamId/manage', async (req, res) => {
 });
 
 router.get('/:teamId/sponsors', (req, res) => {
-  const sponsors = getRandomSponsors(4);
+  const team = queryOne('SELECT * FROM teams WHERE id = ?', [req.params.teamId]);
+  if (!team) return res.status(404).json({ error: 'Équipe non trouvée' });
+  const division = getTeamDivision(team);
+  const sponsors = getRandomSponsors(division, 4);
   res.json(sponsors);
 });
 
@@ -416,8 +434,9 @@ router.post('/:teamId/choose-sponsor', async (req, res) => {
   if (!sponsorId || !managerId) return res.status(400).json({ error: 'sponsorId et managerId requis' });
 
   const db = await getDb();
-  const { SPONSORS } = require('../data/sponsors');
-  const sponsor = SPONSORS.find(s => s.id === sponsorId);
+  const { SPONSORS_BY_TIER } = require('../data/sponsors');
+  const allSponsors = Object.values(SPONSORS_BY_TIER).flat();
+  const sponsor = allSponsors.find(s => s.id === sponsorId);
   if (!sponsor) return res.status(404).json({ error: 'Sponsor non trouvé' });
 
   const team = queryOne('SELECT * FROM teams WHERE id = ?', [req.params.teamId]);
@@ -490,9 +509,12 @@ router.post('/:teamId/end-season', async (req, res) => {
     prizePool = Math.max(5000, prizes[prizes.length - 1] - (rank - prizes.length) * 5000);
   }
 
-  // Promotion bonus
+  // Promotion bonus: significant reward for moving up
+  let promotionBonus = 0;
   if (promotion) {
-    prizePool += divisionInfo.prizePool ? divisionInfo.prizePool[0] : 50000;
+    const bonusByNewDiv = [0, 500000, 2000000, 5000000, 10000000, 20000000, 50000000];
+    promotionBonus = bonusByNewDiv[newDivision - 1] || 5000000;
+    prizePool += promotionBonus;
   }
 
   db.run('UPDATE managers SET budget = budget + ? WHERE id = ?', [prizePool, managerId]);

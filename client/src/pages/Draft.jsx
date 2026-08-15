@@ -17,7 +17,7 @@ export default function Draft({ manager, team, onFinish, isInitialDraft }) {
 
   async function loadDraft() {
     try {
-      const players = await api.getDraftPlayers(team.division || 1, manager.reputation || 50);
+      const players = await api.getDraftPlayers(team.division || 1, manager.reputation || 50, team.id);
       setAvailable(players);
     } finally {
       setLoading(false);
@@ -66,18 +66,18 @@ export default function Draft({ manager, team, onFinish, isInitialDraft }) {
   }
 
   const filtered = filter === 'all' ? available : available.filter(p => {
-    if (filter === 'att') return ['ST', 'LW', 'RW'].includes(p.position);
-    if (filter === 'mid') return ['CM', 'CAM'].includes(p.position);
-    if (filter === 'def') return ['CB', 'LB', 'RB'].includes(p.position);
-    if (filter === 'gk') return p.position === 'GK';
+    if (filter === 'att') return ['BU', 'AIG', 'AID'].includes(p.position);
+    if (filter === 'mid') return ['MC', 'MOC', 'MDF', 'MG', 'MD'].includes(p.position);
+    if (filter === 'def') return ['DC', 'ARG', 'ARD', 'PG', 'PD'].includes(p.position);
+    if (filter === 'gk') return p.position === 'GAR';
     return true;
   });
 
   const posCount = {
-    GK: mySquad.filter(p => p.position === 'GK').length,
-    DEF: mySquad.filter(p => ['CB', 'LB', 'RB'].includes(p.position)).length,
-    MID: mySquad.filter(p => ['CM', 'CAM'].includes(p.position)).length,
-    ATT: mySquad.filter(p => ['ST', 'LW', 'RW'].includes(p.position)).length,
+    GAR: mySquad.filter(p => p.position === 'GAR').length,
+    DEF: mySquad.filter(p => ['DC', 'ARG', 'ARD', 'PG', 'PD'].includes(p.position)).length,
+    MIL: mySquad.filter(p => ['MC', 'MOC', 'MDF', 'MG', 'MD'].includes(p.position)).length,
+    ATT: mySquad.filter(p => ['BU', 'AIG', 'AID'].includes(p.position)).length,
   };
 
   if (loading) return <div className="page-loading">Chargement du mercato...</div>;
@@ -109,9 +109,9 @@ export default function Draft({ manager, team, onFinish, isInitialDraft }) {
       {message && <div className="draft-message">{message}</div>}
 
       <div className="draft-squad-summary">
-        <span className="pos-badge">GK: {posCount.GK}</span>
+        <span className="pos-badge">GAR: {posCount.GAR}</span>
         <span className="pos-badge">DEF: {posCount.DEF}</span>
-        <span className="pos-badge">MIL: {posCount.MID}</span>
+        <span className="pos-badge">MIL: {posCount.MIL}</span>
         <span className="pos-badge">ATT: {posCount.ATT}</span>
         <button className="btn-refresh" onClick={refreshMarket}>🔄 Rafraîchir le marché</button>
         {(isInitialDraft ? mySquad.length >= 11 : true) && (

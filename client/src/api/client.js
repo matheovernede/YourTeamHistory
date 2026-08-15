@@ -15,6 +15,8 @@ export const api = {
   resetManager: (managerId) => request('/manager/reset', { method: 'POST', body: JSON.stringify({ managerId }) }),
   getManager: (id) => request(`/manager/${id}`),
   getManagerTeam: (id) => request(`/manager/${id}/team`),
+  exportSave: (id) => request(`/manager/${id}/save`),
+  importSave: (id, saveData) => request(`/manager/${id}/load`, { method: 'POST', body: JSON.stringify({ saveData }) }),
 
   createTeam: (managerId, teamName) => request('/team/create', { method: 'POST', body: JSON.stringify({ managerId, teamName }) }),
   getPlayers: (teamId) => request(`/team/${teamId}/players`),
@@ -31,7 +33,7 @@ export const api = {
 
   getLeaderboard: () => request('/leaderboard'),
 
-  getDraftPlayers: (division, reputation) => request(`/draft/available?division=${division || 1}&reputation=${reputation || 50}`),
+  getDraftPlayers: (division, reputation, teamId) => request(`/draft/available?division=${division || 1}&reputation=${reputation || 50}&teamId=${teamId || ''}`),
   draftBuy: (managerId, teamId, player) => request('/draft/buy', { method: 'POST', body: JSON.stringify({ managerId, teamId, player }) }),
   draftFinish: (managerId, teamId) => request('/draft/finish', { method: 'POST', body: JSON.stringify({ managerId, teamId }) }),
 

@@ -171,3 +171,35 @@
   text-align: center;
   box-shadow: 0 0 12px rgba(248, 81, 73, 0.05);
 }
+
+.login-separator {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.login-separator::before,
+.login-separator::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.btn-load-save {
+  width: 100%;
+  padding: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 15px;
+  border-radius: var(--radius-md);
+}
+
+.btn-load-save:hover {
+  border-color: var(--primary);
+  background: var(--bg-hover);
+}

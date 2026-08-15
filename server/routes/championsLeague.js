@@ -577,7 +577,7 @@ function simulateOtherKnockoutMatches(ko) {
  * Creates 11 "starters" with the given overall rating (small variance).
  */
 function generateFakePlayers(teamOverall) {
-  const positions = ['GK', 'CB', 'CB', 'LB', 'RB', 'CM', 'CM', 'CAM', 'LW', 'RW', 'ST'];
+  const positions = ['GAR', 'DC', 'DC', 'ARG', 'ARD', 'MC', 'MC', 'MOC', 'AIG', 'AID', 'BU'];
   return positions.map((pos, i) => {
     const variance = Math.floor(Math.random() * 5) - 2; // -2 to +2
     const ovr = Math.max(60, Math.min(95, teamOverall + variance));

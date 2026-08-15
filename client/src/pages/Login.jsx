@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { api } from '../api/client';
 import './Login.css';
 
-export default function Login({ onLogin }) {
+export default function Login({ onLogin, onLoadSave }) {
   const [username, setUsername] = useState('');
   const [teamName, setTeamName] = useState('');
   const [step, setStep] = useState('login');
@@ -65,19 +65,41 @@ export default function Login({ onLogin }) {
         </div>
 
         {step === 'login' && (
-          <form onSubmit={handleLogin}>
-            <label>Votre pseudo</label>
-            <input
-              type="text"
-              value={username}
-              onChange={e => setUsername(e.target.value)}
-              placeholder="Entrez votre pseudo..."
-              autoFocus
-            />
-            <button type="submit" className="btn-primary" disabled={loading}>
-              {loading ? 'Connexion...' : 'Jouer'}
+          <>
+            <form onSubmit={handleLogin}>
+              <label>Votre pseudo</label>
+              <input
+                type="text"
+                value={username}
+                onChange={e => setUsername(e.target.value)}
+                placeholder="Entrez votre pseudo..."
+                autoFocus
+              />
+              <button type="submit" className="btn-primary" disabled={loading}>
+                {loading ? 'Connexion...' : 'Jouer'}
+              </button>
+            </form>
+            <div className="login-separator"><span>ou</span></div>
+            <button className="btn-load-save" onClick={() => {
+              const input = document.createElement('input');
+              input.type = 'file';
+              input.accept = '.json';
+              input.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                try {
+                  const text = await file.text();
+                  const saveData = JSON.parse(text);
+                  if (onLoadSave) onLoadSave(saveData);
+                } catch {
+                  setError('Fichier de sauvegarde invalide');
+                }
+              };
+              input.click();
+            }}>
+              📂 Charger une sauvegarde
             </button>
-          </form>
+          </>
         )}
 
         {step === 'team' && (
@@ -90,7 +112,7 @@ export default function Login({ onLogin }) {
               placeholder="Ex: FC Tempête..."
               autoFocus
             />
-            <p className="login-hint">Vous disposerez de 50M€ pour recruter vos joueurs au mercato</p>
+            <p className="login-hint">Vous disposerez de 30M€ pour recruter vos joueurs au mercato</p>
             <button type="submit" className="btn-primary" disabled={loading}>
               {loading ? 'Création...' : 'Commencer le mercato'}
             </button>

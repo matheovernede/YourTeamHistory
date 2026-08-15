@@ -15,9 +15,17 @@ function shuffle(arr) {
 }
 
 router.get('/available', (req, res) => {
-  const { division, reputation } = req.query;
+  const { division, reputation, teamId } = req.query;
   const divLevel = parseInt(division) || 1;
   const rep = parseInt(reputation) || 50;
+
+  // Get current squad names to exclude from market
+  let ownedNames = new Set();
+  if (teamId) {
+    const { queryAll } = require('../db/schema');
+    const myPlayers = queryAll('SELECT first_name, last_name FROM players WHERE team_id = ?', [teamId]);
+    myPlayers.forEach(p => ownedNames.add(`${p.first_name}_${p.last_name}`));
+  }
 
   // Reputation bonus: higher rep = better chance of seeing top players
   // rep 0-30: low attraction, 30-60: normal, 60-80: good, 80+: elite
@@ -46,6 +54,11 @@ router.get('/available', (req, res) => {
       if (p.tier === 'legend') return Math.random() < legendChance;
       return true;
     });
+  }
+
+  // Exclude players already in the team
+  if (ownedNames.size > 0) {
+    filtered = filtered.filter(p => !ownedNames.has(`${p.first_name}_${p.last_name}`));
   }
 
   const shuffled = shuffle(filtered);
@@ -112,15 +125,8 @@ router.post('/finish', async (req, res) => {
     return res.status(400).json({ error: `Il faut au minimum 11 joueurs (vous en avez ${playerCount ? playerCount.count : 0})` });
   }
 
-  const currentStarters = queryOne('SELECT COUNT(*) as count FROM players WHERE team_id = ? AND is_starter = 1', [teamId]);
-  if (!currentStarters || currentStarters.count < 11) {
-    const players = queryAll('SELECT * FROM players WHERE team_id = ? ORDER BY overall DESC', [teamId]);
-    const starters = players.slice(0, 11);
-    run('UPDATE players SET is_starter = 0 WHERE team_id = ?', [teamId]);
-    for (const p of starters) {
-      run('UPDATE players SET is_starter = 1 WHERE id = ?', [p.id]);
-    }
-  }
+  // Leave lineup empty — player must organize their squad manually
+  run('UPDATE players SET is_starter = 0 WHERE team_id = ?', [teamId]);
 
   const team = queryOne('SELECT * FROM teams WHERE id = ?', [teamId]);
   const manager = queryOne('SELECT * FROM managers WHERE id = ?', [managerId]);

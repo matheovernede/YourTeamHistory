@@ -4,9 +4,9 @@ import PlayerCard from '../components/PlayerCard';
 import './Season.css';
 
 function posClass(pos) {
-  if (pos === 'GK') return 'pos-gk';
-  if (['CB', 'LB', 'RB'].includes(pos)) return 'pos-def';
-  if (['CM', 'CAM'].includes(pos)) return 'pos-mid';
+  if (pos === 'GAR') return 'pos-gk';
+  if (['DC', 'ARG', 'ARD', 'PG', 'PD'].includes(pos)) return 'pos-def';
+  if (['MC', 'MOC', 'MDF', 'MG', 'MD'].includes(pos)) return 'pos-mid';
   return 'pos-att';
 }
 
@@ -31,6 +31,84 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
   const matchTimerRef = useRef(null);
   const [clState, setCLState] = useState(null);
   const [clLastResult, setCLLastResult] = useState(null);
+  const [selectedPitchPlayer, setSelectedPitchPlayer] = useState(null);
+  const [selectedBenchPlayer, setSelectedBenchPlayer] = useState(null);
+  const [slotAssignments, setSlotAssignments] = useState({});
+
+  const FORMATION_POSITIONS = {
+    '4-4-2': [
+      { pos: 'GAR', x: 50, y: 90 }, { pos: 'ARG', x: 20, y: 72 }, { pos: 'DC', x: 38, y: 72 },
+      { pos: 'DC', x: 62, y: 72 }, { pos: 'ARD', x: 80, y: 72 }, { pos: 'MG', x: 20, y: 45 },
+      { pos: 'MC', x: 38, y: 45 }, { pos: 'MC', x: 62, y: 45 }, { pos: 'MD', x: 80, y: 45 },
+      { pos: 'BU', x: 38, y: 18 }, { pos: 'BU', x: 62, y: 18 }
+    ],
+    '4-3-3': [
+      { pos: 'GAR', x: 50, y: 90 }, { pos: 'ARG', x: 20, y: 72 }, { pos: 'DC', x: 38, y: 72 },
+      { pos: 'DC', x: 62, y: 72 }, { pos: 'ARD', x: 80, y: 72 }, { pos: 'MC', x: 30, y: 48 },
+      { pos: 'MC', x: 50, y: 45 }, { pos: 'MC', x: 70, y: 48 }, { pos: 'AIG', x: 22, y: 18 },
+      { pos: 'BU', x: 50, y: 15 }, { pos: 'AID', x: 78, y: 18 }
+    ],
+    '3-5-2': [
+      { pos: 'GAR', x: 50, y: 90 }, { pos: 'DC', x: 30, y: 72 }, { pos: 'DC', x: 50, y: 72 },
+      { pos: 'DC', x: 70, y: 72 }, { pos: 'MG', x: 15, y: 48 }, { pos: 'MC', x: 35, y: 48 },
+      { pos: 'MC', x: 50, y: 45 }, { pos: 'MC', x: 65, y: 48 }, { pos: 'MD', x: 85, y: 48 },
+      { pos: 'BU', x: 38, y: 18 }, { pos: 'BU', x: 62, y: 18 }
+    ],
+    '4-2-3-1': [
+      { pos: 'GAR', x: 50, y: 90 }, { pos: 'ARG', x: 20, y: 72 }, { pos: 'DC', x: 38, y: 72 },
+      { pos: 'DC', x: 62, y: 72 }, { pos: 'ARD', x: 80, y: 72 }, { pos: 'MDF', x: 38, y: 52 },
+      { pos: 'MDF', x: 62, y: 52 }, { pos: 'AIG', x: 22, y: 32 }, { pos: 'MOC', x: 50, y: 32 },
+      { pos: 'AID', x: 78, y: 32 }, { pos: 'BU', x: 50, y: 15 }
+    ],
+    '5-3-2': [
+      { pos: 'GAR', x: 50, y: 90 }, { pos: 'PG', x: 15, y: 68 }, { pos: 'DC', x: 32, y: 74 },
+      { pos: 'DC', x: 50, y: 74 }, { pos: 'DC', x: 68, y: 74 }, { pos: 'PD', x: 85, y: 68 },
+      { pos: 'MC', x: 30, y: 45 }, { pos: 'MC', x: 50, y: 42 }, { pos: 'MC', x: 70, y: 45 },
+      { pos: 'BU', x: 38, y: 18 }, { pos: 'BU', x: 62, y: 18 }
+    ],
+    '3-4-3': [
+      { pos: 'GAR', x: 50, y: 90 }, { pos: 'DC', x: 30, y: 72 }, { pos: 'DC', x: 50, y: 72 },
+      { pos: 'DC', x: 70, y: 72 }, { pos: 'MG', x: 18, y: 48 }, { pos: 'MC', x: 40, y: 48 },
+      { pos: 'MC', x: 60, y: 48 }, { pos: 'MD', x: 82, y: 48 }, { pos: 'AIG', x: 22, y: 18 },
+      { pos: 'BU', x: 50, y: 15 }, { pos: 'AID', x: 78, y: 18 }
+    ]
+  };
+
+  function getPositionGroup(pos) {
+    if (pos === 'GAR') return 'gk';
+    if (['DC', 'ARG', 'ARD', 'PG', 'PD'].includes(pos)) return 'def';
+    if (['MC', 'MOC', 'MDF', 'MG', 'MD'].includes(pos)) return 'mid';
+    return 'att';
+  }
+
+  function handleSwapPlayers(otherPlayerId) {
+    if (!selectedPitchPlayer) return;
+    const otherPlayer = players.find(p => p.id === otherPlayerId);
+    if (!otherPlayer) return;
+
+    const starterGroup = getPositionGroup(selectedPitchPlayer.position);
+    const otherGroup = getPositionGroup(otherPlayer.position);
+
+    if (starterGroup !== otherGroup) {
+      setMessage(`${otherPlayer.last_name} (${otherPlayer.position}) ne peut pas jouer en position ${selectedPitchPlayer.position}`);
+      setTimeout(() => setMessage(''), 2500);
+      return;
+    }
+
+    if (otherPlayer.is_starter) {
+      // Swap two starters: just exchange their positions visually (both stay starters)
+      // No state change needed for is_starter, they just swap slots
+      setSelectedPitchPlayer(null);
+    } else {
+      // Swap starter with bench player
+      setPlayers(players.map(p => {
+        if (p.id === selectedPitchPlayer.id) return { ...p, is_starter: 0 };
+        if (p.id === otherPlayerId) return { ...p, is_starter: 1 };
+        return p;
+      }));
+      setSelectedPitchPlayer(null);
+    }
+  }
 
   useEffect(() => {
     loadStatus();
@@ -132,6 +210,25 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
     onUpdate({ ...team, formation });
   }
 
+  async function handleSellPlayer(player) {
+    if (players.length <= 11) {
+      setMessage('Effectif minimum (11 joueurs) atteint !');
+      setTimeout(() => setMessage(''), 2000);
+      return;
+    }
+    if (!confirm(`Vendre ${player.first_name} ${player.last_name} pour ${formatMoney(Math.round((player.value || 0) * 0.8))} ?`)) return;
+    try {
+      const result = await api.sellPlayer(player.id, manager.id);
+      if (onManagerUpdate) onManagerUpdate({ ...manager, budget: result.newBudget });
+      setMessage(`${player.first_name} ${player.last_name} vendu pour ${formatMoney(result.sellPrice)}`);
+      await loadPlayers();
+      setTimeout(() => setMessage(''), 3000);
+    } catch (err) {
+      setMessage(err.message);
+      setTimeout(() => setMessage(''), 3000);
+    }
+  }
+
   function cycleSpeed() {
     const speeds = [1, 2, 5, 10];
     const idx = speeds.indexOf(matchSpeedRef.current);
@@ -142,8 +239,6 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
 
   async function handlePlayMatch() {
     setLoading(true);
-    matchSpeedRef.current = 1;
-    setMatchSpeed(1);
     try {
       const result = await api.playMatchday(team.id);
 
@@ -182,6 +277,9 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
             setView('season');
             setLastMatch(result.match);
             onUpdate(result.team);
+            if (result.match.matchBonus && onManagerUpdate) {
+              onManagerUpdate({ ...manager, budget: manager.budget + result.match.matchBonus });
+            }
             loadStatus();
             loadPlayers();
 
@@ -501,47 +599,148 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
               </select>
             </div>
             <button className="btn-primary" onClick={handleSaveLineup} disabled={loading}>
-              💾 Sauvegarder ({players.filter(p => p.is_starter).length}/11)
+              Sauvegarder ({players.filter(p => p.is_starter).length}/11)
             </button>
           </div>
 
-          <div className="lineup-section">
-            <h3>Titulaires ({players.filter(p => p.is_starter).length}/11)</h3>
-            <div className="lineup-grid">
-              {players.filter(p => p.is_starter).map(p => (
-                <div key={p.id} className="lineup-player starter">
-                  <div className="lp-info">
-                    <span className={`lp-pos ${posClass(p.position)}`}>{p.position}</span>
-                    <span className="lp-name">{p.first_name} {p.last_name}</span>
-                    <span className="lp-ovr">{p.overall}</span>
-                  </div>
-                  <div className="lp-bars">
-                    <div className="lp-bar"><span>STA</span><div className="bar-fill" style={{width: `${p.stamina}%`, background: p.stamina > 60 ? 'var(--success)' : 'var(--danger)'}} /></div>
-                    <div className="lp-bar"><span>MOR</span><div className="bar-fill" style={{width: `${p.morale}%`, background: 'var(--warning)'}} /></div>
-                  </div>
-                  <button className="btn-small btn-danger" onClick={() => handleSetSub(p.id)}>↓</button>
-                </div>
-              ))}
+          <div className="pitch-container">
+            <div className="pitch">
+              <div className="pitch-markings">
+                <div className="pitch-halfway" />
+                <div className="pitch-center-circle" />
+                <div className="pitch-center-dot" />
+                <div className="pitch-penalty-area-top" />
+                <div className="pitch-goal-area-top" />
+                <div className="pitch-penalty-area-bottom" />
+                <div className="pitch-goal-area-bottom" />
+                <div className="pitch-corner-tl" />
+                <div className="pitch-corner-tr" />
+                <div className="pitch-corner-bl" />
+                <div className="pitch-corner-br" />
+              </div>
+
+              {(() => {
+                const formation = team.formation || '4-4-2';
+                const positions = FORMATION_POSITIONS[formation] || FORMATION_POSITIONS['4-4-2'];
+
+                return positions.map((slot, idx) => {
+                  const assignedId = slotAssignments[idx];
+                  const player = assignedId ? players.find(p => p.id === assignedId) : null;
+                  const slotGroup = getPositionGroup(slot.pos);
+                  const benchCompatible = selectedBenchPlayer && getPositionGroup(selectedBenchPlayer.position) === slotGroup;
+                  const benchForced = selectedBenchPlayer && !benchCompatible;
+
+                  if (!player) return (
+                    <div
+                      key={`empty-${idx}`}
+                      className={`pitch-player-node empty ${benchCompatible ? 'slot-highlight' : ''} ${benchForced ? 'slot-forced' : ''}`}
+                      style={{ left: `${slot.x}%`, top: `${slot.y}%` }}
+                      onClick={() => {
+                        if (selectedBenchPlayer) {
+                          setSlotAssignments(prev => ({ ...prev, [idx]: selectedBenchPlayer.id }));
+                          setPlayers(players.map(p => p.id === selectedBenchPlayer.id ? { ...p, is_starter: 1 } : p));
+                          setSelectedBenchPlayer(null);
+                        }
+                      }}
+                    >
+                      <span className={`pitch-pos-badge ${posClass(slot.pos)}`}>{slot.pos}</span>
+                      <span className="pitch-player-name">---</span>
+                    </div>
+                  );
+
+                  const isSelected = selectedPitchPlayer && selectedPitchPlayer.id === player.id;
+                  const staminaColor = player.stamina > 70 ? '#3fb950' : player.stamina > 40 ? '#d29922' : '#f85149';
+                  const isOutOfPosition = getPositionGroup(player.position) !== slotGroup;
+                  return (
+                    <div
+                      key={`slot-${idx}`}
+                      className={`pitch-player-node ${isSelected ? 'selected' : ''} ${benchCompatible ? 'slot-highlight' : ''} ${benchForced ? 'slot-forced' : ''} ${isOutOfPosition ? 'out-of-position' : ''}`}
+                      style={{ left: `${slot.x}%`, top: `${slot.y}%` }}
+                      onClick={() => {
+                        if (selectedBenchPlayer) {
+                          setSlotAssignments(prev => ({ ...prev, [idx]: selectedBenchPlayer.id }));
+                          setPlayers(players.map(p => {
+                            if (p.id === player.id) return { ...p, is_starter: 0 };
+                            if (p.id === selectedBenchPlayer.id) return { ...p, is_starter: 1 };
+                            return p;
+                          }));
+                          setSelectedBenchPlayer(null);
+                          setSelectedPitchPlayer(null);
+                        } else {
+                          setSelectedPitchPlayer(isSelected ? null : player);
+                          setSelectedBenchPlayer(null);
+                        }
+                      }}
+                    >
+                      <span className={`pitch-pos-badge ${posClass(player.position)}`}>{player.position}</span>
+                      <span className="pitch-player-ovr">{player.overall}</span>
+                      <span className="pitch-player-name">{player.last_name.length > 8 ? player.last_name.slice(0, 7) + '.' : player.last_name}</span>
+                      <span className="pitch-stamina-dot" style={{ background: staminaColor }} />
+                    </div>
+                  );
+                });
+              })()}
             </div>
           </div>
 
-          <div className="lineup-section">
-            <h3>Remplaçants ({players.filter(p => !p.is_starter).length})</h3>
-            <div className="lineup-grid">
-              {players.filter(p => !p.is_starter).map(p => (
-                <div key={p.id} className="lineup-player sub">
-                  <div className="lp-info">
-                    <span className={`lp-pos ${posClass(p.position)}`}>{p.position}</span>
-                    <span className="lp-name">{p.first_name} {p.last_name}</span>
-                    <span className="lp-ovr">{p.overall}</span>
+          {selectedPitchPlayer && (
+            <div className="pitch-swap-panel">
+              <div className="swap-panel-header">
+                <span>Remplacer <strong>{selectedPitchPlayer.first_name} {selectedPitchPlayer.last_name}</strong> ({selectedPitchPlayer.position}, {selectedPitchPlayer.overall})</span>
+                <button className="btn-small btn-danger" onClick={() => {
+                  const slotIdx = Object.entries(slotAssignments).find(([, id]) => id === selectedPitchPlayer.id);
+                  if (slotIdx) setSlotAssignments(prev => { const n = { ...prev }; delete n[slotIdx[0]]; return n; });
+                  setPlayers(players.map(p => p.id === selectedPitchPlayer.id ? { ...p, is_starter: 0 } : p));
+                  setSelectedPitchPlayer(null);
+                }}>Retirer</button>
+                <button className="btn-small" onClick={() => setSelectedPitchPlayer(null)}>Fermer</button>
+              </div>
+              <div className="swap-panel-list">
+                {players.filter(p => p.id !== selectedPitchPlayer.id).map(p => {
+                  const compatible = getPositionGroup(p.position) === getPositionGroup(selectedPitchPlayer.position);
+                  return (
+                    <div
+                      key={p.id}
+                      className={`swap-candidate ${compatible ? 'compatible' : 'incompatible'} ${p.is_starter ? 'is-starter' : ''}`}
+                      onClick={() => compatible && handleSwapPlayers(p.id)}
+                    >
+                      <span className={`lp-pos ${posClass(p.position)}`}>{p.position}</span>
+                      <span className="swap-name">{p.first_name} {p.last_name}</span>
+                      <span className="swap-ovr">{p.overall}</span>
+                      <span className="swap-stamina" style={{ color: p.stamina > 70 ? 'var(--success)' : p.stamina > 40 ? 'var(--warning)' : 'var(--danger)' }}>{p.stamina}%</span>
+                      {p.is_starter && <span className="swap-starter-tag">TIT</span>}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <div className="pitch-bench-section">
+            <h3>
+              Remplaçants ({players.filter(p => !p.is_starter).length})
+              {selectedBenchPlayer && <span className="bench-hint"> — Cliquez sur un emplacement du terrain</span>}
+            </h3>
+            <div className="pitch-bench-row">
+              {players.filter(p => !p.is_starter).map(p => {
+                const staminaColor = p.stamina > 70 ? '#3fb950' : p.stamina > 40 ? '#d29922' : '#f85149';
+                const isBenchSelected = selectedBenchPlayer && selectedBenchPlayer.id === p.id;
+                return (
+                  <div
+                    key={p.id}
+                    className={`bench-player-card ${isBenchSelected ? 'bench-selected' : ''}`}
+                    onClick={() => {
+                      setSelectedBenchPlayer(isBenchSelected ? null : p);
+                      setSelectedPitchPlayer(null);
+                    }}
+                  >
+                    <span className={`pitch-pos-badge ${posClass(p.position)}`}>{p.position}</span>
+                    <span className="bench-ovr">{p.overall}</span>
+                    <span className="bench-name">{p.last_name.length > 9 ? p.last_name.slice(0, 8) + '.' : p.last_name}</span>
+                    <span className="pitch-stamina-dot" style={{ background: staminaColor }} />
                   </div>
-                  <div className="lp-bars">
-                    <div className="lp-bar"><span>STA</span><div className="bar-fill" style={{width: `${p.stamina}%`, background: p.stamina > 60 ? 'var(--success)' : 'var(--danger)'}} /></div>
-                    <div className="lp-bar"><span>MOR</span><div className="bar-fill" style={{width: `${p.morale}%`, background: 'var(--warning)'}} /></div>
-                  </div>
-                  <button className="btn-small btn-primary" onClick={() => handleSetStarter(p.id)} disabled={players.filter(x => x.is_starter).length >= 11}>↑</button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
@@ -549,8 +748,26 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
 
       {view === 'squad' && (
         <div className="squad-view">
+          <div className="squad-info">
+            <span>{players.length} joueurs</span>
+            <span>Valeur totale : {formatMoney(players.reduce((s, p) => s + (p.value || 0), 0))}</span>
+          </div>
           <div className="players-grid">
-            {players.map(p => <PlayerCard key={p.id} player={p} />)}
+            {players.map(p => (
+              <PlayerCard
+                key={p.id}
+                player={p}
+                actions={
+                  <button
+                    className="btn-small btn-danger"
+                    onClick={() => handleSellPlayer(p)}
+                    disabled={players.length <= 11}
+                  >
+                    Vendre ({formatMoney(Math.round((p.value || 0) * 0.8))})
+                  </button>
+                }
+              />
+            ))}
           </div>
         </div>
       )}

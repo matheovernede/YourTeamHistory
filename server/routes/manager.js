@@ -48,4 +48,56 @@ router.post('/reset', (req, res) => {
   res.json(manager);
 });
 
+router.get('/:id/save', (req, res) => {
+  const manager = queryOne('SELECT * FROM managers WHERE id = ?', [req.params.id]);
+  if (!manager) return res.status(404).json({ error: 'Manager non trouvé' });
+
+  const teams = queryAll("SELECT * FROM teams WHERE manager_id = ?", [req.params.id]);
+  const saveData = { manager, teams: [] };
+
+  for (const team of teams) {
+    const players = queryAll('SELECT * FROM players WHERE team_id = ?', [team.id]);
+    saveData.teams.push({ ...team, players });
+  }
+
+  saveData.version = 1;
+  saveData.exportedAt = new Date().toISOString();
+  res.json(saveData);
+});
+
+router.post('/:id/load', (req, res) => {
+  const { saveData } = req.body;
+  if (!saveData || !saveData.manager || !saveData.teams) {
+    return res.status(400).json({ error: 'Sauvegarde invalide' });
+  }
+
+  const managerId = req.params.id;
+
+  // Clear existing data for this manager
+  const existingTeams = queryAll("SELECT id FROM teams WHERE manager_id = ?", [managerId]);
+  for (const t of existingTeams) {
+    run('DELETE FROM players WHERE team_id = ?', [t.id]);
+    run('DELETE FROM teams WHERE id = ?', [t.id]);
+  }
+
+  // Restore manager
+  run('UPDATE managers SET budget = ?, reputation = ? WHERE id = ?',
+    [saveData.manager.budget, saveData.manager.reputation, managerId]);
+
+  // Restore teams and players
+  for (const team of saveData.teams) {
+    run('INSERT INTO teams (id, manager_id, name, formation, morale, season, division, points, wins, draws, losses, goals_for, goals_against) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
+      [team.id, managerId, team.name, team.formation, team.morale || 70, team.season || 1, team.division || 1, team.points || 0, team.wins || 0, team.draws || 0, team.losses || 0, team.goals_for || 0, team.goals_against || 0]);
+
+    for (const p of (team.players || [])) {
+      run('INSERT INTO players (id, team_id, first_name, last_name, age, position, overall, pace, shooting, passing, dribbling, defending, physical, stamina, morale, value, is_starter) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+        [p.id, team.id, p.first_name, p.last_name, p.age, p.position, p.overall, p.pace, p.shooting, p.passing, p.dribbling, p.defending, p.physical, p.stamina, p.morale, p.value, p.is_starter]);
+    }
+  }
+
+  const updatedManager = queryOne('SELECT * FROM managers WHERE id = ?', [managerId]);
+  const updatedTeam = queryOne("SELECT * FROM teams WHERE manager_id = ? AND manager_id != 'AI'", [managerId]);
+  res.json({ manager: updatedManager, team: updatedTeam });
+});
+
 module.exports = router;

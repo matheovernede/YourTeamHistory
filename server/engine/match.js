@@ -118,9 +118,9 @@ function simulateMatch(homePlayers, awayPlayers, { homeIsPlayer = true } = {}) {
 
   for (const goal of goalMinutes) {
     const players = goal.team === 'home' ? homePlayers : awayPlayers;
-    const scorers = players.filter(p => p.is_starter && p.position !== 'GK');
+    const scorers = players.filter(p => p.is_starter && p.position !== 'GAR');
     // Weight scorer selection by shooting/overall
-    const weights = scorers.map(p => (p.shooting || p.overall) + (p.position === 'ST' ? 20 : p.position === 'LW' || p.position === 'RW' ? 10 : 0));
+    const weights = scorers.map(p => (p.shooting || p.overall) + (p.position === 'BU' ? 20 : p.position === 'AIG' || p.position === 'AID' ? 10 : 0));
     const totalWeight = weights.reduce((s, w) => s + w, 0);
     let roll = Math.random() * totalWeight;
     let scorer = scorers[0];

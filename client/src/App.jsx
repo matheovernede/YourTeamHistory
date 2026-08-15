@@ -82,8 +82,59 @@ function App() {
     setSeasonSummary(null);
   }
 
+  async function handleLoadSave(saveData) {
+    try {
+      const regResult = await api.register(saveData.manager.username);
+      const result = await api.importSave(regResult.id, saveData);
+      setManager(result.manager);
+      setTeam(result.team);
+      setPhase('play');
+      save(result.manager, result.team, 'play');
+    } catch {
+      alert('Erreur lors du chargement de la sauvegarde');
+    }
+  }
+
+  async function handleExportSave() {
+    if (!manager) return;
+    try {
+      const saveData = await api.exportSave(manager.id);
+      const blob = new Blob([JSON.stringify(saveData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `YTH_${team?.name || 'save'}_S${team?.season || 1}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {}
+  }
+
+  function handleImportSave() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const saveData = JSON.parse(text);
+        if (!manager) return;
+        const result = await api.importSave(manager.id, saveData);
+        setManager(result.manager);
+        setTeam(result.team);
+        setPhase('play');
+        save(result.manager, result.team, 'play');
+        window.location.reload();
+      } catch {
+        alert('Fichier de sauvegarde invalide');
+      }
+    };
+    input.click();
+  }
+
   if (phase === 'login' || !manager) {
-    return <Login onLogin={handleTeamCreated} />;
+    return <Login onLogin={handleTeamCreated} onLoadSave={handleLoadSave} />;
   }
 
   if (phase === 'draft' || phase === 'mercato') {
@@ -119,6 +170,8 @@ function App() {
         <span className="top-season">Saison {team.season}</span>
         <span className="top-budget">{(manager.budget / 1000000).toFixed(1)}M€</span>
         <span className="top-rep">Rep: {manager.reputation}</span>
+        <button className="btn-save-top" onClick={handleExportSave}>💾</button>
+        <button className="btn-save-top" onClick={handleImportSave}>📂</button>
         <button className="btn-new-career-top" onClick={handleNewCareer}>Nouvelle carrière</button>
       </div>
       <Season

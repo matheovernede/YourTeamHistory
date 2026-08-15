@@ -21,7 +21,7 @@ const LAST_NAMES = [
   'Fernandez', 'Lopez', 'Pereira', 'Da Silva', 'Santos', 'Rodrigues', 'Ferreira', 'Alves', 'Oliveira', 'Costa',
 ];
 
-const POSITIONS_TEMPLATE = ['GK', 'RB', 'CB', 'CB', 'LB', 'CM', 'CM', 'CM', 'RW', 'LW', 'ST', 'GK', 'CB', 'CM', 'RW', 'ST', 'LB', 'CM'];
+const POSITIONS_TEMPLATE = ['GAR', 'ARD', 'DC', 'DC', 'ARG', 'MC', 'MC', 'MC', 'AID', 'AIG', 'BU', 'GAR', 'DC', 'MC', 'AID', 'BU', 'ARG', 'MC'];
 
 function randomInRange(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -37,7 +37,7 @@ function generatePlayer(position, overallMin, overallMax) {
   let pace, shooting, passing, dribbling, defending, physical;
 
   switch (position) {
-    case 'GK':
+    case 'GAR':
       pace = randomInRange(25, 45);
       shooting = randomInRange(8, 18);
       passing = randomInRange(overall - 20, overall - 5);
@@ -45,7 +45,7 @@ function generatePlayer(position, overallMin, overallMax) {
       defending = randomInRange(overall - 5, overall + 3);
       physical = randomInRange(overall - 12, overall - 2);
       break;
-    case 'CB':
+    case 'DC':
       pace = randomInRange(overall - 20, overall - 5);
       shooting = randomInRange(overall - 30, overall - 15);
       passing = randomInRange(overall - 15, overall - 5);
@@ -53,7 +53,7 @@ function generatePlayer(position, overallMin, overallMax) {
       defending = randomInRange(overall - 3, overall + 5);
       physical = randomInRange(overall - 5, overall + 3);
       break;
-    case 'RB': case 'LB':
+    case 'ARD': case 'ARG':
       pace = randomInRange(overall - 2, overall + 8);
       shooting = randomInRange(overall - 20, overall - 8);
       passing = randomInRange(overall - 8, overall + 2);
@@ -61,7 +61,7 @@ function generatePlayer(position, overallMin, overallMax) {
       defending = randomInRange(overall - 5, overall + 3);
       physical = randomInRange(overall - 8, overall + 2);
       break;
-    case 'CM':
+    case 'MC':
       pace = randomInRange(overall - 12, overall + 2);
       shooting = randomInRange(overall - 10, overall + 2);
       passing = randomInRange(overall - 2, overall + 6);
@@ -69,7 +69,7 @@ function generatePlayer(position, overallMin, overallMax) {
       defending = randomInRange(overall - 10, overall + 2);
       physical = randomInRange(overall - 5, overall + 5);
       break;
-    case 'CAM':
+    case 'MOC':
       pace = randomInRange(overall - 8, overall + 3);
       shooting = randomInRange(overall - 3, overall + 5);
       passing = randomInRange(overall, overall + 8);
@@ -77,7 +77,7 @@ function generatePlayer(position, overallMin, overallMax) {
       defending = randomInRange(overall - 25, overall - 12);
       physical = randomInRange(overall - 12, overall - 2);
       break;
-    case 'LW': case 'RW':
+    case 'AIG': case 'AID':
       pace = randomInRange(overall + 2, overall + 12);
       shooting = randomInRange(overall - 5, overall + 5);
       passing = randomInRange(overall - 8, overall + 2);
@@ -85,7 +85,7 @@ function generatePlayer(position, overallMin, overallMax) {
       defending = randomInRange(overall - 35, overall - 20);
       physical = randomInRange(overall - 15, overall - 5);
       break;
-    case 'ST':
+    case 'BU':
       pace = randomInRange(overall - 5, overall + 8);
       shooting = randomInRange(overall + 2, overall + 10);
       passing = randomInRange(overall - 15, overall - 5);

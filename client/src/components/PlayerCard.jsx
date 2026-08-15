@@ -1,9 +1,9 @@
 import './PlayerCard.css';
 
 function getPositionClass(pos) {
-  if (pos === 'GK') return 'badge-gk';
-  if (['CB', 'LB', 'RB'].includes(pos)) return 'badge-def';
-  if (['CM', 'CAM'].includes(pos)) return 'badge-mid';
+  if (pos === 'GAR') return 'badge-gk';
+  if (['DC', 'ARG', 'ARD', 'PG', 'PD'].includes(pos)) return 'badge-def';
+  if (['MC', 'MOC', 'MDF', 'MG', 'MD'].includes(pos)) return 'badge-mid';
   return 'badge-att';
 }
 
