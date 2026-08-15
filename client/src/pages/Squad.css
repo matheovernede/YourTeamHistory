@@ -1,0 +1,58 @@
+.squad-page {
+  padding: 24px;
+}
+
+.squad-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.squad-header h2 {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.squad-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.squad-message {
+  background: var(--primary);
+  color: white;
+  padding: 10px 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  text-align: center;
+}
+
+.squad-section {
+  margin-bottom: 24px;
+}
+
+.squad-section h3 {
+  font-size: 16px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.players-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.page-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  font-size: 18px;
+  color: var(--text-muted);
+}

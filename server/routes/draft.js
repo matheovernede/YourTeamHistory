@@ -1,0 +1,131 @@
+const express = require('express');
+const { v4: uuid } = require('uuid');
+const { getDb, queryOne, queryAll, run, saveDb } = require('../db/schema');
+const { DRAFT_POOL, calculateDraftPrice } = require('../data/draftPool');
+
+const router = express.Router();
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+router.get('/available', (req, res) => {
+  const { division, reputation } = req.query;
+  const divLevel = parseInt(division) || 1;
+  const rep = parseInt(reputation) || 50;
+
+  // Reputation bonus: higher rep = better chance of seeing top players
+  // rep 0-30: low attraction, 30-60: normal, 60-80: good, 80+: elite
+  const repBonus = Math.max(0, (rep - 30) / 70); // 0 to 1 scale
+
+  // Legends: very rare, chance increases with reputation and division
+  // rep 50 + div 1 = ~1% chance per legend, rep 90 + div 7 = ~20%
+  const legendChance = Math.min(0.25, 0.01 + repBonus * 0.12 + (divLevel - 1) * 0.02);
+
+  let filtered;
+  if (divLevel <= 2) {
+    filtered = DRAFT_POOL.filter(p => {
+      if (p.tier === 'legend') return Math.random() < legendChance;
+      if (p.tier === 'ligue1') return Math.random() < (0.02 + repBonus * 0.15);
+      if (p.tier === 'ligue2') return Math.random() < (0.4 + repBonus * 0.3);
+      return true;
+    });
+  } else if (divLevel <= 4) {
+    filtered = DRAFT_POOL.filter(p => {
+      if (p.tier === 'legend') return Math.random() < legendChance;
+      if (p.tier === 'ligue1') return Math.random() < (0.08 + repBonus * 0.25);
+      return true;
+    });
+  } else {
+    filtered = DRAFT_POOL.filter(p => {
+      if (p.tier === 'legend') return Math.random() < legendChance;
+      return true;
+    });
+  }
+
+  const shuffled = shuffle(filtered);
+  let selection = shuffled.slice(0, 35);
+
+  // High reputation attracts better players: sort by overall and keep more top ones
+  if (rep >= 70) {
+    selection.sort((a, b) => b.overall - a.overall);
+    // Keep the top half as-is, re-shuffle the rest
+    const top = selection.slice(0, Math.floor(selection.length * 0.4));
+    const rest = shuffle(selection.slice(Math.floor(selection.length * 0.4)));
+    selection = [...top, ...rest];
+  }
+
+  const players = selection.map(p => ({
+    ...p,
+    id: uuid(),
+    value: calculateDraftPrice(p),
+  }));
+
+  res.json(players);
+});
+
+router.post('/buy', async (req, res) => {
+  const { managerId, teamId, player } = req.body;
+  if (!managerId || !teamId || !player) {
+    return res.status(400).json({ error: 'managerId, teamId et player requis' });
+  }
+
+  const db = await getDb();
+  const manager = queryOne('SELECT * FROM managers WHERE id = ?', [managerId]);
+  if (!manager) return res.status(404).json({ error: 'Manager non trouvé' });
+
+  if (manager.budget < player.value) {
+    return res.status(400).json({ error: 'Budget insuffisant' });
+  }
+
+  const playerCount = queryOne('SELECT COUNT(*) as count FROM players WHERE team_id = ?', [teamId]);
+  if (playerCount && playerCount.count >= 25) {
+    return res.status(400).json({ error: 'Effectif maximum atteint (25 joueurs)' });
+  }
+
+  db.run('UPDATE managers SET budget = budget - ? WHERE id = ?', [player.value, managerId]);
+  db.run(
+    "INSERT INTO players (id, team_id, first_name, last_name, age, position, overall, pace, shooting, passing, dribbling, defending, physical, stamina, morale, value, is_starter) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,100,80,?,0)",
+    [uuid(), teamId, player.first_name, player.last_name, player.age, player.position, player.overall, player.pace, player.shooting, player.passing, player.dribbling, player.defending, player.physical, player.value]
+  );
+  saveDb();
+
+  const updatedManager = queryOne('SELECT * FROM managers WHERE id = ?', [managerId]);
+  const squad = queryAll('SELECT * FROM players WHERE team_id = ? ORDER BY overall DESC', [teamId]);
+
+  res.json({ newBudget: updatedManager.budget, squadSize: squad.length });
+});
+
+router.post('/finish', async (req, res) => {
+  const { managerId, teamId } = req.body;
+  if (!managerId || !teamId) {
+    return res.status(400).json({ error: 'managerId et teamId requis' });
+  }
+
+  const playerCount = queryOne('SELECT COUNT(*) as count FROM players WHERE team_id = ?', [teamId]);
+  if (!playerCount || playerCount.count < 11) {
+    return res.status(400).json({ error: `Il faut au minimum 11 joueurs (vous en avez ${playerCount ? playerCount.count : 0})` });
+  }
+
+  const currentStarters = queryOne('SELECT COUNT(*) as count FROM players WHERE team_id = ? AND is_starter = 1', [teamId]);
+  if (!currentStarters || currentStarters.count < 11) {
+    const players = queryAll('SELECT * FROM players WHERE team_id = ? ORDER BY overall DESC', [teamId]);
+    const starters = players.slice(0, 11);
+    run('UPDATE players SET is_starter = 0 WHERE team_id = ?', [teamId]);
+    for (const p of starters) {
+      run('UPDATE players SET is_starter = 1 WHERE id = ?', [p.id]);
+    }
+  }
+
+  const team = queryOne('SELECT * FROM teams WHERE id = ?', [teamId]);
+  const manager = queryOne('SELECT * FROM managers WHERE id = ?', [managerId]);
+
+  res.json({ team, manager });
+});
+
+module.exports = router;

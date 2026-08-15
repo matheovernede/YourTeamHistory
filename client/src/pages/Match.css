@@ -1,0 +1,168 @@
+.match-page {
+  padding: 24px;
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.match-header {
+  margin-bottom: 24px;
+}
+
+.match-header h2 {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.team-stats-bar {
+  display: flex;
+  gap: 12px;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.stat-win { color: var(--success); font-weight: 600; }
+.stat-draw { color: var(--warning); font-weight: 600; }
+.stat-loss { color: var(--danger); font-weight: 600; }
+.stat-pts { color: var(--secondary); font-weight: 700; }
+
+.match-actions {
+  margin-bottom: 24px;
+}
+
+.play-btn {
+  width: 100%;
+  padding: 16px;
+  font-size: 18px;
+}
+
+.match-result {
+  margin-bottom: 24px;
+}
+
+.result-score {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 20px;
+}
+
+.result-team {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.result-name {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.result-goals {
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--secondary);
+}
+
+.result-vs {
+  font-size: 24px;
+  color: var(--text-muted);
+}
+
+.result-points {
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.badge-win {
+  background: var(--success);
+  color: white;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.badge-draw {
+  background: var(--warning);
+  color: #111;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.badge-loss {
+  background: var(--danger);
+  color: white;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.match-events {
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.event {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 14px;
+}
+
+.event-minute {
+  color: var(--text-muted);
+  font-size: 12px;
+  min-width: 30px;
+}
+
+.event-player {
+  font-weight: 600;
+}
+
+.event-team {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.match-history {
+  margin-top: 24px;
+}
+
+.match-history h3 {
+  font-size: 16px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.history-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.history-date {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.no-data {
+  color: var(--text-muted);
+  text-align: center;
+  padding: 20px;
+}

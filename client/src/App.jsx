@@ -1,0 +1,135 @@
+import { useState, useEffect } from 'react';
+import './App.css';
+import { api } from './api/client';
+import Login from './pages/Login';
+import Draft from './pages/Draft';
+import Season from './pages/Season';
+
+function App() {
+  const [manager, setManager] = useState(null);
+  const [team, setTeam] = useState(null);
+  const [phase, setPhase] = useState('login');
+  const [seasonSummary, setSeasonSummary] = useState(null);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('footmanager_session');
+    if (saved) {
+      const { manager: m, team: t, phase: p } = JSON.parse(saved);
+      setManager(m);
+      setTeam(t);
+      setPhase(p || 'play');
+    }
+  }, []);
+
+  function save(m, t, p) {
+    localStorage.setItem('footmanager_session', JSON.stringify({ manager: m, team: t, phase: p }));
+  }
+
+  function handleTeamCreated(m, t) {
+    setManager(m);
+    setTeam(t);
+    setPhase('draft');
+    save(m, t, 'draft');
+  }
+
+  function handleDraftFinish(updatedManager, updatedTeam) {
+    setManager(updatedManager);
+    setTeam(updatedTeam);
+    setPhase('play');
+    save(updatedManager, updatedTeam, 'play');
+  }
+
+  function handleTeamUpdate(updatedTeam) {
+    setTeam(updatedTeam);
+    save(manager, updatedTeam, phase);
+  }
+
+  function handleManagerUpdate(updatedManager) {
+    setManager(updatedManager);
+    save(updatedManager, team, phase);
+  }
+
+  function handleSeasonEnd(result) {
+    setSeasonSummary({
+      ...result.seasonSummary,
+      promotion: result.promotion,
+      relegation: result.relegation,
+      newDivision: result.newDivision,
+    });
+    setManager(result.manager);
+    setTeam(result.team);
+    setPhase('mercato');
+    save(result.manager, result.team, 'mercato');
+  }
+
+  function handleMercatoFinish(updatedManager, updatedTeam) {
+    setManager(updatedManager);
+    setTeam(updatedTeam);
+    setPhase('play');
+    setSeasonSummary(null);
+    save(updatedManager, updatedTeam, 'play');
+  }
+
+  async function handleNewCareer() {
+    if (!confirm('Commencer une nouvelle carrière ? Votre progression sera perdue.')) return;
+    if (manager) {
+      try { await api.resetManager(manager.id); } catch {}
+    }
+    localStorage.removeItem('footmanager_session');
+    setManager(null);
+    setTeam(null);
+    setPhase('login');
+    setSeasonSummary(null);
+  }
+
+  if (phase === 'login' || !manager) {
+    return <Login onLogin={handleTeamCreated} />;
+  }
+
+  if (phase === 'draft' || phase === 'mercato') {
+    return (
+      <div className="app">
+        <div className="top-bar">
+          <span className="top-title">⚽ {team.name}</span>
+          <span className="top-budget">{(manager.budget / 1000000).toFixed(1)}M€</span>
+          <button className="btn-new-career-top" onClick={handleNewCareer}>Nouvelle carrière</button>
+        </div>
+        {seasonSummary && (
+          <div className={`season-summary-banner ${seasonSummary.promotion ? 'promo' : ''} ${seasonSummary.relegation ? 'releg' : ''}`}>
+            <h2>Bilan Saison {seasonSummary.season} — {seasonSummary.divisionName}</h2>
+            {seasonSummary.promotion && <div className="promo-tag">🎉 PROMOTION → {seasonSummary.newDivision}</div>}
+            {seasonSummary.relegation && <div className="releg-tag">📉 Relégation → {seasonSummary.newDivision}</div>}
+            <div className="summary-stats">
+              <span>#{seasonSummary.rank}</span>
+              <span>{seasonSummary.points} pts</span>
+              <span>{seasonSummary.wins}V {seasonSummary.draws}N {seasonSummary.losses}D</span>
+              <span className="prize">Prime: +{(seasonSummary.prizePool / 1000000).toFixed(0)}M€</span>
+            </div>
+          </div>
+        )}
+        <Draft manager={manager} team={team} onFinish={handleMercatoFinish} isInitialDraft={phase === 'draft'} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="app">
+      <div className="top-bar">
+        <span className="top-title">⚽ {team.name}</span>
+        <span className="top-season">Saison {team.season}</span>
+        <span className="top-budget">{(manager.budget / 1000000).toFixed(1)}M€</span>
+        <span className="top-rep">Rep: {manager.reputation}</span>
+        <button className="btn-new-career-top" onClick={handleNewCareer}>Nouvelle carrière</button>
+      </div>
+      <Season
+        manager={manager}
+        team={team}
+        onUpdate={handleTeamUpdate}
+        onManagerUpdate={handleManagerUpdate}
+        onSeasonEnd={handleSeasonEnd}
+      />
+    </div>
+  );
+}
+
+export default App;

@@ -1,0 +1,73 @@
+.leaderboard-page {
+  padding: 24px;
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.leaderboard-page h2 {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 20px;
+}
+
+.leaderboard-table {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.lb-header, .lb-row {
+  display: grid;
+  grid-template-columns: 50px 1fr 1fr 60px 50px 60px;
+  padding: 12px 16px;
+  align-items: center;
+  font-size: 14px;
+}
+
+.lb-header {
+  background: var(--bg-hover);
+  font-weight: 700;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.lb-row {
+  border-top: 1px solid var(--border);
+}
+
+.lb-row:hover {
+  background: var(--bg-hover);
+}
+
+.lb-me {
+  background: rgba(26, 122, 58, 0.1);
+  border-left: 3px solid var(--primary);
+}
+
+.lb-rank {
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.lb-name {
+  font-weight: 600;
+}
+
+.lb-team {
+  color: var(--text-muted);
+}
+
+.lb-pts {
+  font-weight: 700;
+  color: var(--secondary);
+}
+
+.lb-wins {
+  color: var(--success);
+}
+
+.lb-goals {
+  color: var(--text-muted);
+}
