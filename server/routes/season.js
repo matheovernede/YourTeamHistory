@@ -5,7 +5,7 @@ const { simulateMatch, simulateAiMatchByStrength, applyMatchEffects } = require(
 const { getRandomSponsors } = require('../data/sponsors');
 const { DIVISIONS } = require('../data/divisions');
 const { seedDivision } = require('../db/seed');
-const { getRandomEvent, EVENTS } = require('../data/events');
+const { getRandomEvent, buildEventContext, EVENTS } = require('../data/events');
 
 const router = express.Router();
 
@@ -142,7 +142,34 @@ router.post('/:teamId/play-matchday', async (req, res) => {
   const standings = queryAll("SELECT t.id FROM teams t WHERE t.division = ? AND (t.manager_id = 'AI' OR t.id = ?) ORDER BY t.points DESC", [division, team.id]);
   const currentRank = standings.findIndex(t => t.id === team.id) + 1;
   const isLosing = currentRank > Math.ceil(standings.length / 2);
-  const event = getRandomEvent(week, isLosing);
+
+  // Contexte enrichi : classement, trésorerie, taille d'effectif et série en
+  // cours, pour que les événements collent à la situation réelle du club.
+  const recentForEvents = queryAll(
+    `SELECT home_team_id, home_goals, away_goals FROM matches
+     WHERE (home_team_id = ? OR away_team_id = ?) AND played = 1
+     ORDER BY season DESC, week DESC LIMIT 5`,
+    [team.id, team.id]
+  ).map(mt => {
+    const isHome = mt.home_team_id === team.id;
+    const scored = isHome ? mt.home_goals : mt.away_goals;
+    const conceded = isHome ? mt.away_goals : mt.home_goals;
+    return { outcome: scored > conceded ? 'win' : scored === conceded ? 'draw' : 'loss' };
+  });
+
+  const managerRow = queryOne('SELECT budget FROM managers WHERE id = ?', [team.manager_id]);
+  const squadCount = queryOne('SELECT COUNT(*) as count FROM players WHERE team_id = ?', [team.id]);
+
+  const event = getRandomEvent(buildEventContext({
+    matchday: week,
+    team: updatedTeam,
+    rank: currentRank,
+    totalTeams: standings.length,
+    isLosing,
+    budget: managerRow ? managerRow.budget : 0,
+    squadSize: squadCount ? squadCount.count : 0,
+    recentMatches: recentForEvents,
+  }));
 
   res.json({
     match: {

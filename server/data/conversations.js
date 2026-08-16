@@ -668,6 +668,213 @@ const CONVERSATIONS = [
       { id: 'neutral', text: "Bien. Continue comme ça.", effects: { morale: -3 }, response: "Ah... euh, oui coach. Bonne journée." },
     ],
   },
+
+  // ============================================================
+  // RELATIONS INTERNES
+  // ============================================================
+  {
+    id: 'teammate_conflict',
+    title: 'Tension avec un coéquipier',
+    weight: 3,
+    when: p => p.morale <= 65,
+    message: "Coach, je peux plus jouer avec lui. Sur le terrain il me cherche, en dehors il me calcule pas. Ça devient invivable.",
+    choices: [
+      { id: 'mediate', text: "Vous vous expliquez tous les deux devant moi, maintenant.", effects: { morale: 12 }, response: "D'accord... c'est peut-être ce qu'il faut pour crever l'abcès." },
+      { id: 'separate', text: "Je vous éloigne sur le terrain, ça évitera les frictions.", effects: { morale: 6 }, response: "Merci coach, ça va me soulager." },
+      { id: 'grow', text: "Vous êtes des pros. Réglez ça entre adultes.", effects: { morale: -8 }, response: "...Bon. J'attendais un peu plus de soutien." },
+    ],
+  },
+  {
+    id: 'coach_criticism',
+    title: 'Reproche direct',
+    weight: 2,
+    when: (p, ctx) => p.morale <= 50 && ctx.streak.type === 'loss',
+    message: "Coach, je vais être franc : je pense que vos choix nous coûtent des points. Plusieurs le pensent dans le vestiaire.",
+    choices: [
+      { id: 'listen', text: "Dis-moi précisément ce qui ne va pas.", effects: { morale: 12 }, response: "Merci de pas le prendre mal. Ça montre que vous êtes solide." },
+      { id: 'authority', text: "Tu joues, je décide. C'est comme ça.", effects: { morale: -12, overall: 1 }, response: "Très bien coach. Message reçu." },
+      { id: 'challenge', text: "Alors montre-moi sur le terrain que j'ai tort.", effects: { morale: 4, stamina: -5, overall: 1 }, response: "Comptez sur moi. Je vais parler avec mes jambes." },
+    ],
+  },
+  {
+    id: 'goal_celebration',
+    title: 'Célébration polémique',
+    weight: 2,
+    when: (p, ctx) => ctx.streak.type === 'win' && p.morale >= 70,
+    message: "Coach, ma célébration a fait jaser. Je voulais juste répondre aux gens qui me descendaient depuis des semaines.",
+    choices: [
+      { id: 'back', text: "Tu as le droit de répondre. Je te couvre.", effects: { morale: 14 }, response: "Merci coach, ça fait du bien d'être soutenu." },
+      { id: 'warn', text: "Une fois, ça passe. Deux, tu prends une amende.", effects: { morale: -4, overall: 1 }, response: "Compris. Je resterai sobre la prochaine fois." },
+      { id: 'humble', text: "Célèbre avec tes coéquipiers, pas contre les autres.", effects: { morale: 6 }, response: "Vous avez raison, c'est le collectif qui compte." },
+    ],
+  },
+  {
+    id: 'agent_pressure',
+    title: 'Pression de son agent',
+    weight: 2,
+    when: p => p.overall >= 62,
+    message: "Coach, mon agent me met la pression pour que je parte. Moi je suis bien ici, mais il dit que je gâche ma carrière.",
+    choices: [
+      { id: 'talk_agent', text: "Donne-moi son numéro, je vais lui parler.", effects: { morale: 14 }, response: "Merci, j'ose plus lui tenir tête tout seul." },
+      { id: 'decide', text: "C'est ta carrière, pas la sienne. Décide toi-même.", effects: { morale: 8, overall: 1 }, response: "Vous avez raison. Je vais reprendre la main." },
+      { id: 'door', text: "S'il veut partir, la porte est ouverte.", effects: { morale: -14 }, response: "Je vous disais que je voulais rester, coach..." },
+    ],
+  },
+
+  // ============================================================
+  // AMBITION ET CARRIÈRE
+  // ============================================================
+  {
+    id: 'contract_end',
+    title: 'Fin de contrat qui approche',
+    weight: 3,
+    when: (p, ctx) => ctx.season >= 2 && p.age >= 24,
+    message: "Coach, mon contrat se termine bientôt et personne ne m'a parlé de prolongation. Je dois m'inquiéter ?",
+    choices: [
+      { id: 'extend', text: "On prolonge, tu comptes pour moi.", effects: { morale: 18, budget: -80000 }, response: "Vous me soulagez énormément. Merci coach." },
+      { id: 'wait', text: "On en reparle en fin de saison, selon tes performances.", effects: { morale: -6 }, response: "Donc je dois faire mes preuves... c'est noté." },
+      { id: 'honest', text: "Je ne compte pas te prolonger. Autant que tu le saches tôt.", effects: { morale: -18 }, response: "Au moins c'est clair. Je vais chercher ailleurs." },
+    ],
+  },
+  {
+    id: 'europe_dream',
+    title: 'Rêve européen',
+    weight: 2,
+    when: (p, ctx) => p.overall >= 70 && ctx.division >= 5,
+    message: "Coach, vous croyez qu'on peut viser l'Europe un jour avec ce club ? J'ai besoin d'y croire pour me lever le matin.",
+    choices: [
+      { id: 'believe', text: "On y arrivera. Et tu seras là quand ça arrivera.", effects: { morale: 16 }, response: "C'est tout ce que je voulais entendre. On y va." },
+      { id: 'steps', text: "Une marche après l'autre. D'abord finir devant.", effects: { morale: 8, overall: 1 }, response: "Sage. Je me concentre sur le prochain match." },
+      { id: 'realist', text: "Franchement, pas avec nos moyens actuels.", effects: { morale: -12 }, response: "Ça fait mal à entendre, mais merci d'être honnête." },
+    ],
+  },
+  {
+    id: 'record_chase',
+    title: 'Un record en vue',
+    weight: 2,
+    when: (p, ctx) => p.morale >= 70 && ctx.played >= 12,
+    message: "Coach, je suis à quelques buts du record du club. Ça compterait beaucoup pour moi de le battre cette saison.",
+    choices: [
+      { id: 'help', text: "On va t'aider. Tu tireras les penaltys.", effects: { morale: 16 }, response: "Merci coach ! Je vais tout donner." },
+      { id: 'collective', text: "Le record viendra si l'équipe gagne. Pense collectif.", effects: { morale: 4, overall: 1 }, response: "Vous avez raison, je m'égare un peu." },
+      { id: 'pressure', text: "Ne te mets pas cette pression, ça te desservira.", effects: { morale: 8, stamina: 5 }, response: "Sûrement... je vais essayer de lâcher prise." },
+    ],
+  },
+
+  // ============================================================
+  // VIE QUOTIDIENNE
+  // ============================================================
+  {
+    id: 'language_barrier',
+    title: 'Barrière de la langue',
+    weight: 2,
+    when: p => p.morale <= 60,
+    message: "Coach, je comprends pas la moitié de ce qui se dit. Sur le terrain je suis toujours en retard sur les consignes.",
+    choices: [
+      { id: 'lessons', text: "Le club te paie des cours intensifs.", effects: { morale: 15, overall: 1, budget: -35000 }, response: "Merci ! Ça va tout changer pour moi." },
+      { id: 'translate', text: "Je te fais traduire les consignes par un coéquipier.", effects: { morale: 10 }, response: "Bonne idée, ça me dépannera en attendant." },
+      { id: 'effort', text: "Fais l'effort, tu es ici depuis assez longtemps.", effects: { morale: -8 }, response: "J'essaie, coach... c'est pas si simple." },
+    ],
+  },
+  {
+    id: 'sleep_baby',
+    title: 'Nuits difficiles',
+    weight: 2,
+    when: p => p.stamina <= 60 && p.age >= 25,
+    message: "Coach, mon petit fait ses nuits n'importe comment. J'arrive à l'entraînement complètement lessivé.",
+    choices: [
+      { id: 'rest', text: "Tu viens plus tard le matin cette semaine.", effects: { stamina: 20, morale: 12 }, response: "Vous me sauvez, coach. Merci de comprendre." },
+      { id: 'nap', text: "Sieste obligatoire au club après le déjeuner.", effects: { stamina: 14, morale: 6 }, response: "Ça va m'aider à tenir, bonne idée." },
+      { id: 'pro', text: "Tout le monde a des contraintes. Débrouille-toi.", effects: { morale: -10 }, response: "...Bien reçu coach." },
+    ],
+  },
+  {
+    id: 'homesick_transfer',
+    title: 'Envie de rentrer au pays',
+    weight: 2,
+    when: p => p.morale <= 45 && p.age >= 26,
+    message: "Coach, un club de mon pays me propose de rentrer. Le niveau est plus bas mais ma famille est là-bas.",
+    choices: [
+      { id: 'understand', text: "Si c'est ce qui te rend heureux, je ne te retiens pas.", effects: { morale: 12 }, response: "Merci de comprendre. Je finirai la saison correctement." },
+      { id: 'convince', text: "Reste jusqu'à la fin de saison, on en reparle après.", effects: { morale: 6 }, response: "D'accord. Je vous dois bien ça." },
+      { id: 'refuse', text: "Tu as un contrat. Tu restes.", effects: { morale: -16 }, response: "J'espérais un peu d'humanité, coach." },
+    ],
+  },
+  {
+    id: 'charity_involvement',
+    title: 'Engagement associatif',
+    weight: 2,
+    when: p => p.morale >= 65,
+    message: "Coach, je voudrais m'investir dans une association pour les jeunes du quartier. Ça me prendrait une après-midi par semaine.",
+    choices: [
+      { id: 'yes', text: "Vas-y, c'est tout à ton honneur.", effects: { morale: 14 }, response: "Merci ! Ça me tient vraiment à cœur." },
+      { id: 'club', text: "Mieux : on le fait au nom du club, avec des moyens.", effects: { morale: 18, budget: -50000 }, response: "Waouh, vous voyez grand ! Les gamins vont adorer." },
+      { id: 'no', text: "Concentre-toi sur ta saison d'abord.", effects: { morale: -8 }, response: "Je pensais que vous seriez fier... tant pis." },
+    ],
+  },
+  {
+    id: 'gambling_worry',
+    title: 'Aveu difficile',
+    weight: 2,
+    when: p => p.morale <= 40,
+    message: "Coach... j'ai un problème. Je joue de l'argent, beaucoup. Je m'en sors plus et ça bouffe ma tête.",
+    choices: [
+      { id: 'help', text: "On va te faire accompagner. Tu n'es pas seul.", effects: { morale: 20, budget: -60000 }, response: "J'osais pas en parler... merci de pas me juger." },
+      { id: 'discreet', text: "Je te trouve de l'aide, et ça reste entre nous.", effects: { morale: 16 }, response: "La discrétion, c'est ce dont j'avais le plus besoin." },
+      { id: 'harsh', text: "Règle ça tout seul, c'est ta vie privée.", effects: { morale: -18 }, response: "...J'ai eu tort de vous en parler." },
+    ],
+  },
+
+  // ============================================================
+  // TACTIQUE ET TERRAIN
+  // ============================================================
+  {
+    id: 'set_pieces',
+    title: 'Les coups de pied arrêtés',
+    weight: 2,
+    message: "Coach, on perd des points sur corners. Je pense qu'on devrait y consacrer plus de temps à l'entraînement.",
+    choices: [
+      { id: 'work', text: "Tu as raison. Séance dédiée dès demain.", effects: { morale: 10, overall: 1, stamina: -6 }, response: "Ça va nous rapporter des points, vous verrez." },
+      { id: 'specialist', text: "Je fais venir un spécialiste.", effects: { morale: 12, overall: 1, budget: -70000 }, response: "Là on passe un cap, merci coach !" },
+      { id: 'later', text: "On a d'autres priorités pour l'instant.", effects: { morale: -4 }, response: "Dommage, c'est du gâchis à mon avis." },
+    ],
+  },
+  {
+    id: 'penalty_taker',
+    title: 'Qui tire les penaltys ?',
+    weight: 2,
+    when: p => p.overall >= 60,
+    message: "Coach, je voudrais être le tireur attitré. J'ai la technique et je suis froid dans les moments chauds.",
+    choices: [
+      { id: 'yes', text: "C'est toi le tireur. Assume-le.", effects: { morale: 15 }, response: "Vous verrez, je vais les rentrer." },
+      { id: 'compete', text: "Le meilleur à l'entraînement tirera.", effects: { morale: 5, overall: 1 }, response: "Défi accepté, je vais bosser ça." },
+      { id: 'no', text: "Non, on garde le tireur actuel.", effects: { morale: -8 }, response: "Bon... j'espère qu'il ne va pas en manquer." },
+    ],
+  },
+  {
+    id: 'opponent_analysis',
+    title: 'Analyse de l\'adversaire',
+    weight: 2,
+    when: p => p.morale >= 60,
+    message: "Coach, j'ai regardé les matchs du prochain adversaire. Leur latéral remonte trop, il y a un coup à jouer dans son dos.",
+    choices: [
+      { id: 'use', text: "Excellent. On construit le plan autour de ça.", effects: { morale: 16, overall: 1 }, response: "Génial ! Je vais préparer ça sérieusement." },
+      { id: 'praise', text: "Bravo pour l'investissement. Je regarde ça.", effects: { morale: 10 }, response: "Merci coach, ça me motive à continuer." },
+      { id: 'dismiss', text: "L'analyse, c'est mon travail.", effects: { morale: -12 }, response: "...Je voulais juste aider, coach." },
+    ],
+  },
+  {
+    id: 'fitness_doubt',
+    title: 'Doute sur le préparateur',
+    weight: 2,
+    when: (p, ctx) => p.stamina <= 55 && ctx.played >= 8,
+    message: "Coach, plusieurs gars se plaignent des séances physiques. On finit les matchs à plat depuis des semaines.",
+    choices: [
+      { id: 'review', text: "Je revois toute la préparation avec le staff.", effects: { stamina: 18, morale: 10 }, response: "Merci de prendre ça au sérieux." },
+      { id: 'newstaff', text: "Je change de préparateur physique.", effects: { stamina: 22, morale: 8, budget: -120000 }, response: "Décision forte. On sent que vous voulez gagner." },
+      { id: 'defend', text: "Le staff fait bien son travail. C'est vous qui manquez d'engagement.", effects: { morale: -12, stamina: -5 }, response: "Bien reçu... on va serrer les dents alors." },
+    ],
+  },
 ];
 
 /**
