@@ -62,7 +62,9 @@ router.get('/available', (req, res) => {
   const reachChance = Math.max(0, Math.min(0.9, 0.20 + repBonus * 0.45 + tierBonus));
   const rareChance = Math.max(0, Math.min(0.4, 0.03 + repBonus * 0.20 + tierBonus));
 
-  const filtered = DRAFT_POOL.filter(p => {
+  // `let` et non `const` : la liste est réassignée juste en dessous pour
+  // retirer les joueurs déjà dans l'effectif.
+  let filtered = DRAFT_POOL.filter(p => {
     if (p.tier === 'legend') return Math.random() < legendChance;
     if (access.core.includes(p.tier)) return true;
     if (access.reach.includes(p.tier)) return Math.random() < reachChance;
@@ -139,8 +141,10 @@ router.post('/finish', async (req, res) => {
     return res.status(400).json({ error: `Il faut au minimum 11 joueurs (vous en avez ${playerCount ? playerCount.count : 0})` });
   }
 
-  // Leave lineup empty — player must organize their squad manually
-  run('UPDATE players SET is_starter = 0 WHERE team_id = ?', [teamId]);
+  // Leave lineup empty — player must organize their squad manually.
+  // slot_index doit être vidé en même temps, sinon d'anciens emplacements
+  // survivent au mercato et faussent la reconstruction de la composition.
+  run('UPDATE players SET is_starter = 0, slot_index = NULL WHERE team_id = ?', [teamId]);
 
   const team = queryOne('SELECT * FROM teams WHERE id = ?', [teamId]);
   const manager = queryOne('SELECT * FROM managers WHERE id = ?', [managerId]);

@@ -29,6 +29,10 @@ export default function Draft({ manager, team, onFinish, isInitialDraft }) {
       const difficulty = localStorage.getItem('footmanager_difficulty') || 'normal';
       const players = await api.getDraftPlayers(team.division || 1, manager.reputation || 50, team.id, difficulty);
       setAvailable(players);
+    } catch (err) {
+      // Un marché indisponible doit être signalé, pas afficher une page vide.
+      setAvailable([]);
+      setMessage(`Marché indisponible : ${err.message}`);
     } finally {
       setLoading(false);
     }

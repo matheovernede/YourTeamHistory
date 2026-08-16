@@ -585,6 +585,11 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
     try {
       const result = await api.endSeason(team.id, manager.id);
       onSeasonEnd(result);
+    } catch (err) {
+      // Sans ce catch, un échec serveur ne produisait aucun retour : le bouton
+      // semblait mort et le mercato ne s'ouvrait jamais.
+      setMessage(`Impossible de clôturer la saison : ${err.message}`);
+      setTimeout(() => setMessage(''), 6000);
     } finally {
       setLoading(false);
     }
