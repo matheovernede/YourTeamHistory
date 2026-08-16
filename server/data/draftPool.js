@@ -1,4 +1,4 @@
-const DRAFT_POOL = [
+const BASE_POOL = [
   // --- Amateur (Regional) ---
   { first_name: 'Kévin', last_name: 'Durand', age: 27, position: 'BU', overall: 52, pace: 62, shooting: 56, passing: 42, dribbling: 50, defending: 18, physical: 60, tier: 'amateur' },
   { first_name: 'Julien', last_name: 'Petit', age: 31, position: 'BU', overall: 50, pace: 58, shooting: 55, passing: 40, dribbling: 48, defending: 16, physical: 62, tier: 'amateur' },
@@ -153,25 +153,250 @@ const DRAFT_POOL = [
   { first_name: 'Pedri', last_name: 'González', age: 23, position: 'MC', overall: 88, pace: 70, shooting: 72, passing: 88, dribbling: 88, defending: 65, physical: 62, tier: 'legend', fixedPrice: 120000000 },
   { first_name: 'Phil', last_name: 'Foden', age: 26, position: 'AIG', overall: 88, pace: 82, shooting: 84, passing: 82, dribbling: 88, defending: 42, physical: 62, tier: 'legend', fixedPrice: 130000000 },
   { first_name: 'Jamal', last_name: 'Musiala', age: 23, position: 'MOC', overall: 88, pace: 78, shooting: 80, passing: 82, dribbling: 92, defending: 40, physical: 60, tier: 'legend', fixedPrice: 130000000 },
+
+  // --- Légendes défensives ---
+  // Ces noms existent aussi au palier « élite » : la déduplication conserve la
+  // première occurrence, donc la version légendaire ci-dessous les remplace.
+  { first_name: 'Alisson', last_name: 'Becker', age: 33, position: 'GAR', overall: 90, pace: 52, shooting: 18, passing: 78, dribbling: 48, defending: 90, physical: 84, tier: 'legend', fixedPrice: 55000000 },
+  { first_name: 'Thibaut', last_name: 'Courtois', age: 34, position: 'GAR', overall: 90, pace: 48, shooting: 15, passing: 72, dribbling: 42, defending: 91, physical: 88, tier: 'legend', fixedPrice: 50000000 },
+
+  { first_name: 'Virgil', last_name: 'van Dijk', age: 35, position: 'DC', overall: 89, pace: 76, shooting: 60, passing: 80, dribbling: 72, defending: 92, physical: 90, tier: 'legend', fixedPrice: 45000000 },
+  { first_name: 'Rúben', last_name: 'Dias', age: 29, position: 'DC', overall: 88, pace: 72, shooting: 45, passing: 78, dribbling: 68, defending: 91, physical: 88, tier: 'legend', fixedPrice: 100000000 },
+  { first_name: 'Achraf', last_name: 'Hakimi', age: 27, position: 'ARD', overall: 87, pace: 93, shooting: 72, passing: 80, dribbling: 86, defending: 80, physical: 78, tier: 'legend', fixedPrice: 100000000 },
+  { first_name: 'Alphonso', last_name: 'Davies', age: 25, position: 'ARG', overall: 87, pace: 96, shooting: 66, passing: 78, dribbling: 87, defending: 79, physical: 78, tier: 'legend', fixedPrice: 100000000 },
+  { first_name: 'Theo', last_name: 'Hernández', age: 28, position: 'PG', overall: 86, pace: 92, shooting: 74, passing: 80, dribbling: 84, defending: 80, physical: 85, tier: 'legend', fixedPrice: 85000000 },
+  { first_name: 'Trent', last_name: 'Alexander-Arnold', age: 27, position: 'PD', overall: 87, pace: 80, shooting: 76, passing: 92, dribbling: 82, defending: 79, physical: 74, tier: 'legend', fixedPrice: 90000000 },
 ];
 
+// =====================================================================
+//  COMPOSITION DU MARCHÉ
+//
+//  Le pool final agrège trois sources :
+//    1. BASE_POOL              — joueurs historiques du jeu (fictifs)
+//    2. Joueurs réels          — dreamTeamPlayers.js + draftPoolReal.js
+//    3. Pyramide amateur       — généré, pour couvrir R2 -> N1 et TOUS les postes
+//
+//  Le palier (`tier`) est déduit du niveau, sauf pour les légendes qui restent
+//  marquées explicitement. Voir TIER_ORDER pour la correspondance division.
+// =====================================================================
+
+const DREAM_TEAM_PLAYERS = require('./dreamTeamPlayers');
+const { EXTRA_REAL_PLAYERS } = require('./draftPoolReal');
+
+/** Paliers du plus faible au plus fort. */
+const TIER_ORDER = ['r2', 'r1', 'n3', 'n2', 'n1', 'ligue2', 'ligue1', 'elite', 'legend'];
+
+const TIER_LABELS = {
+  r2: 'Régional 2',
+  r1: 'Régional 1',
+  n3: 'National 3',
+  n2: 'National 2',
+  n1: 'National',
+  ligue2: 'Ligue 2',
+  ligue1: 'Ligue 1',
+  elite: 'Élite européenne',
+  legend: 'Légende',
+};
+
+/**
+ * Palier déduit du niveau global.
+ * Le seuil élite est fixé à 84 : les meilleurs latéraux et pistons du monde
+ * plafonnent autour de 84-86, et un seuil à 86 les aurait exclus du haut de
+ * gamme, laissant la division 7 sans arrière de classe mondiale.
+ */
+function tierFromOverall(overall) {
+  if (overall <= 50) return 'r2';
+  if (overall <= 56) return 'r1';
+  if (overall <= 62) return 'n3';
+  if (overall <= 67) return 'n2';
+  if (overall <= 72) return 'n1';
+  if (overall <= 77) return 'ligue2';
+  if (overall <= 83) return 'ligue1';
+  return 'elite';
+}
+
+function withTier(p) {
+  // Les légendes gardent leur palier : elles ont une rareté et un prix à part.
+  const tier = p.tier === 'legend' ? 'legend' : tierFromOverall(p.overall);
+  return { ...p, tier };
+}
+
+// ---------------------------------------------------------------------
+//  Génération de la pyramide amateur (R2 -> N1)
+//  Objectif : garantir des joueurs à CHAQUE poste et à chaque niveau, ce
+//  qui n'était pas le cas (MG, MD, MDF, PG, PD étaient absents du marché).
+// ---------------------------------------------------------------------
+
+const PRENOMS = [
+  'Lucas', 'Théo', 'Hugo', 'Nathan', 'Enzo', 'Maxime', 'Romain', 'Axel', 'Yanis', 'Rayan',
+  'Mathis', 'Noah', 'Adam', 'Gabin', 'Sofiane', 'Amine', 'Ethan', 'Naël', 'Maël', 'Ibrahim',
+  'Kylian', 'Younes', 'Tiago', 'Léo', 'Malo', 'Célian', 'Moussa', 'Ismaël', 'Bilal', 'Sacha',
+  'Antoine', 'Clément', 'Baptiste', 'Florian', 'Quentin', 'Valentin', 'Corentin', 'Damien',
+  'Jordan', 'Kévin', 'Anthony', 'Mehdi', 'Karim', 'Samuel', 'Mattéo', 'Raphaël', 'Arthur', 'Jules',
+];
+
+const NOMS = [
+  'Martin', 'Bernard', 'Dubois', 'Thomas', 'Robert', 'Richard', 'Petit', 'Durand', 'Leroy',
+  'Moreau', 'Simon', 'Laurent', 'Lefebvre', 'Michel', 'Garcia', 'David', 'Bertrand', 'Roux',
+  'Vincent', 'Fournier', 'Morel', 'Girard', 'André', 'Mercier', 'Blanc', 'Guérin', 'Boyer',
+  'Diallo', 'Traoré', 'Camara', 'Cissé', 'Sylla', 'Kouassi', 'Mendy', 'Sagna', 'Bakayoko',
+  'Fontaine', 'Perrin', 'Legrand', 'Marchand', 'Roussel', 'Renard', 'Vasseur', 'Maillard',
+  'Berthelot', 'Delaunay', 'Ollivier', 'Bonnet', 'Hervé', 'Barbier',
+];
+
+/** Générateur pseudo-aléatoire déterministe : le marché reste stable entre deux démarrages. */
+function makeRng(seed) {
+  let s = seed >>> 0;
+  return () => {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    return s / 4294967296;
+  };
+}
+
+/** Pondération des attributs par poste, alignée sur playerGenerator.js. */
+const POSITION_WEIGHTS = {
+  GAR: { pace: 0.35, shooting: 0.15, passing: 0.55, dribbling: 0.30, defending: 1.00, physical: 0.95 },
+  DC:  { pace: 0.70, shooting: 0.40, passing: 0.65, dribbling: 0.55, defending: 1.00, physical: 1.00 },
+  ARG: { pace: 1.00, shooting: 0.50, passing: 0.80, dribbling: 0.80, defending: 0.90, physical: 0.80 },
+  ARD: { pace: 1.00, shooting: 0.50, passing: 0.80, dribbling: 0.80, defending: 0.90, physical: 0.80 },
+  PG:  { pace: 1.00, shooting: 0.55, passing: 0.85, dribbling: 0.85, defending: 0.85, physical: 0.80 },
+  PD:  { pace: 1.00, shooting: 0.55, passing: 0.85, dribbling: 0.85, defending: 0.85, physical: 0.80 },
+  MDF: { pace: 0.70, shooting: 0.50, passing: 0.85, dribbling: 0.70, defending: 1.00, physical: 0.95 },
+  MC:  { pace: 0.75, shooting: 0.70, passing: 1.00, dribbling: 0.90, defending: 0.80, physical: 0.80 },
+  MOC: { pace: 0.80, shooting: 0.85, passing: 1.00, dribbling: 1.00, defending: 0.45, physical: 0.60 },
+  MG:  { pace: 0.95, shooting: 0.70, passing: 0.90, dribbling: 0.95, defending: 0.60, physical: 0.70 },
+  MD:  { pace: 0.95, shooting: 0.70, passing: 0.90, dribbling: 0.95, defending: 0.60, physical: 0.70 },
+  AIG: { pace: 1.00, shooting: 0.85, passing: 0.75, dribbling: 1.00, defending: 0.30, physical: 0.60 },
+  AID: { pace: 1.00, shooting: 0.85, passing: 0.75, dribbling: 1.00, defending: 0.30, physical: 0.60 },
+  BU:  { pace: 0.90, shooting: 1.00, passing: 0.60, dribbling: 0.85, defending: 0.25, physical: 0.90 },
+};
+
+const ALL_POSITIONS = Object.keys(POSITION_WEIGHTS);
+
+/** Combien de joueurs générer par poste, pour chaque étage de la pyramide. */
+const PYRAMID_LEVELS = [
+  { tier: 'r2', league: 'Régional 2',  overall: [42, 50], perPosition: 4 },
+  { tier: 'r1', league: 'Régional 1',  overall: [48, 56], perPosition: 4 },
+  { tier: 'n3', league: 'National 3',  overall: [55, 62], perPosition: 3 },
+  { tier: 'n2', league: 'National 2',  overall: [60, 67], perPosition: 3 },
+  { tier: 'n1', league: 'National',    overall: [65, 72], perPosition: 3 },
+];
+
+function generatePyramid() {
+  const rng = makeRng(20260816);
+  const out = [];
+  const used = new Set();
+
+  for (const level of PYRAMID_LEVELS) {
+    for (const position of ALL_POSITIONS) {
+      for (let i = 0; i < level.perPosition; i++) {
+        // Nom unique, pour ne pas créer de doublons dans le marché.
+        let first, last, key, guard = 0;
+        do {
+          first = PRENOMS[Math.floor(rng() * PRENOMS.length)];
+          last = NOMS[Math.floor(rng() * NOMS.length)];
+          key = `${first}_${last}`;
+        } while (used.has(key) && ++guard < 200);
+        used.add(key);
+
+        const [lo, hi] = level.overall;
+        const overall = lo + Math.floor(rng() * (hi - lo + 1));
+        const age = 18 + Math.floor(rng() * 18); // 18 à 35 ans
+        const w = POSITION_WEIGHTS[position];
+
+        const attr = (weight) => {
+          const base = overall * (0.55 + weight * 0.5);
+          const noise = Math.round((rng() - 0.5) * 8);
+          return Math.max(12, Math.min(99, Math.round(base + noise)));
+        };
+
+        out.push({
+          first_name: first,
+          last_name: last,
+          age,
+          position,
+          overall,
+          pace: attr(w.pace),
+          shooting: attr(w.shooting),
+          passing: attr(w.passing),
+          dribbling: attr(w.dribbling),
+          defending: attr(w.defending),
+          physical: attr(w.physical),
+          tier: level.tier,
+          league: level.league,
+          country: 'France',
+        });
+      }
+    }
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------
+//  Assemblage final
+// ---------------------------------------------------------------------
+
+/**
+ * Clé de comparaison insensible aux accents et à la ponctuation :
+ * « Mbappé » et « Mbappe » désignent le même joueur et ne doivent pas
+ * coexister dans le marché avec deux postes et deux niveaux différents.
+ */
+function nameKey(p) {
+  return `${p.first_name} ${p.last_name}`
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z]/gi, '')
+    .toLowerCase();
+}
+
+/** Le premier trouvé gagne : BASE_POOL passe avant, les légendes sont donc préservées. */
+function dedupe(players) {
+  const seen = new Set();
+  return players.filter(p => {
+    const key = nameKey(p);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+const DRAFT_POOL = dedupe([
+  ...BASE_POOL.map(withTier),
+  ...DREAM_TEAM_PLAYERS.map(p => withTier({ ...p, country: p.country || null })),
+  ...EXTRA_REAL_PLAYERS.map(withTier),
+  ...generatePyramid(),
+]);
+
+// ---------------------------------------------------------------------
+//  Tarification
+// ---------------------------------------------------------------------
+
 const TIER_PRICES = {
-  amateur: { min: 50000, max: 500000 },
-  youth: { min: 200000, max: 1500000 },
-  national: { min: 300000, max: 2000000 },
-  ligue2: { min: 800000, max: 4000000 },
-  ligue1: { min: 3000000, max: 12000000 },
-  veteran: { min: 1000000, max: 6000000 },
+  r2:     { min: 20000,    max: 200000 },
+  r1:     { min: 50000,    max: 400000 },
+  n3:     { min: 150000,   max: 900000 },
+  n2:     { min: 300000,   max: 1800000 },
+  n1:     { min: 600000,   max: 3000000 },
+  ligue2: { min: 1200000,  max: 6000000 },
+  ligue1: { min: 4000000,  max: 20000000 },
+  elite:  { min: 15000000, max: 90000000 },
   legend: { min: 30000000, max: 180000000 },
 };
 
 function calculateDraftPrice(player) {
   if (player.fixedPrice) return player.fixedPrice;
-  const range = TIER_PRICES[player.tier] || TIER_PRICES.ligue2;
+  const range = TIER_PRICES[player.tier] || TIER_PRICES.n1;
   const overallFactor = Math.max(0, Math.min(1, (player.overall - 40) / 50));
   const ageFactor = player.age < 23 ? 1.3 : player.age > 32 ? 0.6 : 1.0;
   const base = range.min + (range.max - range.min) * overallFactor;
   return Math.max(range.min, Math.round(base * ageFactor / 50000) * 50000);
 }
 
-module.exports = { DRAFT_POOL, calculateDraftPrice };
+module.exports = {
+  DRAFT_POOL,
+  calculateDraftPrice,
+  TIER_ORDER,
+  TIER_LABELS,
+  TIER_PRICES,
+  tierFromOverall,
+};

@@ -37,42 +37,38 @@ router.get('/available', (req, res) => {
   // rep 50 + div 1 = ~1% chance per legend, rep 90 + div 7 = ~20%
   const legendChance = Math.min(0.25, 0.01 + repBonus * 0.12 + (divLevel - 1) * 0.02);
 
-  // Difficulty affects max overall cap and tier access
-  const overallBonus = diff === 'easy' ? 8 : diff === 'hard' ? -3 : 0;
+  // Difficulty affects tier access
   const tierBonus = diff === 'easy' ? 0.25 : diff === 'hard' ? -0.05 : 0;
 
-  let filtered;
-  if (divLevel <= 2) {
-    const maxOvr = 60 + overallBonus;
-    filtered = DRAFT_POOL.filter(p => {
-      if (p.overall > maxOvr) return false;
-      if (p.tier === 'legend') return false;
-      if (p.tier === 'ligue1') return diff === 'easy' ? Math.random() < 0.15 : false;
-      if (p.tier === 'ligue2') return Math.random() < (0.1 + repBonus * 0.2 + tierBonus);
-      return true;
-    });
-  } else if (divLevel <= 4) {
-    const maxOvr = 72 + overallBonus;
-    filtered = DRAFT_POOL.filter(p => {
-      if (p.overall > maxOvr) return false;
-      if (p.tier === 'legend') return false;
-      if (p.tier === 'ligue1') return Math.random() < (0.08 + repBonus * 0.25 + tierBonus);
-      return true;
-    });
-  } else if (divLevel <= 6) {
-    const maxOvr = 80 + overallBonus;
-    filtered = DRAFT_POOL.filter(p => {
-      if (p.overall > maxOvr) return false;
-      if (p.tier === 'legend') return Math.random() < legendChance;
-      return true;
-    });
-  } else {
-    // Ligue 1: full access
-    filtered = DRAFT_POOL.filter(p => {
-      if (p.tier === 'legend') return Math.random() < legendChance;
-      return true;
-    });
-  }
+  /**
+   * Paliers accessibles selon la division du club.
+   *   core  : toujours proposés
+   *   reach : un cran au-dessus, probabilité liée à la réputation
+   *   rare  : deux crans au-dessus, rare et très dépendant de la réputation
+   * Un club de Régional 2 ne recrute donc pas en Ligue 1, mais peut dénicher
+   * une pépite de National 3 s'il est bien coté.
+   */
+  const DIVISION_TIERS = {
+    1: { core: ['r2', 'r1'],           reach: ['n3'],     rare: ['n2'] },
+    2: { core: ['r1', 'n3'],           reach: ['n2'],     rare: ['n1'] },
+    3: { core: ['n3', 'n2'],           reach: ['n1'],     rare: ['ligue2'] },
+    4: { core: ['n2', 'n1'],           reach: ['ligue2'], rare: ['ligue1'] },
+    5: { core: ['n1', 'ligue2'],       reach: ['ligue1'], rare: ['elite'] },
+    6: { core: ['ligue2', 'ligue1'],   reach: ['elite'],  rare: [] },
+    7: { core: ['ligue1', 'elite'],    reach: [],         rare: [] },
+  };
+
+  const access = DIVISION_TIERS[Math.max(1, Math.min(7, divLevel))] || DIVISION_TIERS[1];
+  const reachChance = Math.max(0, Math.min(0.9, 0.20 + repBonus * 0.45 + tierBonus));
+  const rareChance = Math.max(0, Math.min(0.4, 0.03 + repBonus * 0.20 + tierBonus));
+
+  const filtered = DRAFT_POOL.filter(p => {
+    if (p.tier === 'legend') return Math.random() < legendChance;
+    if (access.core.includes(p.tier)) return true;
+    if (access.reach.includes(p.tier)) return Math.random() < reachChance;
+    if (access.rare.includes(p.tier)) return Math.random() < rareChance;
+    return false;
+  });
 
   // Exclude players already in the team
   if (ownedNames.size > 0) {
@@ -80,7 +76,7 @@ router.get('/available', (req, res) => {
   }
 
   const shuffled = shuffle(filtered);
-  let selection = shuffled.slice(0, 35);
+  let selection = shuffled.slice(0, 42);
 
   // High reputation attracts better players: sort by overall and keep more top ones
   if (rep >= 70) {

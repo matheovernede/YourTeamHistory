@@ -11,21 +11,14 @@ import {
   getPositionFit,
   getFitLabel,
 } from '../data/formations';
+import { SQUAD_MAX, SQUAD_MIN_SELL, SQUAD_WARN } from '../data/rules';
 import './Season.css';
 
 /** Seuil réel du moteur : aucune perte de rendement au-dessus de 50. */
 const STAMINA_FRESH = 65;
 const STAMINA_TIRED = 50;
 
-/**
- * Limites d'effectif — doivent rester alignées sur server/data/rules.js.
- * SQUAD_MAX      : recrutement refusé à partir de ce total
- * SQUAD_MIN_SELL : effectif minimum pour qu'une vente soit acceptée
- * SQUAD_WARN     : seuil à partir duquel on invite à dégraisser
- */
-const SQUAD_MAX = 35;
-const SQUAD_MIN_SELL = 15;
-const SQUAD_WARN = 20;
+
 
 function staminaTone(stamina) {
   if (stamina >= STAMINA_FRESH) return 'ok';
