@@ -1,71 +1,135 @@
 import { useState, useRef, useEffect } from 'react';
+import TRACKS from 'virtual:music-tracks';
 import './MusicPlayer.css';
 
-const TRACKS = [
-  '/music/Count The Days - StreamBeats Original, Tuonto.mp3',
-  '/music/Do this on my own - StreamBeats Originals, Fuslie, Ryan King.mp3',
-  "/music/It's Easy To Forget - StreamBeats Originals, Ryan King.mp3",
-];
+// TRACKS est généré automatiquement depuis client/public/music/ par
+// vite-plugin-music.js : déposer un fichier audio suffit, aucun code à modifier.
+
+let globalAudio = null;
+
+function getAudio() {
+  if (!globalAudio) {
+    globalAudio = new Audio();
+    globalAudio.volume = parseFloat(localStorage.getItem('fm_music_volume') || '0.3');
+  }
+  return globalAudio;
+}
+
+function readSavedIndex() {
+  if (TRACKS.length === 0) return 0;
+  const saved = parseInt(localStorage.getItem('fm_music_track') || '0', 10);
+  // La liste peut avoir changé depuis la dernière session (ajout/suppression).
+  return Number.isFinite(saved) && saved >= 0 ? saved % TRACKS.length : 0;
+}
 
 export default function MusicPlayer() {
-  const audioRef = useRef(null);
-  const [playing, setPlaying] = useState(true);
-  const [volume, setVolume] = useState(0.3);
-  const [currentTrack, setCurrentTrack] = useState(0);
+  const [playing, setPlaying] = useState(() => localStorage.getItem('fm_music_playing') !== 'false');
+  const [volume, setVolume] = useState(() => parseFloat(localStorage.getItem('fm_music_volume') || '0.3'));
+  const [currentTrack, setCurrentTrack] = useState(readSavedIndex);
+  const [expanded, setExpanded] = useState(false);
+  const initialized = useRef(false);
+
+  const audio = getAudio();
+  const track = TRACKS[currentTrack];
 
   useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.volume = volume;
-    }
-  }, [volume]);
+    if (initialized.current || TRACKS.length === 0) return;
+    initialized.current = true;
 
-  useEffect(() => {
-    const tryPlay = () => {
-      if (audioRef.current && playing) {
-        audioRef.current.play().catch(() => {});
-      }
-      document.removeEventListener('click', tryPlay);
+    audio.volume = volume;
+    audio.src = TRACKS[currentTrack].url;
+
+    const savedTime = parseFloat(localStorage.getItem('fm_music_time') || '0');
+    if (savedTime > 0) audio.currentTime = savedTime;
+
+    audio.onended = () => {
+      setCurrentTrack(prev => {
+        const next = (prev + 1) % TRACKS.length;
+        localStorage.setItem('fm_music_track', next.toString());
+        localStorage.setItem('fm_music_time', '0');
+        audio.src = TRACKS[next].url;
+        audio.play().catch(() => {});
+        return next;
+      });
     };
-    if (audioRef.current && playing) {
-      audioRef.current.play().catch(() => {
+
+    // Une piste illisible ne doit pas bloquer toute la playlist.
+    audio.onerror = () => {
+      if (TRACKS.length < 2) return;
+      setCurrentTrack(prev => {
+        const next = (prev + 1) % TRACKS.length;
+        localStorage.setItem('fm_music_track', next.toString());
+        audio.src = TRACKS[next].url;
+        audio.play().catch(() => {});
+        return next;
+      });
+    };
+
+    if (playing) {
+      const tryPlay = () => {
+        audio.play().catch(() => {});
+        document.removeEventListener('click', tryPlay);
+      };
+      audio.play().catch(() => {
         document.addEventListener('click', tryPlay);
       });
     }
+
+    const interval = setInterval(() => {
+      if (!audio.paused) {
+        localStorage.setItem('fm_music_time', audio.currentTime.toString());
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
   }, []);
 
   function togglePlay() {
-    if (!audioRef.current) return;
-    if (playing) {
-      audioRef.current.pause();
-    } else {
-      audioRef.current.play();
-    }
+    if (playing) audio.pause();
+    else audio.play().catch(() => {});
     setPlaying(!playing);
+    localStorage.setItem('fm_music_playing', (!playing).toString());
   }
 
-  function handleEnded() {
-    const next = (currentTrack + 1) % TRACKS.length;
-    setCurrentTrack(next);
-    setTimeout(() => {
-      if (audioRef.current) {
-        audioRef.current.play();
-      }
-    }, 500);
+  function changeVolume(v) {
+    setVolume(v);
+    audio.volume = v;
+    localStorage.setItem('fm_music_volume', v.toString());
   }
+
+  function goToTrack(idx) {
+    const next = ((idx % TRACKS.length) + TRACKS.length) % TRACKS.length;
+    setCurrentTrack(next);
+    localStorage.setItem('fm_music_track', next.toString());
+    localStorage.setItem('fm_music_time', '0');
+    audio.src = TRACKS[next].url;
+    if (playing) audio.play().catch(() => {});
+  }
+
+  // Aucun fichier dans public/music/ : on n'affiche rien plutôt qu'un lecteur mort.
+  if (TRACKS.length === 0) return null;
 
   return (
-    <div className="music-player">
-      <audio
-        ref={audioRef}
-        src={TRACKS[currentTrack]}
-        onEnded={handleEnded}
-      />
-      <button className="mp-btn" onClick={togglePlay}>
+    <div className={`music-player ${expanded ? 'expanded' : ''}`}>
+      <button className="mp-btn" onClick={togglePlay} title={playing ? 'Pause' : 'Lecture'}>
         {playing ? '⏸' : '▶'}
       </button>
-      <button className="mp-btn" onClick={() => handleEnded()}>
+      <button className="mp-btn" onClick={() => goToTrack(currentTrack - 1)} title="Piste précédente">
+        ⏮
+      </button>
+      <button className="mp-btn" onClick={() => goToTrack(currentTrack + 1)} title="Piste suivante">
         ⏭
       </button>
+
+      <button
+        className="mp-title"
+        onClick={() => setExpanded(v => !v)}
+        title={`${track.title}\nPiste ${currentTrack + 1} sur ${TRACKS.length} — cliquer pour choisir`}
+      >
+        <span className="mp-title-text">{track.title}</span>
+        <span className="mp-count">{currentTrack + 1}/{TRACKS.length}</span>
+      </button>
+
       <input
         type="range"
         className="mp-volume"
@@ -73,8 +137,25 @@ export default function MusicPlayer() {
         max="1"
         step="0.05"
         value={volume}
-        onChange={e => setVolume(parseFloat(e.target.value))}
+        onChange={e => changeVolume(parseFloat(e.target.value))}
+        title={`Volume ${Math.round(volume * 100)}%`}
       />
+
+      {expanded && (
+        <ul className="mp-playlist">
+          {TRACKS.map((t, i) => (
+            <li key={t.url}>
+              <button
+                className={i === currentTrack ? 'active' : ''}
+                onClick={() => { goToTrack(i); setExpanded(false); }}
+              >
+                <span className="mp-pl-num">{i + 1}</span>
+                <span className="mp-pl-title">{t.title}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

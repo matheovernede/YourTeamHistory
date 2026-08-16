@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { api } from '../api/client';
 import './Login.css';
 
-export default function Login({ onLogin, onLoadSave }) {
+export default function Login({ onLogin, onLoadSave, onDreamTeam }) {
   const [username, setUsername] = useState('');
   const [teamName, setTeamName] = useState('');
   const [difficulty, setDifficulty] = useState('normal');
@@ -47,9 +47,9 @@ export default function Login({ onLogin, onLoadSave }) {
     setError('');
 
     try {
-      const result = await api.createTeam(manager.id, teamName.trim());
+      const result = await api.createTeam(manager.id, teamName.trim(), difficulty);
       localStorage.setItem('footmanager_difficulty', difficulty);
-      onLogin(manager, result.team);
+      onLogin({ ...manager, budget: result.manager?.budget || manager.budget }, result.team);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -59,11 +59,25 @@ export default function Login({ onLogin, onLoadSave }) {
 
   return (
     <div className="login-page">
+      <div className="login-shell">
+        <aside className="login-brand">
+          <div className="login-badge">⚽</div>
+          <h1 className="login-title">Foot Manager</h1>
+          <p className="login-tagline">
+            Recrutez votre équipe, disputez des matchs, grimpez au classement.
+          </p>
+          <ul className="login-features">
+            <li><span className="lf-icon">🏆</span><span><strong>7 divisions</strong> à gravir, de Régional 2 à la Ligue 1</span></li>
+            <li><span className="lf-icon">🔁</span><span><strong>Mercato</strong> entre chaque saison, 26 journées par exercice</span></li>
+            <li><span className="lf-icon">🤝</span><span><strong>Sponsors &amp; événements</strong> aux conséquences cachées</span></li>
+            <li><span className="lf-icon">⭐</span><span><strong>DreamTeam</strong> : 200 joueurs réels en mode bac à sable</span></li>
+          </ul>
+        </aside>
+
       <div className="login-card">
         <div className="login-header">
-          <span className="login-icon">⚽</span>
-          <h1>Foot Manager</h1>
-          <p>Recrutez votre équipe, disputez des matchs, grimpez au classement !</p>
+          <h2>{step === 'team' ? 'Créez votre club' : 'Prenez les commandes'}</h2>
+          <p>{step === 'team' ? 'Choisissez un nom et votre niveau de défi.' : 'Connectez-vous ou reprenez une sauvegarde.'}</p>
         </div>
 
         {step === 'login' && (
@@ -100,6 +114,10 @@ export default function Login({ onLogin, onLoadSave }) {
               input.click();
             }}>
               📂 Charger une sauvegarde
+            </button>
+            <div className="login-separator"><span>ou</span></div>
+            <button className="btn-dreamteam" onClick={onDreamTeam}>
+              DreamTeam
             </button>
           </>
         )}
@@ -141,6 +159,7 @@ export default function Login({ onLogin, onLoadSave }) {
         )}
 
         {error && <div className="login-error">{error}</div>}
+      </div>
       </div>
     </div>
   );

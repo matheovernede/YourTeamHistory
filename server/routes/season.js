@@ -79,7 +79,8 @@ router.post('/:teamId/play-matchday', async (req, res) => {
   let aiTeams = queryAll("SELECT * FROM teams WHERE manager_id = 'AI' AND division = ?", [division]);
   if (aiTeams.length === 0) {
     // No AI teams in this division — seed them now
-    await seedDivision(division);
+    const diff = req.body.difficulty || 'normal';
+    await seedDivision(division, diff);
     aiTeams = queryAll("SELECT * FROM teams WHERE manager_id = 'AI' AND division = ?", [division]);
     if (aiTeams.length === 0) return res.status(500).json({ error: "Pas d'adversaires dans cette division" });
   }
@@ -88,8 +89,10 @@ router.post('/:teamId/play-matchday', async (req, res) => {
   const homePlayers = queryAll('SELECT * FROM players WHERE team_id = ?', [team.id]);
   const awayPlayers = queryAll('SELECT * FROM players WHERE team_id = ?', [opponent.id]);
 
-  const difficulty = req.body.difficulty || 'normal';
-  const result = simulateMatch(homePlayers, awayPlayers, { difficulty });
+  const result = simulateMatch(homePlayers, awayPlayers, {
+    homeFormation: team.formation,
+    awayFormation: opponent.formation,
+  });
   const matchId = uuid();
   const week = played + 1;
 
@@ -194,6 +197,49 @@ router.post('/:teamId/resolve-event', async (req, res) => {
     });
   }
 
+  // ---- Mouvements d'effectif : un choix qui annonce une arrivée ou un départ
+  // doit réellement la produire, sinon la récompense est offerte gratuitement.
+  const squad = queryAll('SELECT * FROM players WHERE team_id = ?', [req.params.teamId]);
+  let arrival = null;
+  let departure = null;
+
+  if (effects.remove_player) {
+    // Garde-fou : on ne descend jamais sous les 11 joueurs, sinon la saison
+    // devient injouable. Le marché échoue alors, sans contrepartie.
+    if (squad.length <= 11) {
+      saveDb();
+      const mgr = queryOne('SELECT * FROM managers WHERE id = ?', [managerId]);
+      return res.json({
+        success: false,
+        consequence: `Impossible : avec seulement ${squad.length} joueurs, vous ne pouvez pas vous séparer de qui que ce soit. L'opération est annulée.`,
+        manager: mgr,
+        team,
+      });
+    }
+    departure = pickPlayerToRemove(squad, effects.remove_player);
+  }
+
+  if (effects.bench_player) {
+    const target = pickPlayerToRemove(squad, effects.bench_player);
+    if (target) {
+      db.run('UPDATE players SET is_starter = 0, slot_index = NULL WHERE id = ?', [target.id]);
+    }
+  }
+
+  // Faute de système de blessure, une indisponibilité est modélisée par une
+  // chute de forme ciblée : sous 50 le moteur pénalise réellement le joueur,
+  // et la récupération (+15 par journée sur le banc) fait office de convalescence.
+  let drained = null;
+  if (effects.drain_player) {
+    drained = pickPlayerToRemove(squad, effects.drain_player.target || 'random');
+    if (drained) {
+      db.run('UPDATE players SET stamina = ? WHERE id = ?', [
+        Math.max(0, Math.min(100, effects.drain_player.stamina ?? 0)),
+        drained.id,
+      ]);
+    }
+  }
+
   // Apply effects
   if (effects.budget) {
     const scaledBudget = effects.budget * divScale;
@@ -209,18 +255,67 @@ router.post('/:teamId/resolve-event', async (req, res) => {
     db.run('UPDATE players SET stamina = MAX(0, MIN(100, stamina + ?)) WHERE team_id = ?', [effects.stamina_boost, req.params.teamId]);
   }
 
+  if (departure) {
+    // Libère l'emplacement pour ne pas laisser un trou dans la composition.
+    db.run('DELETE FROM players WHERE id = ?', [departure.id]);
+  }
+
+  if (effects.recruit_player) {
+    const { createPlayerForTeam } = require('../data/playerGenerator');
+    arrival = createPlayerForTeam(db, req.params.teamId, effects.recruit_player);
+  }
+
   saveDb();
 
   const updatedManager = queryOne('SELECT * FROM managers WHERE id = ?', [managerId]);
   const updatedTeam = queryOne('SELECT * FROM teams WHERE id = ?', [req.params.teamId]);
 
+  // On enrichit la conséquence pour que le joueur voie concrètement l'effet.
+  let consequence = choice.consequence;
+  if (arrival) {
+    consequence += ` ${arrival.first_name} ${arrival.last_name} (${arrival.position}, ${arrival.overall}, ${arrival.age} ans) rejoint l'effectif.`;
+  }
+  if (departure) {
+    consequence += ` ${departure.first_name} ${departure.last_name} (${departure.position}, ${departure.overall}) quitte le club.`;
+  }
+  if (drained) {
+    consequence += ` ${drained.first_name} ${drained.last_name} est diminué physiquement.`;
+  }
+
   res.json({
     success: true,
-    consequence: choice.consequence,
+    consequence,
+    arrival,
+    departure,
     manager: updatedManager,
     team: updatedTeam,
   });
 });
+
+/** Sélectionne le joueur concerné par un départ ou une mise au banc. */
+function pickPlayerToRemove(squad, criterion) {
+  if (squad.length === 0) return null;
+  const sorted = [...squad];
+  switch (criterion) {
+    case 'best':
+    case 'captain':
+      return sorted.sort((a, b) => b.overall - a.overall)[0];
+    case 'worst':
+      return sorted.sort((a, b) => a.overall - b.overall)[0];
+    case 'oldest':
+      return sorted.sort((a, b) => b.age - a.age)[0];
+    case 'youngest':
+      return sorted.sort((a, b) => a.age - b.age)[0];
+    case 'starter': {
+      const starters = sorted.filter(p => p.is_starter);
+      const pool = starters.length ? starters : sorted;
+      return pool[Math.floor(Math.random() * pool.length)];
+    }
+    case 'random':
+    default:
+      return sorted[Math.floor(Math.random() * sorted.length)];
+  }
+}
 
 /**
  * Only simulates matches between teams in the same division.
@@ -318,6 +413,90 @@ const MANAGEMENT_ACTIONS = [
     cooldown: 0,
   },
 ];
+
+router.get('/:teamId/conversations', (req, res) => {
+  const team = queryOne('SELECT * FROM teams WHERE id = ?', [req.params.teamId]);
+  if (!team) return res.status(404).json({ error: 'Équipe non trouvée' });
+
+  // Conversations happen roughly once every 3 matchdays (~35% chance)
+  if (Math.random() > 0.35) {
+    return res.json({ conversation: null });
+  }
+
+  const { getRandomConversation, buildContext } = require('../data/conversations');
+  const players = queryAll('SELECT * FROM players WHERE team_id = ?', [req.params.teamId]);
+  if (players.length === 0) return res.json({ conversation: null });
+
+  // Derniers résultats, du plus récent au plus ancien : alimente les dialogues
+  // qui réagissent aux séries (spirale de défaites, dynamique de victoires...).
+  const recent = queryAll(
+    `SELECT home_team_id, home_goals, away_goals FROM matches
+     WHERE (home_team_id = ? OR away_team_id = ?) AND played = 1
+     ORDER BY season DESC, week DESC LIMIT 5`,
+    [team.id, team.id]
+  ).map(m => {
+    const isHome = m.home_team_id === team.id;
+    const scored = isHome ? m.home_goals : m.away_goals;
+    const conceded = isHome ? m.away_goals : m.home_goals;
+    return { outcome: scored > conceded ? 'win' : scored === conceded ? 'draw' : 'loss' };
+  });
+
+  const context = buildContext(team, players, recent);
+  const player = players[Math.floor(Math.random() * players.length)];
+  const conversation = getRandomConversation(player, context);
+  if (!conversation) return res.json({ conversation: null });
+
+  res.json({
+    conversation: { ...conversation, player: { id: player.id, first_name: player.first_name, last_name: player.last_name, position: player.position, overall: player.overall, morale: player.morale, stamina: player.stamina, age: player.age } },
+  });
+});
+
+router.post('/:teamId/resolve-conversation', async (req, res) => {
+  const { conversationId, choiceId, playerId, managerId } = req.body;
+  if (!conversationId || !choiceId || !playerId) {
+    return res.status(400).json({ error: 'conversationId, choiceId et playerId requis' });
+  }
+
+  const db = await getDb();
+  const { CONVERSATIONS } = require('../data/conversations');
+  const conv = CONVERSATIONS.find(c => c.id === conversationId);
+  if (!conv) return res.status(404).json({ error: 'Conversation non trouvée' });
+
+  const choice = conv.choices.find(c => c.id === choiceId);
+  if (!choice) return res.status(400).json({ error: 'Choix invalide' });
+
+  const effects = choice.effects || {};
+  const team = queryOne('SELECT * FROM teams WHERE id = ?', [req.params.teamId]);
+  const division = getTeamDivision(team);
+  const divScale = [1, 2, 3, 5, 8, 15, 25][division - 1] || 1;
+
+  // Apply effects to the specific player
+  if (effects.morale) {
+    db.run('UPDATE players SET morale = MAX(20, MIN(100, morale + ?)) WHERE id = ?', [effects.morale, playerId]);
+  }
+  if (effects.stamina) {
+    db.run('UPDATE players SET stamina = MAX(0, MIN(100, stamina + ?)) WHERE id = ?', [effects.stamina, playerId]);
+  }
+  if (effects.overall) {
+    db.run('UPDATE players SET overall = MIN(99, overall + ?) WHERE id = ?', [effects.overall, playerId]);
+  }
+  if (effects.budget && managerId) {
+    const scaledBudget = effects.budget * divScale;
+    db.run('UPDATE managers SET budget = MAX(0, budget + ?) WHERE id = ?', [scaledBudget, managerId]);
+  }
+
+  saveDb();
+
+  const updatedPlayer = queryOne('SELECT * FROM players WHERE id = ?', [playerId]);
+  const updatedManager = managerId ? queryOne('SELECT * FROM managers WHERE id = ?', [managerId]) : null;
+
+  res.json({
+    response: choice.response,
+    effects,
+    player: updatedPlayer,
+    manager: updatedManager,
+  });
+});
 
 router.get('/:teamId/management', (req, res) => {
   const team = queryOne('SELECT * FROM teams WHERE id = ?', [req.params.teamId]);
@@ -557,7 +736,8 @@ router.post('/:teamId/end-season', async (req, res) => {
       db.run('DELETE FROM teams WHERE id = ?', [ai.id]);
     }
     saveDb();
-    await seedDivision(newDivision);
+    const diff = req.body.difficulty || 'normal';
+    await seedDivision(newDivision, diff);
   } else {
     // Reset their stats for new season
     db.run("UPDATE teams SET points = 0, wins = 0, draws = 0, losses = 0, goals_for = 0, goals_against = 0 WHERE manager_id = 'AI' AND division = ?", [newDivision]);

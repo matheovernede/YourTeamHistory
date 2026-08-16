@@ -2,6 +2,7 @@ const express = require('express');
 const { v4: uuid } = require('uuid');
 const { getDb, queryOne, queryAll, run, saveDb } = require('../db/schema');
 const { DRAFT_POOL, calculateDraftPrice } = require('../data/draftPool');
+const { SQUAD_MAX } = require('../data/rules');
 
 const router = express.Router();
 
@@ -15,9 +16,10 @@ function shuffle(arr) {
 }
 
 router.get('/available', (req, res) => {
-  const { division, reputation, teamId } = req.query;
+  const { division, reputation, teamId, difficulty } = req.query;
   const divLevel = parseInt(division) || 1;
   const rep = parseInt(reputation) || 50;
+  const diff = difficulty || 'normal';
 
   // Get current squad names to exclude from market
   let ownedNames = new Set();
@@ -35,28 +37,32 @@ router.get('/available', (req, res) => {
   // rep 50 + div 1 = ~1% chance per legend, rep 90 + div 7 = ~20%
   const legendChance = Math.min(0.25, 0.01 + repBonus * 0.12 + (divLevel - 1) * 0.02);
 
+  // Difficulty affects max overall cap and tier access
+  const overallBonus = diff === 'easy' ? 8 : diff === 'hard' ? -3 : 0;
+  const tierBonus = diff === 'easy' ? 0.25 : diff === 'hard' ? -0.05 : 0;
+
   let filtered;
   if (divLevel <= 2) {
-    // Regional: max overall 60, only youth/national/low veterans
+    const maxOvr = 60 + overallBonus;
     filtered = DRAFT_POOL.filter(p => {
-      if (p.overall > 60) return false;
+      if (p.overall > maxOvr) return false;
       if (p.tier === 'legend') return false;
-      if (p.tier === 'ligue1') return false;
-      if (p.tier === 'ligue2') return Math.random() < (0.1 + repBonus * 0.2);
+      if (p.tier === 'ligue1') return diff === 'easy' ? Math.random() < 0.15 : false;
+      if (p.tier === 'ligue2') return Math.random() < (0.1 + repBonus * 0.2 + tierBonus);
       return true;
     });
   } else if (divLevel <= 4) {
-    // National: max overall 72
+    const maxOvr = 72 + overallBonus;
     filtered = DRAFT_POOL.filter(p => {
-      if (p.overall > 72) return false;
+      if (p.overall > maxOvr) return false;
       if (p.tier === 'legend') return false;
-      if (p.tier === 'ligue1') return Math.random() < (0.08 + repBonus * 0.25);
+      if (p.tier === 'ligue1') return Math.random() < (0.08 + repBonus * 0.25 + tierBonus);
       return true;
     });
   } else if (divLevel <= 6) {
-    // Ligue 2 / National: max overall 80
+    const maxOvr = 80 + overallBonus;
     filtered = DRAFT_POOL.filter(p => {
-      if (p.overall > 80) return false;
+      if (p.overall > maxOvr) return false;
       if (p.tier === 'legend') return Math.random() < legendChance;
       return true;
     });
@@ -109,8 +115,8 @@ router.post('/buy', async (req, res) => {
   }
 
   const playerCount = queryOne('SELECT COUNT(*) as count FROM players WHERE team_id = ?', [teamId]);
-  if (playerCount && playerCount.count >= 25) {
-    return res.status(400).json({ error: 'Effectif maximum atteint (25 joueurs)' });
+  if (playerCount && playerCount.count >= SQUAD_MAX) {
+    return res.status(400).json({ error: `Effectif maximum atteint (${SQUAD_MAX} joueurs)` });
   }
 
   db.run('UPDATE managers SET budget = budget - ? WHERE id = ?', [player.value, managerId]);

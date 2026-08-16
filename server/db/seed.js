@@ -129,7 +129,7 @@ function generateTeamPlayers(overallMin, overallMax) {
  * If division 7 (Ligue 1), uses real teams from realPlayers.js.
  * Otherwise, generates procedural players.
  */
-async function seedDivision(divisionLevel) {
+async function seedDivision(divisionLevel, difficulty) {
   const db = await getDb();
   const division = DIVISIONS.find(d => d.level === divisionLevel);
   if (!division) throw new Error(`Division ${divisionLevel} not found`);
@@ -165,8 +165,10 @@ async function seedDivision(divisionLevel) {
     }
     console.log(`Seeded ${REAL_TEAMS.length} real teams for Ligue 1.`);
   } else {
-    // Generate procedural teams
-    const [overallMin, overallMax] = division.overallRange;
+    // Generate procedural teams - difficulty affects AI overall
+    // easy: AI teams are weaker (-3), normal: as-is, hard: AI teams are stronger (+3)
+    const diffOffset = difficulty === 'easy' ? -3 : difficulty === 'hard' ? 3 : 0;
+    const [overallMin, overallMax] = [division.overallRange[0] + diffOffset, division.overallRange[1] + diffOffset];
     for (const teamDef of division.teams) {
       const teamId = uuid();
       db.run("INSERT INTO teams (id, manager_id, name, formation, division) VALUES (?, 'AI', ?, ?, ?)",

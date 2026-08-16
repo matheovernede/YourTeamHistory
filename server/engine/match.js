@@ -9,6 +9,13 @@
  * - Poisson distribution for realistic scorelines
  */
 
+const {
+  getFormationSlots,
+  getFormationWeights,
+  getPositionGroup,
+  getPositionFit,
+} = require('../data/formations');
+
 function getStaminaFactor(stamina) {
   let factor = 1.0;
   if (stamina < 50) factor -= (50 - stamina) * 0.008;
@@ -17,12 +24,34 @@ function getStaminaFactor(stamina) {
 }
 
 /**
+ * Poste réellement occupé par un joueur.
+ * Si la composition a été placée sur le terrain (slot_index), c'est le poste de
+ * l'emplacement qui prime : aligner un défenseur en pointe le fait bien compter
+ * comme attaquant — mais avec un malus d'adéquation.
+ * Sinon (équipes IA, compo héritée), on retombe sur le poste déclaré.
+ */
+function resolveRole(player, formationSlots) {
+  const hasSlot = formationSlots
+    && player.slot_index !== null
+    && player.slot_index !== undefined
+    && formationSlots[player.slot_index];
+
+  const slotPos = hasSlot ? formationSlots[player.slot_index] : player.position;
+  return { slotPos, fit: hasSlot ? getPositionFit(player.position, slotPos) : 1 };
+}
+
+/**
  * Break down team into attack/midfield/defense ratings.
  * Each line's contribution is based on the actual stats of the players in that role.
  */
-function analyzeTeam(players) {
+function analyzeTeam(players, formation = null) {
   const starters = players.filter(p => p.is_starter);
   if (starters.length === 0) return { attack: 40, midfield: 40, defense: 40, physical: 40, morale: 50 };
+
+  const formationSlots = formation ? getFormationSlots(formation) : null;
+  const weights = formation
+    ? getFormationWeights(formation)
+    : { defense: 1, midfield: 1, attack: 1 };
 
   let attackSum = 0, attackCount = 0;
   let midfieldSum = 0, midfieldCount = 0;
@@ -30,18 +59,23 @@ function analyzeTeam(players) {
   let physicalSum = 0, moraleSum = 0;
 
   for (const p of starters) {
-    const sf = getStaminaFactor(p.stamina);
+    const { slotPos, fit } = resolveRole(p, formationSlots);
+    // L'adéquation au poste module l'apport du joueur au même titre que la forme.
+    const sf = getStaminaFactor(p.stamina) * fit;
     physicalSum += p.physical * sf;
     moraleSum += p.morale;
 
-    const pos = p.position;
-    if (pos === 'GAR') {
+    if (slotPos === 'GAR') {
       defenseSum += (p.defending * 0.7 + p.physical * 0.3) * sf;
       defenseCount++;
-    } else if (['DC', 'ARG', 'ARD', 'PG', 'PD'].includes(pos)) {
+      continue;
+    }
+
+    const group = getPositionGroup(slotPos);
+    if (group === 'def') {
       defenseSum += (p.defending * 0.5 + p.physical * 0.25 + p.pace * 0.25) * sf;
       defenseCount++;
-    } else if (['MC', 'MOC', 'MDF', 'MG', 'MD'].includes(pos)) {
+    } else if (group === 'mid') {
       midfieldSum += (p.passing * 0.35 + p.dribbling * 0.25 + p.shooting * 0.15 + p.pace * 0.1 + p.physical * 0.15) * sf;
       midfieldCount++;
     } else {
@@ -51,9 +85,9 @@ function analyzeTeam(players) {
   }
 
   return {
-    attack: attackCount > 0 ? attackSum / attackCount : 40,
-    midfield: midfieldCount > 0 ? midfieldSum / midfieldCount : 40,
-    defense: defenseCount > 0 ? defenseSum / defenseCount : 40,
+    attack: attackCount > 0 ? (attackSum / attackCount) * weights.attack : 40,
+    midfield: midfieldCount > 0 ? (midfieldSum / midfieldCount) * weights.midfield : 40,
+    defense: defenseCount > 0 ? (defenseSum / defenseCount) * weights.defense : 40,
     physical: physicalSum / starters.length,
     morale: moraleSum / starters.length,
   };
@@ -119,21 +153,16 @@ function calculateExpectedGoals(home, away, homeAdvantage = 0.25) {
   };
 }
 
-function simulateMatch(homePlayers, awayPlayers, { homeIsPlayer = true, difficulty = 'normal' } = {}) {
-  const home = analyzeTeam(homePlayers);
-  const away = analyzeTeam(awayPlayers);
+/**
+ * `difficulty` est volontairement ignoré ici : la difficulté agit sur le niveau
+ * des équipes IA au moment du seed, pas sur la simulation elle-même.
+ */
+function simulateMatch(homePlayers, awayPlayers, { homeFormation = null, awayFormation = null } = {}) {
+  const home = analyzeTeam(homePlayers, homeFormation);
+  const away = analyzeTeam(awayPlayers, awayFormation);
 
-  // Difficulty: boost AI team's ratings
-  const aiBoost = difficulty === 'easy' ? 0 : difficulty === 'hard' ? 6 : 3;
-  if (homeIsPlayer) {
-    away.attack += aiBoost;
-    away.midfield += aiBoost;
-    away.defense += aiBoost;
-  } else {
-    home.attack += aiBoost;
-    home.midfield += aiBoost;
-    home.defense += aiBoost;
-  }
+  const homeSlots = homeFormation ? getFormationSlots(homeFormation) : null;
+  const awaySlots = awayFormation ? getFormationSlots(awayFormation) : null;
 
   const xG = calculateExpectedGoals(home, away);
 
@@ -155,12 +184,16 @@ function simulateMatch(homePlayers, awayPlayers, { homeIsPlayer = true, difficul
 
   for (const goal of goalMinutes) {
     const squad = goal.team === 'home' ? homePlayers : awayPlayers;
-    const scorers = squad.filter(p => p.is_starter && p.position !== 'GAR');
+    const slots = goal.team === 'home' ? homeSlots : awaySlots;
+    // Le buteur est pondéré par le poste RÉELLEMENT occupé : un milieu aligné
+    // en pointe marque comme un attaquant.
+    const scorers = squad.filter(p => p.is_starter && resolveRole(p, slots).slotPos !== 'GAR');
     const weights = scorers.map(p => {
+      const { slotPos } = resolveRole(p, slots);
       let w = p.shooting || p.overall;
-      if (['BU'].includes(p.position)) w += 25;
-      else if (['AIG', 'AID'].includes(p.position)) w += 12;
-      else if (['MOC'].includes(p.position)) w += 5;
+      if (slotPos === 'BU') w += 25;
+      else if (slotPos === 'AIG' || slotPos === 'AID') w += 12;
+      else if (slotPos === 'MOC') w += 5;
       return w;
     });
     const totalWeight = weights.reduce((s, w) => s + w, 0);

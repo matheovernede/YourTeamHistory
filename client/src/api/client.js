@@ -18,10 +18,11 @@ export const api = {
   exportSave: (id) => request(`/manager/${id}/save`),
   importSave: (id, saveData) => request(`/manager/${id}/load`, { method: 'POST', body: JSON.stringify({ saveData }) }),
 
-  createTeam: (managerId, teamName) => request('/team/create', { method: 'POST', body: JSON.stringify({ managerId, teamName }) }),
+  createTeam: (managerId, teamName, difficulty) => request('/team/create', { method: 'POST', body: JSON.stringify({ managerId, teamName, difficulty }) }),
   getPlayers: (teamId) => request(`/team/${teamId}/players`),
   setFormation: (teamId, formation) => request(`/team/${teamId}/formation`, { method: 'PUT', body: JSON.stringify({ formation }) }),
-  setLineup: (teamId, starterIds) => request(`/team/${teamId}/lineup`, { method: 'PUT', body: JSON.stringify({ starterIds }) }),
+  // `slots` : tableau de 11 identifiants indexé par emplacement de la formation.
+  setLineup: (teamId, starterIds, slots) => request(`/team/${teamId}/lineup`, { method: 'PUT', body: JSON.stringify({ starterIds, slots }) }),
   train: (teamId) => request(`/team/${teamId}/train`, { method: 'POST' }),
 
   playMatch: (teamId) => request('/match/play', { method: 'POST', body: JSON.stringify({ teamId }) }),
@@ -33,7 +34,7 @@ export const api = {
 
   getLeaderboard: () => request('/leaderboard'),
 
-  getDraftPlayers: (division, reputation, teamId) => request(`/draft/available?division=${division || 1}&reputation=${reputation || 50}&teamId=${teamId || ''}`),
+  getDraftPlayers: (division, reputation, teamId, difficulty) => request(`/draft/available?division=${division || 1}&reputation=${reputation || 50}&teamId=${teamId || ''}&difficulty=${difficulty || 'normal'}`),
   draftBuy: (managerId, teamId, player) => request('/draft/buy', { method: 'POST', body: JSON.stringify({ managerId, teamId, player }) }),
   draftFinish: (managerId, teamId) => request('/draft/finish', { method: 'POST', body: JSON.stringify({ managerId, teamId }) }),
 
@@ -46,10 +47,29 @@ export const api = {
   getManagement: (teamId) => request(`/season/${teamId}/management`),
   buyManagement: (teamId, actionId, managerId) => request(`/season/${teamId}/manage`, { method: 'POST', body: JSON.stringify({ actionId, managerId }) }),
 
+  getConversation: (teamId) => request(`/season/${teamId}/conversations`),
+  resolveConversation: (teamId, conversationId, choiceId, playerId, managerId) => request(`/season/${teamId}/resolve-conversation`, { method: 'POST', body: JSON.stringify({ conversationId, choiceId, playerId, managerId }) }),
+
   resolveEvent: (teamId, eventId, choiceId, managerId) => request(`/season/${teamId}/resolve-event`, { method: 'POST', body: JSON.stringify({ eventId, choiceId, managerId }) }),
 
   // Champions League
   getCLStatus: (teamId) => request(`/season/${teamId}/cl/status`),
   initCL: (teamId) => request(`/season/${teamId}/cl/init`, { method: 'POST' }),
   playCLMatch: (teamId) => request(`/season/${teamId}/cl/play`, { method: 'POST' }),
+
+  // DreamTeam
+  getDreamTeamPlayers: (league, position) => {
+    let url = '/dreamteam/players';
+    const params = [];
+    if (league) params.push(`league=${encodeURIComponent(league)}`);
+    if (position) params.push(`position=${encodeURIComponent(position)}`);
+    if (params.length) url += '?' + params.join('&');
+    return request(url);
+  },
+
+  // DreamTeam gameplay
+  dreamTeamFriendly: (homePlayers, difficulty) => request('/dreamteam/friendly', { method: 'POST', body: JSON.stringify({ homePlayers, difficulty }) }),
+  dreamTeamCLDraw: () => request('/dreamteam/cl-draw', { method: 'POST' }),
+  dreamTeamCLMatch: (homePlayers, awayPlayers) => request('/dreamteam/cl-match', { method: 'POST', body: JSON.stringify({ homePlayers, awayPlayers }) }),
+  dreamTeamStartCareer: (username, teamName, players) => request('/dreamteam/start-career', { method: 'POST', body: JSON.stringify({ username, teamName, players }) }),
 };

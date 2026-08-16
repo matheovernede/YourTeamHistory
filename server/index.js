@@ -10,6 +10,7 @@ const leaderboardRoutes = require('./routes/leaderboard');
 const draftRoutes = require('./routes/draft');
 const seasonRoutes = require('./routes/season');
 const championsLeagueRoutes = require('./routes/championsLeague');
+const dreamteamRoutes = require('./routes/dreamteam');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -25,6 +26,7 @@ app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/draft', draftRoutes);
 app.use('/api/season', seasonRoutes);
 app.use('/api/season', championsLeagueRoutes);
+app.use('/api/dreamteam', dreamteamRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

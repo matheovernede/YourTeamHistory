@@ -5,12 +5,14 @@ import MusicPlayer from './components/MusicPlayer';
 import Login from './pages/Login';
 import Draft from './pages/Draft';
 import Season from './pages/Season';
+import DreamTeam from './pages/DreamTeam';
 
 function App() {
   const [manager, setManager] = useState(null);
   const [team, setTeam] = useState(null);
   const [phase, setPhase] = useState('login');
   const [seasonSummary, setSeasonSummary] = useState(null);
+  const [showDreamTeam, setShowDreamTeam] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem('footmanager_session');
@@ -69,6 +71,23 @@ function App() {
     setPhase('play');
     setSeasonSummary(null);
     save(updatedManager, updatedTeam, 'play');
+  }
+
+  async function handleDreamTeamCareer(players) {
+    const username = prompt('Entrez votre pseudo pour la carriere:');
+    if (!username || username.trim().length < 2) return;
+    const teamName = prompt('Nom de votre equipe:');
+    if (!teamName || teamName.trim().length < 2) return;
+    try {
+      const result = await api.dreamTeamStartCareer(username.trim(), teamName.trim(), players);
+      setManager(result.manager);
+      setTeam(result.team);
+      setPhase('play');
+      setShowDreamTeam(false);
+      save(result.manager, result.team, 'play');
+    } catch (e) {
+      alert('Erreur: ' + (e.message || 'Impossible de lancer la carriere'));
+    }
   }
 
   async function handleNewCareer() {
@@ -134,18 +153,33 @@ function App() {
     input.click();
   }
 
-  if (phase === 'login' || !manager) {
-    return (<><Login onLogin={handleTeamCreated} onLoadSave={handleLoadSave} /><MusicPlayer /></>);
-  }
+  let content;
 
-  if (phase === 'draft' || phase === 'mercato') {
-    return (
+  if (showDreamTeam) {
+    content = <DreamTeam onBack={() => setShowDreamTeam(false)} onStartCareer={handleDreamTeamCareer} />;
+  } else if (phase === 'login' || !manager) {
+    content = <Login onLogin={handleTeamCreated} onLoadSave={handleLoadSave} onDreamTeam={() => setShowDreamTeam(true)} />;
+  } else if (phase === 'draft' || phase === 'mercato') {
+    content = (
       <div className="app">
-        <div className="top-bar">
-          <span className="top-title">⚽ {team.name}</span>
-          <span className="top-budget">{(manager.budget / 1000000).toFixed(1)}M€</span>
-          <button className="btn-new-career-top" onClick={handleNewCareer}>Nouvelle carrière</button>
-        </div>
+        <header className="top-bar">
+          <div className="brand">
+            <div className="brand-crest">⚽</div>
+            <div className="brand-text">
+              <span className="brand-name">{team.name}</span>
+              <span className="brand-sub">{phase === 'draft' ? 'Draft initial' : 'Mercato'}</span>
+            </div>
+          </div>
+          <div className="top-metrics">
+            <div className="metric metric-gold">
+              <span className="metric-label">Budget</span>
+              <span className="metric-value">{(manager.budget / 1000000).toFixed(1)}M€</span>
+            </div>
+          </div>
+          <div className="top-actions">
+            <button className="btn-new-career-top" onClick={handleNewCareer}>Nouvelle carrière</button>
+          </div>
+        </header>
         {seasonSummary && (
           <div className={`season-summary-banner ${seasonSummary.promotion ? 'promo' : ''} ${seasonSummary.relegation ? 'releg' : ''}`}>
             <h2>Bilan Saison {seasonSummary.season} — {seasonSummary.divisionName}</h2>
@@ -160,31 +194,52 @@ function App() {
           </div>
         )}
         <Draft manager={manager} team={team} onFinish={handleMercatoFinish} isInitialDraft={phase === 'draft'} />
-        <MusicPlayer />
+      </div>
+    );
+  } else {
+    content = (
+      <div className="app">
+        <header className="top-bar">
+          <div className="brand">
+            <div className="brand-crest">⚽</div>
+            <div className="brand-text">
+              <span className="brand-name">{team.name}</span>
+              <span className="brand-sub">Saison {team.season}</span>
+            </div>
+          </div>
+          <div className="top-metrics">
+            <div className="metric metric-gold">
+              <span className="metric-label">Budget</span>
+              <span className="metric-value">{(manager.budget / 1000000).toFixed(1)}M€</span>
+            </div>
+            <div className="metric">
+              <span className="metric-label">Réputation</span>
+              <span className="metric-value">{manager.reputation}</span>
+            </div>
+          </div>
+          <div className="top-actions">
+            <button className="icon-btn" title="Exporter la sauvegarde" onClick={handleExportSave}>💾</button>
+            <button className="icon-btn" title="Importer une sauvegarde" onClick={handleImportSave}>📂</button>
+            <button className="btn-dreamteam-top" onClick={() => setShowDreamTeam(true)}>⭐ DreamTeam</button>
+            <button className="btn-new-career-top" onClick={handleNewCareer}>Nouvelle carrière</button>
+          </div>
+        </header>
+        <Season
+          manager={manager}
+          team={team}
+          onUpdate={handleTeamUpdate}
+          onManagerUpdate={handleManagerUpdate}
+          onSeasonEnd={handleSeasonEnd}
+        />
       </div>
     );
   }
 
   return (
-    <div className="app">
-      <div className="top-bar">
-        <span className="top-title">⚽ {team.name}</span>
-        <span className="top-season">Saison {team.season}</span>
-        <span className="top-budget">{(manager.budget / 1000000).toFixed(1)}M€</span>
-        <span className="top-rep">Rep: {manager.reputation}</span>
-        <button className="btn-save-top" onClick={handleExportSave}>💾</button>
-        <button className="btn-save-top" onClick={handleImportSave}>📂</button>
-        <button className="btn-new-career-top" onClick={handleNewCareer}>Nouvelle carrière</button>
-      </div>
-      <Season
-        manager={manager}
-        team={team}
-        onUpdate={handleTeamUpdate}
-        onManagerUpdate={handleManagerUpdate}
-        onSeasonEnd={handleSeasonEnd}
-      />
+    <>
+      {content}
       <MusicPlayer />
-    </div>
+    </>
   );
 }
 

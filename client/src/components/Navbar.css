@@ -3,8 +3,11 @@
   align-items: center;
   gap: 20px;
   padding: 12px 24px;
-  background: var(--bg-card);
+  background: linear-gradient(180deg, rgba(16, 36, 24, 0.94) 0%, rgba(8, 20, 16, 0.88) 100%);
   border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  box-shadow: 0 4px 22px rgba(0, 0, 0, 0.45);
   position: sticky;
   top: 0;
   z-index: 100;
@@ -51,8 +54,9 @@
 }
 
 .nav-link.active {
-  background: var(--primary);
+  background: var(--grad-primary);
   color: white;
+  box-shadow: 0 3px 12px var(--primary-glow);
 }
 
 .nav-icon {
@@ -66,12 +70,14 @@
 }
 
 .nav-budget {
-  background: var(--secondary);
-  color: #111;
-  padding: 4px 10px;
-  border-radius: 16px;
+  background: var(--grad-gold);
+  color: #1a1400;
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 800;
+  box-shadow: 0 2px 10px var(--secondary-glow);
+  font-variant-numeric: tabular-nums;
 }
 
 .nav-team {

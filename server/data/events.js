@@ -32,7 +32,17 @@ const EVENTS = [
     choices: [
       { id: 'meet_fans', text: 'Aller à leur rencontre', effects: { morale: -3, reputation: 8 }, consequence: 'Votre courage force le respect, la pression retombe.' },
       { id: 'hide', text: 'Ignorer et rester concentré', effects: { morale: -8, reputation: -5 }, consequence: 'Les supporters se sentent méprisés.' },
-      { id: 'promise', text: 'Promettre un recrutement (500k€)', effects: { budget: -500000, morale: 5, reputation: 5 }, consequence: 'L\'espoir renaît, mais il faudra tenir parole.' },
+      {
+        id: 'promise',
+        text: 'Promettre un recrutement (500k€)',
+        effects: {
+          budget: -500000,
+          morale: 5,
+          reputation: 5,
+          recruit_player: { ageRange: [22, 29], overallRange: [60, 68], morale: 80 },
+        },
+        consequence: 'Vous tenez parole : une recrue arrive et l\'espoir renaît.',
+      },
     ],
     minMatchday: 8,
     condition: 'losing', // only triggers if team is in bottom half
@@ -44,7 +54,17 @@ const EVENTS = [
     title: 'Offre douteuse',
     description: 'Un homme d\'affaires vous propose 800k€ en échange de la titularisation de son neveu (overall 45).',
     choices: [
-      { id: 'accept', text: 'Accepter le deal', effects: { budget: 800000, morale: -10, reputation: -15 }, consequence: 'L\'argent rentre mais l\'équipe ne comprend pas cette décision.' },
+      {
+        id: 'accept',
+        text: 'Accepter le deal',
+        effects: {
+          budget: 800000,
+          morale: -10,
+          reputation: -15,
+          recruit_player: { ageRange: [19, 23], overallRange: [42, 48], morale: 95 },
+        },
+        consequence: 'L\'argent rentre mais l\'équipe ne comprend pas cette décision.',
+      },
       { id: 'refuse', text: 'Refuser poliment', effects: { reputation: 5, morale: 3 }, consequence: 'Vous gardez votre intégrité, les joueurs vous respectent.' },
       { id: 'counter', text: 'Contre-proposer : il investit au club sans condition', effects: { budget: 300000, reputation: 3 }, consequence: 'Il accepte un investissement plus modeste mais propre.' },
     ],
@@ -56,9 +76,29 @@ const EVENTS = [
     title: 'Pépite du centre de formation',
     description: 'Un jeune de 16 ans impressionne à l\'entraînement. Plusieurs clubs pros le surveillent.',
     choices: [
-      { id: 'promote', text: 'L\'intégrer au groupe pro', effects: { morale: 5, reputation: 5 }, consequence: 'Le jeune est motivé et le vestiaire l\'accueille bien.' },
+      {
+        id: 'promote',
+        text: 'L\'intégrer au groupe pro',
+        effects: {
+          morale: 5,
+          reputation: 5,
+          recruit_player: { ageRange: [16, 17], overallRange: [48, 58], morale: 90 },
+        },
+        consequence: 'Le jeune est motivé et le vestiaire l\'accueille bien.',
+      },
       { id: 'sell', text: 'Le vendre maintenant (400k€)', effects: { budget: 400000, morale: -3, reputation: -3 }, consequence: 'L\'argent est là mais les supporters grognent.' },
-      { id: 'loan', text: 'Le prêter pour qu\'il progresse', effects: { reputation: 3 }, consequence: 'Sage décision. Il reviendra plus fort la saison prochaine.' },
+      {
+        id: 'loan',
+        text: 'Le prêter un an puis le récupérer (150k€ d\'indemnité)',
+        effects: {
+          reputation: 3,
+          budget: 150000,
+          // Le prêt est résolu immédiatement : il revient plus fort qu'une
+          // intégration directe, ce qui justifie l'attente.
+          recruit_player: { ageRange: [18, 19], overallRange: [58, 66], morale: 85 },
+        },
+        consequence: 'Sage décision : une saison de temps de jeu ailleurs, et il revient aguerri.',
+      },
     ],
     minMatchday: 6,
   },
@@ -80,7 +120,7 @@ const EVENTS = [
     title: 'Scandale médiatique',
     description: 'Un joueur a été photographié en boîte de nuit la veille d\'un match important.',
     choices: [
-      { id: 'bench', text: 'Le mettre sur le banc en guise de punition', effects: { morale: -3, reputation: 5 }, consequence: 'Message envoyé : la discipline passe avant tout.' },
+      { id: 'bench', text: 'Le mettre sur le banc en guise de punition', effects: { morale: -3, reputation: 5, bench_player: 'starter' }, consequence: 'Message envoyé : la discipline passe avant tout. Le fautif est écarté du onze.' },
       { id: 'fine', text: 'Amende interne (50k€ récupérés)', effects: { budget: 50000, morale: -5 }, consequence: 'Le joueur paye mais l\'ambiance est froide.' },
       { id: 'support', text: 'Le soutenir publiquement', effects: { morale: 5, reputation: -8 }, consequence: 'Le vestiaire vous adore, mais les médias vous critiquent.' },
     ],
@@ -104,9 +144,9 @@ const EVENTS = [
     title: 'Offre d\'un rival',
     description: 'Un club rival propose de racheter votre capitaine pour 2M€. Le joueur hésite.',
     choices: [
-      { id: 'sell', text: 'Accepter l\'offre (2M€)', effects: { budget: 2000000, morale: -12, reputation: -5 }, consequence: 'L\'argent afflue mais le vestiaire est sous le choc.' },
+      { id: 'sell', text: 'Accepter l\'offre (2M€)', effects: { budget: 2000000, morale: -12, reputation: -5, remove_player: 'captain' }, consequence: 'L\'argent afflue mais le vestiaire est sous le choc.' },
       { id: 'refuse', text: 'Refuser catégoriquement', effects: { morale: 8, reputation: 3 }, consequence: 'Le capitaine est touché par votre loyauté.' },
-      { id: 'negotiate', text: 'Demander plus (3.5M€ ou rien)', effects: { budget: 3500000, morale: -8, reputation: -3, chance: 0.4 }, consequence: 'Ils refusent dans 60% des cas. Si ça passe, gros jackpot.' },
+      { id: 'negotiate', text: 'Demander plus (3.5M€ ou rien)', effects: { budget: 3500000, morale: -8, reputation: -3, chance: 0.4, remove_player: 'captain' }, consequence: 'Ils refusent dans 60% des cas. Si ça passe, gros jackpot.' },
     ],
     minMatchday: 12,
   },
@@ -116,7 +156,7 @@ const EVENTS = [
     title: 'Soupçon de dopage',
     description: 'Un contrôle anti-dopage inopiné est annoncé. Un de vos joueurs vous avoue prendre des compléments douteux.',
     choices: [
-      { id: 'report', text: 'Signaler le joueur à la fédération', effects: { morale: -8, reputation: 15 }, consequence: 'Intégrité irréprochable, mais vous perdez un joueur.' },
+      { id: 'report', text: 'Signaler le joueur à la fédération', effects: { morale: -8, reputation: 15, remove_player: 'random' }, consequence: 'Intégrité irréprochable : le joueur est suspendu et quitte l\'effectif.' },
       { id: 'cover', text: 'Le couvrir et espérer que ça passe', effects: { reputation: -20, chance: 0.5 }, consequence: '50% de chance d\'être pris. Si découvert : -20 rep en plus.' },
       { id: 'substitute', text: 'Le mettre "blessé" discrètement', effects: { morale: -3, reputation: -5 }, consequence: 'Pas de scandale, mais un malaise persiste.' },
     ],
@@ -140,9 +180,9 @@ const EVENTS = [
     title: 'Vétéran blessé',
     description: 'Votre joueur le plus expérimenté se blesse au genou. Le médecin propose deux options.',
     choices: [
-      { id: 'surgery', text: 'Opération (miss 8 matchs, guérison totale)', effects: { morale: -5 }, consequence: 'Long à récupérer mais il reviendra à 100%.' },
-      { id: 'quick_fix', text: 'Traitement rapide (miss 2 matchs, risque rechute)', effects: { morale: -2, chance: 0.4 }, consequence: '40% de chance de rechute grave plus tard.' },
-      { id: 'retire', text: 'Lui proposer de raccrocher', effects: { morale: -10, budget: 100000, reputation: -3 }, consequence: 'Triste fin de carrière. Les vétérans du vestiaire sont affectés.' },
+      { id: 'surgery', text: 'Opération : convalescence longue', effects: { morale: -5, drain_player: { target: 'oldest', stamina: 0 } }, consequence: 'Il est à zéro physiquement et mettra plusieurs journées à revenir.' },
+      { id: 'quick_fix', text: 'Traitement rapide : il revient vite mais diminué', effects: { morale: -2, drain_player: { target: 'oldest', stamina: 35 } }, consequence: 'Il rejoue bientôt, mais loin de son meilleur niveau.' },
+      { id: 'retire', text: 'Lui proposer de raccrocher', effects: { morale: -10, budget: 100000, reputation: -3, remove_player: 'oldest' }, consequence: 'Triste fin de carrière. Les vétérans du vestiaire sont affectés.' },
     ],
     minMatchday: 5,
   },

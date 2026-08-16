@@ -210,9 +210,9 @@ function playGroupMatch(db, team, clState, res) {
   let matchResult;
 
   if (isHome) {
-    matchResult = simulateMatch(homePlayers, generateFakePlayers(opponentOverall), { homeIsPlayer: true });
+    matchResult = simulateMatch(homePlayers, generateFakePlayers(opponentOverall), { homeFormation: team.formation });
   } else {
-    matchResult = simulateMatch(generateFakePlayers(opponentOverall), homePlayers, { homeIsPlayer: false });
+    matchResult = simulateMatch(generateFakePlayers(opponentOverall), homePlayers, { awayFormation: team.formation });
   }
 
   const playerGoals = isHome ? matchResult.homeGoals : matchResult.awayGoals;
@@ -302,9 +302,9 @@ function playKnockoutMatch(db, team, clState, res) {
   let matchResult;
 
   if (isHome || clState.phase === 'final') {
-    matchResult = simulateMatch(homePlayers, generateFakePlayers(opponentOverall), { homeIsPlayer: true });
+    matchResult = simulateMatch(homePlayers, generateFakePlayers(opponentOverall), { homeFormation: team.formation });
   } else {
-    matchResult = simulateMatch(generateFakePlayers(opponentOverall), homePlayers, { homeIsPlayer: false });
+    matchResult = simulateMatch(generateFakePlayers(opponentOverall), homePlayers, { awayFormation: team.formation });
   }
 
   const playerGoals = (isHome || clState.phase === 'final') ? matchResult.homeGoals : matchResult.awayGoals;

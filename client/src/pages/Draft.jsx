@@ -17,7 +17,8 @@ export default function Draft({ manager, team, onFinish, isInitialDraft }) {
 
   async function loadDraft() {
     try {
-      const players = await api.getDraftPlayers(team.division || 1, manager.reputation || 50, team.id);
+      const difficulty = localStorage.getItem('footmanager_difficulty') || 'normal';
+      const players = await api.getDraftPlayers(team.division || 1, manager.reputation || 50, team.id, difficulty);
       setAvailable(players);
     } finally {
       setLoading(false);

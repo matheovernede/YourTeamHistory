@@ -145,6 +145,14 @@ function initTables() {
   } catch (e) {
     // Column already exists, ignore
   }
+
+  // Migration: slot_index mémorise l'emplacement exact du titulaire dans la
+  // formation (0-10). NULL = remplaçant ou placement non défini.
+  try {
+    db.run('ALTER TABLE players ADD COLUMN slot_index INTEGER DEFAULT NULL');
+  } catch (e) {
+    // Column already exists, ignore
+  }
 }
 
 function queryAll(sql, params = []) {

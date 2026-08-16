@@ -1,5 +1,7 @@
 .draft-page {
-  padding: 28px;
+  padding: var(--sp-6) var(--sp-8) var(--sp-12);
+  max-width: 1180px;
+  margin: 0 auto;
   animation: pageIn 0.3s ease-out;
 }
 
@@ -11,8 +13,31 @@
 .draft-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 24px;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-6);
+  padding: var(--sp-5) var(--sp-6);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background:
+    radial-gradient(ellipse 60% 140% at 0% 0%, rgba(46, 178, 87, 0.12) 0%, transparent 65%),
+    var(--grad-card);
+  box-shadow: var(--shadow-sm), var(--shadow-inset);
+  position: relative;
+  overflow: hidden;
+}
+
+.draft-header::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 12%;
+  bottom: 12%;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: linear-gradient(180deg, var(--primary), var(--primary-dark));
+  box-shadow: 0 0 14px var(--primary-glow);
 }
 
 .draft-title h1 {
@@ -39,14 +64,15 @@
 }
 
 .draft-budget {
-  background: linear-gradient(135deg, var(--secondary) 0%, #e0a820 100%);
-  color: #111;
+  background: var(--grad-gold);
+  color: #1a1400;
   padding: 10px 20px;
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-pill);
   font-size: 18px;
   font-weight: 800;
-  box-shadow: 0 4px 16px var(--secondary-glow);
+  box-shadow: 0 4px 18px var(--secondary-glow), var(--shadow-inset);
   letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
 }
 
 .draft-count {
@@ -58,7 +84,7 @@
   color: var(--success);
   font-weight: 700;
   font-size: 18px;
-  text-shadow: 0 0 8px rgba(63, 185, 80, 0.3);
+  text-shadow: 0 0 8px rgba(74, 222, 128, 0.3);
 }
 
 .count-need {
@@ -69,15 +95,18 @@
 }
 
 .draft-message {
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-  color: white;
-  padding: 12px 20px;
+  background: linear-gradient(135deg, rgba(46, 178, 87, 0.18) 0%, rgba(46, 178, 87, 0.06) 100%);
+  border: 1px solid var(--primary);
+  border-left-width: 4px;
+  color: var(--text);
+  padding: 13px 20px;
   border-radius: var(--radius-md);
-  margin-bottom: 18px;
+  margin-bottom: var(--sp-5);
   font-size: 14px;
   text-align: center;
   font-weight: 600;
-  box-shadow: 0 4px 12px var(--primary-glow);
+  box-shadow: var(--shadow-sm);
+  animation: fadeInUp var(--transition-normal) both;
 }
 
 .draft-squad-summary {
@@ -117,8 +146,8 @@
 
 .btn-refresh:hover {
   border-color: var(--primary);
-  color: var(--primary);
-  background: rgba(26, 122, 58, 0.06);
+  color: var(--primary-light);
+  background: var(--primary-soft);
   transform: none;
   box-shadow: 0 0 12px var(--primary-glow);
 }
@@ -131,42 +160,48 @@
 
 .draft-filters {
   display: flex;
-  gap: 6px;
-  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-bottom: var(--sp-5);
   padding: 4px;
-  background: var(--bg-surface);
+  background: var(--bg-deep);
   border-radius: var(--radius-md);
   border: 1px solid var(--border);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.4);
 }
 
 .filter-btn {
   background: transparent;
   border: 1px solid transparent;
   color: var(--text-muted);
-  padding: 8px 16px;
+  padding: 9px 17px;
   border-radius: var(--radius-sm);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   transition: all var(--transition-fast);
 }
+
+.filter-btn::after { display: none; }
 
 .filter-btn:hover {
   color: var(--text);
   background: var(--bg-hover);
   transform: none;
+  box-shadow: none;
 }
 
 .filter-btn.active {
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-  border-color: var(--primary);
-  color: white;
-  box-shadow: 0 2px 8px var(--primary-glow);
+  background: var(--grad-primary);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  box-shadow: 0 3px 12px var(--primary-glow), var(--shadow-inset);
+  transform: none;
 }
 
 .draft-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: var(--sp-4);
 }
 
 .draft-price {

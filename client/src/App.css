@@ -4,158 +4,328 @@
   flex-direction: column;
 }
 
+/* ============ HEADER ============ */
 .top-bar {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 12px 24px;
-  background: linear-gradient(180deg, var(--bg-card) 0%, var(--bg-surface) 100%);
+  gap: var(--sp-5);
+  padding: 12px 28px;
+  background: linear-gradient(180deg, rgba(16, 36, 24, 0.94) 0%, rgba(8, 20, 16, 0.88) 100%);
   border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
   z-index: 100;
-  backdrop-filter: blur(12px);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.45);
 }
 
-.top-title {
+/* Liseré vert lumineux sous le header */
+.top-bar::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 5%, var(--primary) 50%, transparent 95%);
+  opacity: 0.55;
+}
+
+/* ---- Identité du club ---- */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.brand-crest {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  font-size: 20px;
+  border-radius: 13px;
+  background: var(--grad-primary);
+  box-shadow: 0 4px 14px var(--primary-glow), var(--shadow-inset);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.brand-name {
   font-weight: 800;
-  font-size: 17px;
-  color: var(--primary);
+  font-size: 16px;
   letter-spacing: -0.02em;
-  text-shadow: 0 0 20px var(--primary-glow);
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.top-season {
-  font-size: 13px;
+.brand-sub {
+  font-size: 11px;
+  font-weight: 600;
   color: var(--text-muted);
-  padding: 3px 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+}
+
+/* ---- Métriques ---- */
+.top-metrics {
+  display: flex;
+  align-items: stretch;
+  gap: var(--sp-2);
+  margin-left: var(--sp-2);
+}
+
+.metric {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  padding: 5px 14px;
   border-radius: var(--radius-sm);
-  background: var(--bg-hover);
+  background: var(--bg-surface);
   border: 1px solid var(--border);
+  transition: all var(--transition-normal);
 }
 
-.top-budget {
-  background: linear-gradient(135deg, var(--secondary) 0%, #e0a820 100%);
-  color: #111;
-  padding: 4px 12px;
-  border-radius: var(--radius-xl);
-  font-size: 13px;
+.metric:hover {
+  border-color: var(--border-light);
+  background: var(--bg-hover);
+}
+
+.metric-label {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.9px;
+  color: var(--text-dim);
+}
+
+.metric-value {
+  font-size: 15px;
   font-weight: 800;
-  box-shadow: 0 2px 8px var(--secondary-glow);
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
 }
 
-.top-rep {
-  font-size: 12px;
-  color: var(--text-muted);
-  background: var(--bg-hover);
-  padding: 4px 10px;
-  border-radius: var(--radius-xl);
+.metric-gold {
+  background: linear-gradient(135deg, rgba(240, 192, 64, 0.13) 0%, rgba(240, 192, 64, 0.04) 100%);
+  border-color: rgba(240, 192, 64, 0.32);
+}
+
+.metric-gold:hover {
+  border-color: rgba(240, 192, 64, 0.5);
+  background: linear-gradient(135deg, rgba(240, 192, 64, 0.19) 0%, rgba(240, 192, 64, 0.07) 100%);
+}
+
+.metric-gold .metric-value {
+  color: var(--secondary);
+}
+
+.metric-gold .metric-label {
+  color: rgba(240, 192, 64, 0.65);
+}
+
+/* ---- Actions ---- */
+.top-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-left: auto;
+}
+
+.icon-btn {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  background: var(--bg-surface);
   border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  line-height: 1;
 }
 
-.btn-save-top {
-  background: transparent;
-  border: 1px solid var(--border);
-  padding: 4px 8px;
-  border-radius: 6px;
-  font-size: 14px;
-}
-
-.btn-save-top:hover {
+.icon-btn:hover {
   border-color: var(--primary);
-  transform: none;
+  background: var(--primary-soft);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 12px var(--primary-glow);
+}
+
+.btn-dreamteam-top {
+  background: var(--grad-gold);
+  color: #1a1400;
+  padding: 7px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 10px var(--secondary-glow), var(--shadow-inset);
+}
+
+.btn-dreamteam-top:hover {
+  box-shadow: 0 5px 18px rgba(240, 192, 64, 0.36), var(--shadow-inset);
+  transform: translateY(-1px);
 }
 
 .btn-new-career-top {
-  margin-left: auto;
   background: transparent;
   border: 1px solid var(--border);
   color: var(--text-muted);
-  padding: 5px 12px;
+  padding: 7px 14px;
   border-radius: var(--radius-sm);
   font-size: 11px;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  transition: all var(--transition-normal);
 }
 
 .btn-new-career-top:hover {
   border-color: var(--danger);
   color: var(--danger);
-  background: rgba(248, 81, 73, 0.08);
-  transform: none;
-  box-shadow: 0 0 12px rgba(248, 81, 73, 0.15);
+  background: var(--danger-soft);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 12px rgba(248, 81, 73, 0.2);
 }
 
+/* ============ BILAN DE SAISON ============ */
 .season-summary-banner {
-  background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 50%, #1e8c42 100%);
-  color: white;
-  padding: 24px 28px;
-  text-align: center;
   position: relative;
   overflow: hidden;
+  margin: var(--sp-5) var(--sp-6) 0;
+  padding: var(--sp-6) var(--sp-8);
+  text-align: center;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-light);
+  background:
+    radial-gradient(ellipse 70% 100% at 50% 0%, rgba(46, 178, 87, 0.22) 0%, transparent 70%),
+    var(--grad-card);
+  box-shadow: var(--shadow-lg), var(--shadow-inset);
+  animation: fadeInUp var(--transition-smooth) both;
 }
 
+/* Rayures de pelouse */
 .season-summary-banner::before {
   content: '';
   position: absolute;
   inset: 0;
+  pointer-events: none;
   background: repeating-linear-gradient(
     90deg,
     transparent,
-    transparent 40px,
-    rgba(255, 255, 255, 0.02) 40px,
-    rgba(255, 255, 255, 0.02) 80px
+    transparent 44px,
+    rgba(255, 255, 255, 0.018) 44px,
+    rgba(255, 255, 255, 0.018) 88px
   );
-  pointer-events: none;
 }
 
 .season-summary-banner h2 {
-  font-size: 20px;
-  margin-bottom: 10px;
-  color: white;
+  position: relative;
+  font-size: 21px;
   font-weight: 800;
-  letter-spacing: -0.02em;
+  margin-bottom: var(--sp-4);
+  color: var(--text);
 }
 
 .summary-stats {
+  position: relative;
   display: flex;
   justify-content: center;
-  gap: 20px;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
   font-size: 14px;
+}
+
+.summary-stats > span {
+  padding: 7px 16px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
 .summary-stats .prize {
   color: var(--secondary);
+  background: var(--secondary-soft);
+  border-color: rgba(240, 192, 64, 0.34);
   font-weight: 800;
-  text-shadow: 0 0 10px var(--secondary-glow);
 }
 
 .season-summary-banner.promo {
-  background: linear-gradient(135deg, #0a3d1a 0%, #145a2c 40%, #1a7a3a 100%);
+  border-color: var(--primary);
+  background:
+    radial-gradient(ellipse 70% 100% at 50% 0%, rgba(46, 178, 87, 0.34) 0%, transparent 70%),
+    var(--grad-card);
 }
 
 .season-summary-banner.releg {
-  background: linear-gradient(135deg, #3d0a0a 0%, #7a1a1a 40%, #a03030 100%);
+  border-color: rgba(248, 81, 73, 0.5);
+  background:
+    radial-gradient(ellipse 70% 100% at 50% 0%, rgba(248, 81, 73, 0.22) 0%, transparent 70%),
+    var(--grad-card);
+}
+
+.promo-tag,
+.releg-tag {
+  position: relative;
+  display: inline-block;
+  font-size: 15px;
+  font-weight: 900;
+  margin-bottom: var(--sp-4);
+  padding: 8px 20px;
+  border-radius: var(--radius-pill);
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
 }
 
 .promo-tag {
-  font-size: 18px;
-  font-weight: 800;
-  margin-bottom: 8px;
-  color: var(--secondary);
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  text-shadow: 0 0 10px var(--secondary-glow);
+  color: #04170b;
+  background: var(--grad-gold);
+  box-shadow: 0 4px 20px var(--secondary-glow);
+  animation: pulseGlow 2.4s ease-in-out infinite;
 }
 
 .releg-tag {
-  font-size: 18px;
-  font-weight: 800;
-  margin-bottom: 8px;
-  color: #ff8888;
-  text-transform: uppercase;
-  letter-spacing: 1px;
+  color: #ffd5d2;
+  background: rgba(248, 81, 73, 0.16);
+  border: 1px solid rgba(248, 81, 73, 0.42);
+}
+
+/* ============ RESPONSIVE ============ */
+@media (max-width: 900px) {
+  .top-bar {
+    flex-wrap: wrap;
+    gap: var(--sp-3);
+    padding: 10px 16px;
+  }
+
+  .top-metrics {
+    margin-left: 0;
+  }
+
+  .top-actions {
+    width: 100%;
+    margin-left: 0;
+    justify-content: flex-end;
+  }
+
+  .season-summary-banner {
+    margin: var(--sp-4) var(--sp-4) 0;
+    padding: var(--sp-5);
+  }
 }

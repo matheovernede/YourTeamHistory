@@ -1,6 +1,7 @@
 const express = require('express');
 const { v4: uuid } = require('uuid');
 const { getDb, queryOne, queryAll, run, saveDb } = require('../db/schema');
+const { SQUAD_MAX, SQUAD_MIN_TO_SELL } = require('../data/rules');
 
 const router = express.Router();
 
@@ -34,8 +35,8 @@ router.post('/buy', async (req, res) => {
   }
 
   const myPlayers = queryOne('SELECT COUNT(*) as count FROM players WHERE team_id = ?', [teamId]);
-  if (myPlayers.count >= 25) {
-    return res.status(400).json({ error: 'Effectif maximum atteint (25 joueurs)' });
+  if (myPlayers.count >= SQUAD_MAX) {
+    return res.status(400).json({ error: `Effectif maximum atteint (${SQUAD_MAX} joueurs)` });
   }
 
   db.run('UPDATE managers SET budget = budget - ? WHERE id = ?', [player.value, managerId]);
@@ -62,8 +63,8 @@ router.post('/sell', async (req, res) => {
   if (!team) return res.status(403).json({ error: 'Ce joueur ne vous appartient pas' });
 
   const playerCount = queryOne('SELECT COUNT(*) as count FROM players WHERE team_id = ?', [player.team_id]);
-  if (playerCount.count <= 14) {
-    return res.status(400).json({ error: 'Effectif minimum requis (14 joueurs)' });
+  if (playerCount.count <= SQUAD_MIN_TO_SELL) {
+    return res.status(400).json({ error: `Effectif minimum requis (${SQUAD_MIN_TO_SELL} joueurs)` });
   }
 
   const sellPrice = Math.round(player.value * 0.8);
