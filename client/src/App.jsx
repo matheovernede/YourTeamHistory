@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import './App.css';
 import { api } from './api/client';
+import MusicPlayer from './components/MusicPlayer';
 import Login from './pages/Login';
 import Draft from './pages/Draft';
 import Season from './pages/Season';
@@ -134,7 +135,7 @@ function App() {
   }
 
   if (phase === 'login' || !manager) {
-    return <Login onLogin={handleTeamCreated} onLoadSave={handleLoadSave} />;
+    return (<><Login onLogin={handleTeamCreated} onLoadSave={handleLoadSave} /><MusicPlayer /></>);
   }
 
   if (phase === 'draft' || phase === 'mercato') {
@@ -159,6 +160,7 @@ function App() {
           </div>
         )}
         <Draft manager={manager} team={team} onFinish={handleMercatoFinish} isInitialDraft={phase === 'draft'} />
+        <MusicPlayer />
       </div>
     );
   }
@@ -181,6 +183,7 @@ function App() {
         onManagerUpdate={handleManagerUpdate}
         onSeasonEnd={handleSeasonEnd}
       />
+      <MusicPlayer />
     </div>
   );
 }

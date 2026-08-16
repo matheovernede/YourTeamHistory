@@ -520,6 +520,40 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.clickable-row { cursor: pointer; }
+.clickable-row:hover { background: var(--bg-hover); }
+.view-squad-hint { font-size: 11px; opacity: 0.4; margin-left: 4px; }
+.clickable-row:hover .view-squad-hint { opacity: 1; }
+
+.viewing-team-panel { margin-top: 16px; }
+.vt-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.vt-header h3 { font-size: 16px; font-weight: 700; }
+.vt-players { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.vt-section h4 { font-size: 12px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid var(--border); }
+.vt-player { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 13px; }
+.vt-player.sub { opacity: 0.7; }
+.vt-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vt-ovr { font-weight: 800; color: var(--secondary); font-size: 14px; min-width: 24px; text-align: right; }
+
+.vt-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 6px;
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  background: var(--bg-surface, var(--bg));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 6px);
+}
+
+.vt-stat-bar { display: flex; flex-direction: column; gap: 3px; }
+.vt-bar-header { display: flex; justify-content: space-between; align-items: center; }
+.vt-bar-label { font-size: 9px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); }
+.vt-bar-val { font-size: 11px; font-weight: 800; color: var(--text); }
+.vt-bar-track { height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
+.vt-bar-fill { height: 100%; border-radius: 3px; transition: width 0.3s ease;
   font-weight: 500;
 }
 
@@ -700,6 +734,108 @@
   border-color: var(--text-muted);
   background: var(--bg-hover);
   transform: none;
+}
+
+/* Sponsor result view */
+.sponsor-result-view {
+  display: flex;
+  justify-content: center;
+  padding: 20px 0;
+}
+
+.sponsor-result-card {
+  max-width: 480px;
+  width: 100%;
+  text-align: center;
+}
+
+.sr-header {
+  margin-bottom: 16px;
+}
+
+.sr-logo {
+  font-size: 40px;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.sr-header h2 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+
+.sr-payment {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--secondary);
+}
+
+.sr-desc {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 20px;
+  line-height: 1.4;
+}
+
+.sr-section {
+  text-align: left;
+  margin-bottom: 16px;
+  padding: 12px;
+  border-radius: var(--radius-md);
+}
+
+.sr-section h3 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.sr-bonus {
+  background: rgba(63, 185, 80, 0.06);
+  border: 1px solid rgba(63, 185, 80, 0.2);
+}
+
+.sr-bonus h3 { color: var(--success); }
+
+.sr-malus {
+  background: rgba(248, 81, 73, 0.06);
+  border: 1px solid rgba(248, 81, 73, 0.2);
+}
+
+.sr-malus h3 { color: var(--danger); }
+
+.sr-effect {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 0;
+}
+
+.sr-effect + .sr-effect {
+  border-top: 1px solid var(--border);
+}
+
+.sr-effect-val {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.sr-effect.good .sr-effect-val { color: var(--success); }
+.sr-effect.bad .sr-effect-val { color: var(--danger); }
+
+.sr-effect-why {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.sr-continue {
+  margin-top: 20px;
+  width: 100%;
+  padding: 12px;
 }
 
 /* Lineup view */
@@ -1522,6 +1658,56 @@
 /* ==============================
    PITCH-BASED LINEUP VIEW
    ============================== */
+
+.team-stats-overview {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.tso-stat-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.tso-bar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.tso-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+}
+
+.tso-val {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.tso-bar-track {
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.tso-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
 
 .pitch-container {
   max-width: 600px;

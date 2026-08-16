@@ -203,3 +203,58 @@
   border-color: var(--primary);
   background: var(--bg-hover);
 }
+
+.difficulty-select {
+  margin: 12px 0;
+}
+
+.difficulty-select > label {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  display: block;
+}
+
+.difficulty-options {
+  display: flex;
+  gap: 8px;
+}
+
+.diff-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 8px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.diff-btn:hover {
+  border-color: var(--text-muted);
+  transform: none;
+  box-shadow: none;
+}
+
+.diff-btn.active.easy {
+  border-color: var(--success);
+  background: rgba(63, 185, 80, 0.08);
+}
+
+.diff-btn.active.normal {
+  border-color: var(--warning);
+  background: rgba(210, 153, 34, 0.08);
+}
+
+.diff-btn.active.hard {
+  border-color: var(--danger);
+  background: rgba(248, 81, 73, 0.08);
+}
+
+.diff-icon { font-size: 18px; }
+.diff-name { font-size: 13px; font-weight: 700; color: var(--text); }
+.diff-desc { font-size: 10px; color: var(--text-muted); text-align: center; }

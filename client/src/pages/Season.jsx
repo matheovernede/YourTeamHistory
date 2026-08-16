@@ -10,6 +10,29 @@ function posClass(pos) {
   return 'pos-att';
 }
 
+function computeTeamStats(starters) {
+  if (!starters || starters.length === 0) return null;
+
+  const defenders = starters.filter(p => ['DC', 'ARG', 'ARD', 'PG', 'PD'].includes(p.position));
+  const midfielders = starters.filter(p => ['MC', 'MOC', 'MDF', 'MG', 'MD'].includes(p.position));
+  const attackers = starters.filter(p => ['BU', 'AIG', 'AID'].includes(p.position));
+  const goalkeeper = starters.find(p => p.position === 'GAR');
+
+  const avgOf = (arr, key) => arr.length > 0 ? Math.round(arr.reduce((s, p) => s + (p[key] || 0), 0) / arr.length) : 0;
+  const allAvg = (key) => Math.round(starters.reduce((s, p) => s + (p[key] || 0), 0) / starters.length);
+
+  return [
+    { label: 'GEN', val: allAvg('overall'), color: 'var(--secondary)' },
+    { label: 'ATT', val: avgOf(attackers, 'shooting'), color: '#f87171' },
+    { label: 'MIL', val: avgOf(midfielders, 'passing'), color: '#34d399' },
+    { label: 'DEF', val: avgOf(defenders, 'defending'), color: '#38bdf8' },
+    { label: 'GAR', val: goalkeeper ? goalkeeper.overall : 0, color: '#f59e0b' },
+    { label: 'VIT', val: allAvg('pace'), color: '#60a5fa' },
+    { label: 'PHY', val: allAvg('physical'), color: '#fb923c' },
+    { label: 'FOR', val: allAvg('stamina'), color: 'var(--success)' },
+  ];
+}
+
 export default function Season({ manager, team, onUpdate, onManagerUpdate, onSeasonEnd }) {
   const [status, setStatus] = useState(null);
   const [lastMatch, setLastMatch] = useState(null);
@@ -22,6 +45,9 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
   const [managementActions, setManagementActions] = useState([]);
   const [pendingEvent, setPendingEvent] = useState(null);
   const [eventResult, setEventResult] = useState(null);
+  const [sponsorResult, setSponsorResult] = useState(null);
+  const [viewingTeam, setViewingTeam] = useState(null);
+  const [viewingPlayers, setViewingPlayers] = useState([]);
   const [liveMatch, setLiveMatch] = useState(null);
   const [liveMinute, setLiveMinute] = useState(0);
   const [liveEvents, setLiveEvents] = useState([]);
@@ -240,7 +266,8 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
   async function handlePlayMatch() {
     setLoading(true);
     try {
-      const result = await api.playMatchday(team.id);
+      const difficulty = localStorage.getItem('footmanager_difficulty') || 'normal';
+      const result = await api.playMatchday(team.id, difficulty);
 
       setLiveMatch(result);
       setLiveMinute(0);
@@ -319,9 +346,9 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
     setLoading(true);
     try {
       const result = await api.chooseSponsor(team.id, sponsorId, manager.id);
-      setMessage(`Sponsor ${result.sponsor.name} signé ! +${(result.sponsor.payment / 1000000).toFixed(0)}M€`);
+      setSponsorResult(result.sponsor);
       setSponsorChosen(true);
-      setView('season');
+      setView('sponsor-result');
       onUpdate({ ...team });
       if (onManagerUpdate) onManagerUpdate({ ...manager, budget: result.newBudget, reputation: result.newReputation });
     } catch (err) {
@@ -381,6 +408,13 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
   function dismissEvent() {
     setPendingEvent(null);
     setEventResult(null);
+  }
+
+  async function handleViewTeam(t) {
+    if (t.id === team.id) return;
+    setViewingTeam(t);
+    const players = await api.getPlayers(t.id);
+    setViewingPlayers(players);
   }
 
   function formatMoney(amount) {
@@ -567,9 +601,13 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
             </thead>
             <tbody>
               {status.standings.map((t, i) => (
-                <tr key={t.id} className={t.id === team.id ? 'my-team' : ''}>
+                <tr
+                  key={t.id}
+                  className={`${t.id === team.id ? 'my-team' : ''} ${t.id !== team.id ? 'clickable-row' : ''}`}
+                  onClick={() => handleViewTeam(t)}
+                >
                   <td className="rank">{i + 1}</td>
-                  <td className="team-name-cell">{t.name}</td>
+                  <td className="team-name-cell">{t.name} {t.id !== team.id && <span className="view-squad-hint">👁</span>}</td>
                   <td className="pts">{t.points}</td>
                   <td>{t.wins}</td>
                   <td>{t.draws}</td>
@@ -581,6 +619,59 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
               ))}
             </tbody>
           </table>
+
+          {viewingTeam && (
+            <div className="viewing-team-panel card">
+              <div className="vt-header">
+                <h3>{viewingTeam.name}</h3>
+                <button className="btn-small" onClick={() => setViewingTeam(null)}>Fermer</button>
+              </div>
+
+              {(() => {
+                const starters = viewingPlayers.filter(p => p.is_starter);
+                const stats = computeTeamStats(starters);
+                if (!stats) return null;
+                return (
+                  <div className="vt-stats">
+                    {stats.map(s => (
+                      <div key={s.label} className="vt-stat-bar">
+                        <div className="vt-bar-header">
+                          <span className="vt-bar-label">{s.label}</span>
+                          <span className="vt-bar-val">{s.val}</span>
+                        </div>
+                        <div className="vt-bar-track">
+                          <div className="vt-bar-fill" style={{ width: `${s.val}%`, background: s.color }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+
+              <div className="vt-players">
+                <div className="vt-section">
+                  <h4>Titulaires</h4>
+                  {viewingPlayers.filter(p => p.is_starter).map(p => (
+                    <div key={p.id} className="vt-player">
+                      <span className={`lp-pos ${posClass(p.position)}`}>{p.position}</span>
+                      <span className="vt-name">{p.first_name} {p.last_name}</span>
+                      <span className="vt-ovr">{p.overall}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="vt-section">
+                  <h4>Remplaçants</h4>
+                  {viewingPlayers.filter(p => !p.is_starter).map(p => (
+                    <div key={p.id} className="vt-player sub">
+                      <span className={`lp-pos ${posClass(p.position)}`}>{p.position}</span>
+                      <span className="vt-name">{p.first_name} {p.last_name}</span>
+                      <span className="vt-ovr">{p.overall}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -602,6 +693,30 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
               Sauvegarder ({players.filter(p => p.is_starter).length}/11)
             </button>
           </div>
+
+          {(() => {
+            const assignedIds = Object.values(slotAssignments);
+            const starters = assignedIds.length > 0
+              ? players.filter(p => assignedIds.includes(p.id))
+              : players.filter(p => p.is_starter);
+            const stats = computeTeamStats(starters);
+            if (!stats) return null;
+            return (
+              <div className="team-stats-overview">
+                {stats.map(s => (
+                  <div key={s.label} className="tso-stat-bar">
+                    <div className="tso-bar-header">
+                      <span className="tso-label">{s.label}</span>
+                      <span className="tso-val">{s.val}</span>
+                    </div>
+                    <div className="tso-bar-track">
+                      <div className="tso-bar-fill" style={{ width: `${s.val}%`, background: s.color }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
 
           <div className="pitch-container">
             <div className="pitch">
@@ -788,13 +903,6 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
                   <span className="sponsor-pay">+{(sponsor.payment / 1000000).toFixed(0)}M€</span>
                 </div>
                 <p className="sponsor-desc">{sponsor.description}</p>
-                <div className="sponsor-effects">
-                  {sponsor.bonus.morale > 0 && <span className="effect-good">Moral +{sponsor.bonus.morale}</span>}
-                  {sponsor.bonus.reputation > 0 && <span className="effect-good">Réputation +{sponsor.bonus.reputation}</span>}
-                  {sponsor.bonus.stamina_boost > 0 && <span className="effect-good">Forme +{sponsor.bonus.stamina_boost}</span>}
-                  {sponsor.malus.morale && <span className="effect-bad">Moral {sponsor.malus.morale}</span>}
-                  {sponsor.malus.reputation && <span className="effect-bad">Réputation {sponsor.malus.reputation}</span>}
-                </div>
                 <button className="btn-primary" onClick={() => handleChooseSponsor(sponsor.id)} disabled={loading}>
                   Signer avec {sponsor.name}
                 </button>
@@ -802,6 +910,66 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
             ))}
           </div>
           <button className="btn-back" onClick={() => setView('season')}>← Retour</button>
+        </div>
+      )}
+
+      {view === 'sponsor-result' && sponsorResult && (
+        <div className="sponsor-result-view">
+          <div className="sponsor-result-card card">
+            <div className="sr-header">
+              <span className="sr-logo">{sponsorResult.logo}</span>
+              <h2>Partenariat signé avec {sponsorResult.name}</h2>
+              <span className="sr-payment">+{(sponsorResult.payment / 1000000).toFixed(0)}M€</span>
+            </div>
+
+            <p className="sr-desc">{sponsorResult.description}</p>
+
+            {(sponsorResult.bonus.morale > 0 || sponsorResult.bonus.reputation > 0 || sponsorResult.bonus.stamina_boost > 0) && (
+              <div className="sr-section sr-bonus">
+                <h3>Bonus</h3>
+                {sponsorResult.bonus.morale > 0 && (
+                  <div className="sr-effect good">
+                    <span className="sr-effect-val">Moral +{sponsorResult.bonus.morale}</span>
+                    <span className="sr-effect-why">L'image du sponsor motive les joueurs</span>
+                  </div>
+                )}
+                {sponsorResult.bonus.reputation > 0 && (
+                  <div className="sr-effect good">
+                    <span className="sr-effect-val">Réputation +{sponsorResult.bonus.reputation}</span>
+                    <span className="sr-effect-why">Un partenaire prestigieux attire les regards</span>
+                  </div>
+                )}
+                {sponsorResult.bonus.stamina_boost > 0 && (
+                  <div className="sr-effect good">
+                    <span className="sr-effect-val">Forme +{sponsorResult.bonus.stamina_boost}</span>
+                    <span className="sr-effect-why">Accès à de meilleures installations</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {(sponsorResult.malus.morale || sponsorResult.malus.reputation) && (
+              <div className="sr-section sr-malus">
+                <h3>Contreparties</h3>
+                {sponsorResult.malus.morale && (
+                  <div className="sr-effect bad">
+                    <span className="sr-effect-val">Moral {sponsorResult.malus.morale}</span>
+                    <span className="sr-effect-why">Les joueurs n'apprécient pas cette association</span>
+                  </div>
+                )}
+                {sponsorResult.malus.reputation && (
+                  <div className="sr-effect bad">
+                    <span className="sr-effect-val">Réputation {sponsorResult.malus.reputation}</span>
+                    <span className="sr-effect-why">L'image du club en prend un coup auprès du public</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <button className="btn-primary sr-continue" onClick={() => { setSponsorResult(null); setView('season'); }}>
+              Continuer la saison
+            </button>
+          </div>
         </div>
       )}
 

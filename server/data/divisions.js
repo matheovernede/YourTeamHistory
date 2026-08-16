@@ -16,7 +16,7 @@ const DIVISIONS = [
   {
     level: 1,
     name: 'Regional 2',
-    overallRange: [52, 62],
+    overallRange: [45, 55],
     budget: 200000,
     prizePool: [50000, 30000, 20000, 15000, 10000],
     teams: [
@@ -38,7 +38,7 @@ const DIVISIONS = [
   {
     level: 2,
     name: 'Regional 1',
-    overallRange: [58, 66],
+    overallRange: [50, 58],
     budget: 500000,
     prizePool: [150000, 100000, 70000, 50000, 30000],
     teams: [
@@ -60,7 +60,7 @@ const DIVISIONS = [
   {
     level: 3,
     name: 'National 3',
-    overallRange: [62, 70],
+    overallRange: [58, 65],
     budget: 1500000,
     prizePool: [400000, 250000, 150000, 100000, 70000],
     teams: [
@@ -82,7 +82,7 @@ const DIVISIONS = [
   {
     level: 4,
     name: 'National 2',
-    overallRange: [65, 73],
+    overallRange: [62, 68],
     budget: 4000000,
     prizePool: [800000, 500000, 350000, 250000, 150000],
     teams: [
@@ -104,7 +104,7 @@ const DIVISIONS = [
   {
     level: 5,
     name: 'National',
-    overallRange: [68, 76],
+    overallRange: [65, 72],
     budget: 8000000,
     prizePool: [2000000, 1200000, 800000, 500000, 350000],
     teams: [
@@ -126,7 +126,7 @@ const DIVISIONS = [
   {
     level: 6,
     name: 'Ligue 2',
-    overallRange: [72, 79],
+    overallRange: [72, 78],
     budget: 15000000,
     prizePool: [5000000, 3000000, 2000000, 1500000, 1000000],
     teams: [
@@ -148,7 +148,7 @@ const DIVISIONS = [
   {
     level: 7,
     name: 'Ligue 1',
-    overallRange: [78, 88],
+    overallRange: [80, 90],
     budget: 50000000,
     prizePool: [20000000, 12000000, 8000000, 5000000, 3000000],
     // Ligue 1 uses real teams from realPlayers.js

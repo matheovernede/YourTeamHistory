@@ -41,7 +41,7 @@ function initTables() {
       id TEXT PRIMARY KEY,
       username TEXT UNIQUE NOT NULL,
       created_at TEXT DEFAULT (datetime('now')),
-      budget INTEGER DEFAULT 30000000,
+      budget INTEGER DEFAULT 20000000,
       reputation INTEGER DEFAULT 50
     )
   `);

@@ -16,7 +16,7 @@ router.post('/register', (req, res) => {
   }
 
   const id = uuid();
-  run('INSERT INTO managers (id, username, budget, reputation) VALUES (?, ?, 30000000, 50)', [id, username.trim()]);
+  run('INSERT INTO managers (id, username, budget, reputation) VALUES (?, ?, 20000000, 50)', [id, username.trim()]);
   const created = queryOne('SELECT * FROM managers WHERE id = ?', [id]);
   res.json({ ...created, existing: false });
 });
@@ -42,7 +42,7 @@ router.post('/reset', (req, res) => {
     run('DELETE FROM players WHERE team_id = ?', [t.id]);
     run('DELETE FROM teams WHERE id = ?', [t.id]);
   }
-  run('UPDATE managers SET budget = 30000000, reputation = 50 WHERE id = ?', [managerId]);
+  run('UPDATE managers SET budget = 20000000, reputation = 50 WHERE id = ?', [managerId]);
 
   const manager = queryOne('SELECT * FROM managers WHERE id = ?', [managerId]);
   res.json(manager);

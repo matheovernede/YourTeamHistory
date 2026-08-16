@@ -37,19 +37,31 @@ router.get('/available', (req, res) => {
 
   let filtered;
   if (divLevel <= 2) {
+    // Regional: max overall 60, only youth/national/low veterans
     filtered = DRAFT_POOL.filter(p => {
-      if (p.tier === 'legend') return Math.random() < legendChance;
-      if (p.tier === 'ligue1') return Math.random() < (0.02 + repBonus * 0.15);
-      if (p.tier === 'ligue2') return Math.random() < (0.4 + repBonus * 0.3);
+      if (p.overall > 60) return false;
+      if (p.tier === 'legend') return false;
+      if (p.tier === 'ligue1') return false;
+      if (p.tier === 'ligue2') return Math.random() < (0.1 + repBonus * 0.2);
       return true;
     });
   } else if (divLevel <= 4) {
+    // National: max overall 72
     filtered = DRAFT_POOL.filter(p => {
-      if (p.tier === 'legend') return Math.random() < legendChance;
+      if (p.overall > 72) return false;
+      if (p.tier === 'legend') return false;
       if (p.tier === 'ligue1') return Math.random() < (0.08 + repBonus * 0.25);
       return true;
     });
+  } else if (divLevel <= 6) {
+    // Ligue 2 / National: max overall 80
+    filtered = DRAFT_POOL.filter(p => {
+      if (p.overall > 80) return false;
+      if (p.tier === 'legend') return Math.random() < legendChance;
+      return true;
+    });
   } else {
+    // Ligue 1: full access
     filtered = DRAFT_POOL.filter(p => {
       if (p.tier === 'legend') return Math.random() < legendChance;
       return true;

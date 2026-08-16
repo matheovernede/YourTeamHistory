@@ -88,7 +88,8 @@ router.post('/:teamId/play-matchday', async (req, res) => {
   const homePlayers = queryAll('SELECT * FROM players WHERE team_id = ?', [team.id]);
   const awayPlayers = queryAll('SELECT * FROM players WHERE team_id = ?', [opponent.id]);
 
-  const result = simulateMatch(homePlayers, awayPlayers);
+  const difficulty = req.body.difficulty || 'normal';
+  const result = simulateMatch(homePlayers, awayPlayers, { difficulty });
   const matchId = uuid();
   const week = played + 1;
 
@@ -269,9 +270,9 @@ function getManagementCosts(divisionLevel) {
   return {
     training: 200000 * scaleFactor,      // 200k -> 14M
     cohesion: 150000 * scaleFactor,      // 150k -> 10.5M
-    fitness: 250000 * scaleFactor,       // 250k -> 17.5M
+    fitness: 500000 * scaleFactor,       // 500k -> 35M
     scout: 400000 * scaleFactor,         // 400k -> 28M
-    medical: 300000 * scaleFactor,       // 300k -> 21M
+    medical: 600000 * scaleFactor,       // 600k -> 42M
   };
 }
 

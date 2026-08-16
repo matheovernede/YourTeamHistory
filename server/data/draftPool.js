@@ -1,4 +1,41 @@
 const DRAFT_POOL = [
+  // --- Amateur (Regional) ---
+  { first_name: 'Kévin', last_name: 'Durand', age: 27, position: 'BU', overall: 52, pace: 62, shooting: 56, passing: 42, dribbling: 50, defending: 18, physical: 60, tier: 'amateur' },
+  { first_name: 'Julien', last_name: 'Petit', age: 31, position: 'BU', overall: 50, pace: 58, shooting: 55, passing: 40, dribbling: 48, defending: 16, physical: 62, tier: 'amateur' },
+  { first_name: 'Dylan', last_name: 'Martin', age: 24, position: 'AID', overall: 53, pace: 68, shooting: 50, passing: 44, dribbling: 58, defending: 15, physical: 48, tier: 'amateur' },
+  { first_name: 'Lucas', last_name: 'Leroy', age: 22, position: 'AIG', overall: 51, pace: 70, shooting: 46, passing: 42, dribbling: 56, defending: 14, physical: 45, tier: 'amateur' },
+  { first_name: 'Hugo', last_name: 'Moreau', age: 20, position: 'AIG', overall: 49, pace: 72, shooting: 44, passing: 40, dribbling: 54, defending: 12, physical: 42, tier: 'amateur' },
+  { first_name: 'Théo', last_name: 'Simon', age: 23, position: 'MC', overall: 52, pace: 55, shooting: 48, passing: 56, dribbling: 52, defending: 48, physical: 55, tier: 'amateur' },
+  { first_name: 'Maxime', last_name: 'Laurent', age: 28, position: 'MC', overall: 54, pace: 52, shooting: 50, passing: 58, dribbling: 54, defending: 52, physical: 58, tier: 'amateur' },
+  { first_name: 'Nathan', last_name: 'Michel', age: 25, position: 'MC', overall: 53, pace: 56, shooting: 49, passing: 57, dribbling: 53, defending: 50, physical: 56, tier: 'amateur' },
+  { first_name: 'Romain', last_name: 'Garcia', age: 30, position: 'MC', overall: 55, pace: 50, shooting: 52, passing: 60, dribbling: 55, defending: 54, physical: 60, tier: 'amateur' },
+  { first_name: 'Axel', last_name: 'Roux', age: 26, position: 'MC', overall: 51, pace: 54, shooting: 46, passing: 55, dribbling: 50, defending: 48, physical: 54, tier: 'amateur' },
+  { first_name: 'Clément', last_name: 'Fournier', age: 29, position: 'DC', overall: 54, pace: 50, shooting: 22, passing: 42, dribbling: 35, defending: 60, physical: 62, tier: 'amateur' },
+  { first_name: 'Antoine', last_name: 'Girard', age: 32, position: 'DC', overall: 55, pace: 45, shooting: 20, passing: 40, dribbling: 32, defending: 62, physical: 65, tier: 'amateur' },
+  { first_name: 'Quentin', last_name: 'Bonnet', age: 24, position: 'DC', overall: 52, pace: 55, shooting: 18, passing: 40, dribbling: 35, defending: 58, physical: 60, tier: 'amateur' },
+  { first_name: 'Baptiste', last_name: 'Mercier', age: 27, position: 'DC', overall: 53, pace: 48, shooting: 20, passing: 42, dribbling: 36, defending: 59, physical: 62, tier: 'amateur' },
+  { first_name: 'Florian', last_name: 'Blanc', age: 26, position: 'ARG', overall: 51, pace: 60, shooting: 30, passing: 48, dribbling: 48, defending: 55, physical: 54, tier: 'amateur' },
+  { first_name: 'Adrien', last_name: 'Faure', age: 28, position: 'ARG', overall: 52, pace: 58, shooting: 28, passing: 50, dribbling: 46, defending: 56, physical: 56, tier: 'amateur' },
+  { first_name: 'Vincent', last_name: 'Guérin', age: 23, position: 'ARD', overall: 50, pace: 62, shooting: 28, passing: 46, dribbling: 48, defending: 54, physical: 52, tier: 'amateur' },
+  { first_name: 'Pierre', last_name: 'Muller', age: 25, position: 'ARD', overall: 53, pace: 64, shooting: 32, passing: 48, dribbling: 50, defending: 56, physical: 55, tier: 'amateur' },
+  { first_name: 'Nicolas', last_name: 'Perrin', age: 30, position: 'GAR', overall: 52, pace: 28, shooting: 8, passing: 38, dribbling: 15, defending: 55, physical: 55, tier: 'amateur' },
+  { first_name: 'Thomas', last_name: 'Rousseau', age: 26, position: 'GAR', overall: 50, pace: 26, shooting: 6, passing: 36, dribbling: 14, defending: 53, physical: 52, tier: 'amateur' },
+  { first_name: 'Corentin', last_name: 'Lambert', age: 22, position: 'GAR', overall: 48, pace: 24, shooting: 5, passing: 34, dribbling: 12, defending: 50, physical: 50, tier: 'amateur' },
+  { first_name: 'Mehdi', last_name: 'Garnier', age: 24, position: 'BU', overall: 55, pace: 65, shooting: 58, passing: 44, dribbling: 54, defending: 16, physical: 58, tier: 'amateur' },
+  { first_name: 'Youssef', last_name: 'Legrand', age: 21, position: 'AID', overall: 50, pace: 70, shooting: 45, passing: 40, dribbling: 55, defending: 12, physical: 44, tier: 'amateur' },
+  { first_name: 'Karim', last_name: 'Henry', age: 29, position: 'MC', overall: 56, pace: 52, shooting: 54, passing: 60, dribbling: 56, defending: 52, physical: 58, tier: 'amateur' },
+  { first_name: 'Sofiane', last_name: 'Diallo', age: 23, position: 'AIG', overall: 52, pace: 68, shooting: 48, passing: 44, dribbling: 56, defending: 14, physical: 46, tier: 'amateur' },
+  { first_name: 'Ibrahim', last_name: 'Camara', age: 20, position: 'DC', overall: 49, pace: 58, shooting: 16, passing: 38, dribbling: 32, defending: 55, physical: 56, tier: 'amateur' },
+  { first_name: 'Moussa', last_name: 'Traoré', age: 27, position: 'ARD', overall: 54, pace: 62, shooting: 30, passing: 50, dribbling: 50, defending: 58, physical: 58, tier: 'amateur' },
+  { first_name: 'Mamadou', last_name: 'Koné', age: 25, position: 'DC', overall: 55, pace: 54, shooting: 20, passing: 42, dribbling: 36, defending: 62, physical: 64, tier: 'amateur' },
+  { first_name: 'Omar', last_name: 'Bamba', age: 22, position: 'BU', overall: 50, pace: 66, shooting: 52, passing: 38, dribbling: 50, defending: 14, physical: 52, tier: 'amateur' },
+  { first_name: 'Bilal', last_name: 'Touré', age: 26, position: 'MC', overall: 53, pace: 56, shooting: 50, passing: 56, dribbling: 52, defending: 50, physical: 56, tier: 'amateur' },
+  { first_name: 'Erwan', last_name: 'Coulibaly', age: 28, position: 'ARG', overall: 53, pace: 60, shooting: 30, passing: 50, dribbling: 49, defending: 57, physical: 56, tier: 'amateur' },
+  { first_name: 'Loïc', last_name: 'Fernandez', age: 33, position: 'GAR', overall: 54, pace: 28, shooting: 8, passing: 40, dribbling: 16, defending: 58, physical: 58, tier: 'amateur' },
+  { first_name: 'Cédric', last_name: 'Lopez', age: 31, position: 'DC', overall: 56, pace: 48, shooting: 22, passing: 44, dribbling: 38, defending: 62, physical: 66, tier: 'amateur' },
+  { first_name: 'Franck', last_name: 'Pereira', age: 34, position: 'BU', overall: 52, pace: 55, shooting: 58, passing: 42, dribbling: 48, defending: 14, physical: 60, tier: 'amateur' },
+  { first_name: 'Sébastien', last_name: 'Da Silva', age: 30, position: 'MC', overall: 54, pace: 50, shooting: 52, passing: 58, dribbling: 54, defending: 52, physical: 58, tier: 'amateur' },
+
   // --- Ligue 1 (milieu/bas de tableau) ---
   { first_name: 'Steve', last_name: 'Mounié', age: 31, position: 'BU', overall: 72, pace: 68, shooting: 74, passing: 58, dribbling: 65, defending: 28, physical: 80, tier: 'ligue1' },
   { first_name: 'Gaëtan', last_name: 'Laborde', age: 32, position: 'BU', overall: 74, pace: 72, shooting: 76, passing: 68, dribbling: 72, defending: 35, physical: 74, tier: 'ligue1' },
@@ -57,14 +94,14 @@ const DRAFT_POOL = [
   { first_name: 'Anthony', last_name: 'Petit', age: 26, position: 'ARG', overall: 61, pace: 72, shooting: 38, passing: 58, dribbling: 58, defending: 64, physical: 68, tier: 'national' },
   { first_name: 'Dylan', last_name: 'Robert', age: 24, position: 'AID', overall: 62, pace: 80, shooting: 58, passing: 52, dribbling: 66, defending: 20, physical: 55, tier: 'national' },
   { first_name: 'Hugo', last_name: 'Moreau', age: 22, position: 'MC', overall: 61, pace: 68, shooting: 55, passing: 62, dribbling: 62, defending: 58, physical: 65, tier: 'national' },
-  { first_name: 'Nicolas', last_name: 'Laurent', age: 30, position: 'GAR', overall: 63, pace: 32, shooting: 8, passing: 42, dribbling: 18, defending: 64, physical: 68, tier: 'national' },
+  { first_name: 'Nicolas', last_name: 'Laurent', age: 30, position: 'GAR', overall: 63, pace: 32, shooting: 13, passing: 42, dribbling: 18, defending: 64, physical: 68, tier: 'national' },
   { first_name: 'Adrien', last_name: 'Simon', age: 28, position: 'MC', overall: 63, pace: 65, shooting: 58, passing: 64, dribbling: 62, defending: 62, physical: 68, tier: 'national' },
   { first_name: 'Lucas', last_name: 'Michel', age: 21, position: 'AIG', overall: 60, pace: 82, shooting: 55, passing: 52, dribbling: 68, defending: 18, physical: 52, tier: 'national' },
   { first_name: 'Vincent', last_name: 'Lefebvre', age: 33, position: 'DC', overall: 64, pace: 55, shooting: 30, passing: 50, dribbling: 42, defending: 70, physical: 76, tier: 'national' },
   { first_name: 'Pierre', last_name: 'Leroy', age: 25, position: 'ARD', overall: 62, pace: 74, shooting: 40, passing: 56, dribbling: 58, defending: 66, physical: 68, tier: 'national' },
   { first_name: 'Julien', last_name: 'Roux', age: 31, position: 'BU', overall: 63, pace: 70, shooting: 68, passing: 48, dribbling: 60, defending: 18, physical: 72, tier: 'national' },
   { first_name: 'Théo', last_name: 'David', age: 20, position: 'MOC', overall: 61, pace: 72, shooting: 58, passing: 64, dribbling: 68, defending: 24, physical: 50, tier: 'national' },
-  { first_name: 'Corentin', last_name: 'Bertrand', age: 23, position: 'GAR', overall: 61, pace: 30, shooting: 8, passing: 40, dribbling: 16, defending: 62, physical: 66, tier: 'national' },
+  { first_name: 'Corentin', last_name: 'Bertrand', age: 23, position: 'GAR', overall: 61, pace: 30, shooting: 13, passing: 40, dribbling: 16, defending: 62, physical: 66, tier: 'national' },
   { first_name: 'Alexis', last_name: 'Morel', age: 27, position: 'ARG', overall: 63, pace: 74, shooting: 35, passing: 58, dribbling: 56, defending: 66, physical: 70, tier: 'national' },
 
   // --- Jeunes prometteurs (centres de formation) ---
@@ -74,7 +111,7 @@ const DRAFT_POOL = [
   { first_name: 'Naoufel', last_name: 'Bonnet', age: 19, position: 'AID', overall: 62, pace: 82, shooting: 58, passing: 56, dribbling: 70, defending: 20, physical: 52, tier: 'youth' },
   { first_name: 'Ibrahim', last_name: 'Lambert', age: 18, position: 'DC', overall: 60, pace: 72, shooting: 25, passing: 48, dribbling: 45, defending: 65, physical: 68, tier: 'youth' },
   { first_name: 'Rayan', last_name: 'Fontaine', age: 17, position: 'MOC', overall: 60, pace: 74, shooting: 58, passing: 65, dribbling: 70, defending: 20, physical: 42, tier: 'youth' },
-  { first_name: 'Samy', last_name: 'Rousseau', age: 19, position: 'GAR', overall: 59, pace: 32, shooting: 8, passing: 40, dribbling: 16, defending: 60, physical: 62, tier: 'youth' },
+  { first_name: 'Samy', last_name: 'Rousseau', age: 19, position: 'GAR', overall: 59, pace: 32, shooting: 14, passing: 40, dribbling: 16, defending: 60, physical: 62, tier: 'youth' },
   { first_name: 'Nolan', last_name: 'Vincent', age: 18, position: 'ARD', overall: 60, pace: 78, shooting: 38, passing: 55, dribbling: 60, defending: 62, physical: 60, tier: 'youth' },
   { first_name: 'Ayman', last_name: 'Muller', age: 19, position: 'ARG', overall: 61, pace: 76, shooting: 35, passing: 58, dribbling: 60, defending: 64, physical: 62, tier: 'youth' },
   { first_name: 'Eliott', last_name: 'Lefevre', age: 17, position: 'MC', overall: 59, pace: 68, shooting: 52, passing: 62, dribbling: 64, defending: 52, physical: 52, tier: 'youth' },
@@ -119,6 +156,7 @@ const DRAFT_POOL = [
 ];
 
 const TIER_PRICES = {
+  amateur: { min: 50000, max: 500000 },
   youth: { min: 200000, max: 1500000 },
   national: { min: 300000, max: 2000000 },
   ligue2: { min: 800000, max: 4000000 },
@@ -130,10 +168,10 @@ const TIER_PRICES = {
 function calculateDraftPrice(player) {
   if (player.fixedPrice) return player.fixedPrice;
   const range = TIER_PRICES[player.tier] || TIER_PRICES.ligue2;
-  const overallFactor = (player.overall - 55) / 30;
+  const overallFactor = Math.max(0, Math.min(1, (player.overall - 40) / 50));
   const ageFactor = player.age < 23 ? 1.3 : player.age > 32 ? 0.6 : 1.0;
   const base = range.min + (range.max - range.min) * overallFactor;
-  return Math.round(base * ageFactor / 100000) * 100000;
+  return Math.max(range.min, Math.round(base * ageFactor / 50000) * 50000);
 }
 
 module.exports = { DRAFT_POOL, calculateDraftPrice };

@@ -38,7 +38,7 @@ export const api = {
   draftFinish: (managerId, teamId) => request('/draft/finish', { method: 'POST', body: JSON.stringify({ managerId, teamId }) }),
 
   getSeasonStatus: (teamId) => request(`/season/${teamId}/status`),
-  playMatchday: (teamId) => request(`/season/${teamId}/play-matchday`, { method: 'POST' }),
+  playMatchday: (teamId, difficulty) => request(`/season/${teamId}/play-matchday`, { method: 'POST', body: JSON.stringify({ difficulty }) }),
   getSponsors: (teamId) => request(`/season/${teamId}/sponsors`),
   chooseSponsor: (teamId, sponsorId, managerId) => request(`/season/${teamId}/choose-sponsor`, { method: 'POST', body: JSON.stringify({ sponsorId, managerId }) }),
   endSeason: (teamId, managerId) => request(`/season/${teamId}/end-season`, { method: 'POST', body: JSON.stringify({ managerId }) }),
