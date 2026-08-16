@@ -10,7 +10,8 @@
     "build": "cd client && npm install --include=dev && npm run build",
     "start": "node server/index.js",
     "setup": "npm install && cd client && npm install",
-    "db:seed": "node server/db/seed.js"
+    "db:seed": "node server/db/seed.js",
+    "test": "node --test \"server/test/*.test.js\""
   },
   "dependencies": {
     "cors": "^2.8.5",

@@ -154,12 +154,44 @@ function calculateExpectedGoals(home, away, homeAdvantage = 0.25) {
 }
 
 /**
- * `difficulty` est volontairement ignoré ici : la difficulté agit sur le niveau
- * des équipes IA au moment du seed, pas sur la simulation elle-même.
+ * Bonus appliqué à l'adversaire du joueur selon la difficulté.
+ * En facile l'IA est légèrement bridée, en difficile elle est renforcée : cela
+ * s'ajoute à l'écart de niveau déjà créé au moment du seed.
  */
-function simulateMatch(homePlayers, awayPlayers, { homeFormation = null, awayFormation = null } = {}) {
-  const home = analyzeTeam(homePlayers, homeFormation);
-  const away = analyzeTeam(awayPlayers, awayFormation);
+const DIFFICULTY_EDGE = { easy: -0.06, normal: 0, hard: 0.08 };
+
+function applyDifficulty(ratings, edge) {
+  if (!edge) return ratings;
+  const scale = 1 + edge;
+  return {
+    ...ratings,
+    attack: ratings.attack * scale,
+    midfield: ratings.midfield * scale,
+    defense: ratings.defense * scale,
+  };
+}
+
+/**
+ * @param {object} opts
+ * @param {string} opts.difficulty      'easy' | 'normal' | 'hard'
+ * @param {boolean} opts.homeIsPlayer   true si l'équipe à domicile est celle du joueur.
+ *                                      Sert à savoir quel camp est l'IA à ajuster.
+ */
+function simulateMatch(homePlayers, awayPlayers, {
+  homeFormation = null,
+  awayFormation = null,
+  difficulty = 'normal',
+  homeIsPlayer = true,
+} = {}) {
+  let home = analyzeTeam(homePlayers, homeFormation);
+  let away = analyzeTeam(awayPlayers, awayFormation);
+
+  // La difficulté renforce ou bride l'adversaire, jamais l'équipe du joueur.
+  const edge = DIFFICULTY_EDGE[difficulty] ?? 0;
+  if (edge) {
+    if (homeIsPlayer) away = applyDifficulty(away, edge);
+    else home = applyDifficulty(home, edge);
+  }
 
   const homeSlots = homeFormation ? getFormationSlots(homeFormation) : null;
   const awaySlots = awayFormation ? getFormationSlots(awayFormation) : null;
@@ -208,24 +240,75 @@ function simulateMatch(homePlayers, awayPlayers, { homeFormation = null, awayFor
       type: 'goal',
       team: goal.team,
       player: scorer ? `${scorer.first_name} ${scorer.last_name}` : 'Inconnu',
+      playerId: scorer ? scorer.id : null,
     });
   }
 
-  // Yellow cards
+  // ---- Discipline ----
+  // Les identifiants sont joints aux événements : sans eux, impossible de créditer
+  // le bon joueur en base (les homonymes existent).
+  const cards = { home: [], away: [] };
   const numCards = Math.floor(Math.random() * 4) + 1;
   for (let i = 0; i < numCards; i++) {
     const minute = Math.floor(Math.random() * 90) + 1;
     const team = Math.random() < 0.5 ? 'home' : 'away';
     const squad = team === 'home' ? homePlayers : awayPlayers;
     const starters = squad.filter(p => p.is_starter);
+    if (!starters.length) continue;
     const carded = starters[Math.floor(Math.random() * starters.length)];
-    if (carded) {
-      events.push({ minute, type: 'yellow_card', team, player: `${carded.first_name} ${carded.last_name}` });
+    if (!carded) continue;
+
+    // Un carton sur dix est un rouge direct.
+    const isRed = Math.random() < 0.10;
+    events.push({
+      minute,
+      type: isRed ? 'red_card' : 'yellow_card',
+      team,
+      player: `${carded.first_name} ${carded.last_name}`,
+      playerId: carded.id,
+    });
+    cards[team].push({ playerId: carded.id, red: isRed });
+  }
+
+  // ---- Blessures ----
+  // Un joueur émoussé se blesse plus facilement : la forme physique devient un
+  // vrai enjeu de rotation, au-delà du simple rendement.
+  const injuries = { home: [], away: [] };
+  for (const team of ['home', 'away']) {
+    const squad = team === 'home' ? homePlayers : awayPlayers;
+    const starters = squad.filter(p => p.is_starter);
+    if (!starters.length) continue;
+
+    for (const p of starters) {
+      const fatigue = Math.max(0, (60 - (p.stamina ?? 100)) / 60); // 0 à 1
+      const chance = 0.006 + fatigue * 0.028;                      // 0,6% à 3,4%
+      if (Math.random() >= chance) continue;
+
+      const severity = Math.random();
+      const weeks = severity < 0.6 ? 1 + Math.floor(Math.random() * 2)   // légère : 1-2
+                  : severity < 0.9 ? 3 + Math.floor(Math.random() * 3)   // moyenne : 3-5
+                  : 6 + Math.floor(Math.random() * 5);                   // grave : 6-10
+      injuries[team].push({ playerId: p.id, matches: weeks });
+      events.push({
+        minute: Math.floor(Math.random() * 90) + 1,
+        type: 'injury',
+        team,
+        player: `${p.first_name} ${p.last_name}`,
+        playerId: p.id,
+        matches: weeks,
+      });
+      break; // au plus une blessure par équipe et par match
     }
   }
 
   events.sort((a, b) => a.minute - b.minute);
-  return { homeGoals, awayGoals, events };
+
+  // `scorers` permet de créditer les buts sans réanalyser les chaînes de texte.
+  const scorers = events
+    .filter(e => e.type === 'goal' && e.playerId)
+    .map(e => ({ playerId: e.playerId, team: e.team }));
+
+  return { homeGoals, awayGoals, events, cards, injuries, scorers };
 }
 
 /**

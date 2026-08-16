@@ -2,6 +2,7 @@ const express = require('express');
 const { v4: uuid } = require('uuid');
 const { getDb, queryOne, queryAll, run, saveDb } = require('../db/schema');
 const { isValidFormation, getFormationSlots, getPositionGroup } = require('../data/formations');
+const { isAvailable, unavailabilityReason } = require('../engine/discipline');
 
 const router = express.Router();
 
@@ -61,7 +62,12 @@ router.put('/:teamId/lineup', async (req, res) => {
   if (!team) return res.status(404).json({ error: 'Équipe non trouvée' });
 
   const formationSlots = getFormationSlots(team.formation);
-  const squad = queryAll('SELECT id, position FROM players WHERE team_id = ?', [teamId]);
+  // Les colonnes de disponibilité et le nom sont nécessaires pour refuser
+  // clairement un joueur suspendu ou blessé.
+  const squad = queryAll(
+    'SELECT id, first_name, last_name, position, suspended_matches, injured_matches FROM players WHERE team_id = ?',
+    [teamId]
+  );
   const squadById = new Map(squad.map(p => [p.id, p]));
 
   // Détermine le placement final : soit fourni, soit reconstruit depuis starterIds.
@@ -88,6 +94,17 @@ router.put('/:teamId/lineup', async (req, res) => {
   const unknown = filled.find(id => !squadById.has(id));
   if (unknown) {
     return res.status(400).json({ error: 'Un joueur sélectionné n\'appartient pas à l\'équipe' });
+  }
+
+  // Un joueur suspendu ou blessé ne peut pas être aligné.
+  const indisponibles = filled
+    .map(id => squadById.get(id))
+    .filter(p => p && !isAvailable(p))
+    .map(p => `${p.first_name} ${p.last_name} (${unavailabilityReason(p)})`);
+  if (indisponibles.length) {
+    return res.status(400).json({
+      error: `Joueur${indisponibles.length > 1 ? 's' : ''} indisponible${indisponibles.length > 1 ? 's' : ''} : ${indisponibles.join(', ')}`,
+    });
   }
 
   // Écriture groupée : un seul flush disque au lieu d'un par joueur.

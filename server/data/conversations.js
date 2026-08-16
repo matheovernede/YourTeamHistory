@@ -875,6 +875,83 @@ const CONVERSATIONS = [
       { id: 'defend', text: "Le staff fait bien son travail. C'est vous qui manquez d'engagement.", effects: { morale: -12, stamina: -5 }, response: "Bien reçu... on va serrer les dents alors." },
     ],
   },
+
+  // ============================================================
+  // DÉPART — le joueur a officiellement demandé à partir
+  // `clear_discontent` enterre la procédure, `force_transfer` la précipite.
+  // ============================================================
+  {
+    id: 'transfer_request_talk',
+    title: 'Il veut partir',
+    weight: 6,
+    when: p => !!p.transfer_request,
+    message: "Coach, j'ai réfléchi longtemps. J'ai demandé à partir et je maintiens ma décision. Je ne me sens plus à ma place ici.",
+    choices: [
+      { id: 'convince', text: "Reste. Je te promets un rôle central dès la semaine prochaine.", effects: { morale: 25, clear_discontent: true }, response: "Vous me prenez à contre-pied... d'accord, je retire ma demande." },
+      { id: 'money', text: "Je revalorise ton contrat. Tu es important pour ce club.", effects: { morale: 20, budget: -120000, clear_discontent: true }, response: "Ça change tout, coach. Je reste et je le prouverai." },
+      { id: 'accept', text: "Je ne retiens personne. Tu partiras en fin de saison.", effects: { morale: -8, force_transfer: true }, response: "Au moins c'est clair. Je finirai la saison correctement." },
+    ],
+  },
+  {
+    id: 'wants_out_playtime',
+    title: 'Un départ pour jouer',
+    weight: 5,
+    when: p => !!p.transfer_request && !p.is_starter,
+    message: "Coach, je pars parce que je ne joue pas. C'est aussi simple que ça. Donnez-moi du temps de jeu ou laissez-moi partir.",
+    choices: [
+      { id: 'starter', text: "Tu es titulaire au prochain match. Parole donnée.", effects: { morale: 22, clear_discontent: true }, response: "C'est tout ce que je demandais. Je retire ma demande." },
+      { id: 'rotation', text: "Je te garantis une place dans la rotation, pas plus.", effects: { morale: 10 }, response: "Hmm... c'est mieux que rien. Je réfléchis encore." },
+      { id: 'refuse', text: "Tu joueras quand tu auras le niveau. Pas avant.", effects: { morale: -14, force_transfer: true }, response: "Alors je n'ai plus rien à faire ici. Merci quand même." },
+    ],
+  },
+  {
+    id: 'wants_out_ambition',
+    title: 'Trop grand pour le club',
+    weight: 5,
+    when: (p, ctx) => !!p.transfer_request && p.overall > 46 + ctx.division * 6 + 12,
+    message: "Coach, vous savez comme moi que j'ai le niveau pour jouer plus haut. Ce n'est pas contre vous, mais je dois penser à ma carrière.",
+    choices: [
+      { id: 'project', text: "On monte cette année, et tu montes avec nous. Reste.", effects: { morale: 20, clear_discontent: true }, response: "Vous me donnez une raison d'y croire. Je reste." },
+      { id: 'captain', text: "Je fais de toi le pilier du projet, avec le brassard.", effects: { morale: 24, clear_discontent: true }, response: "Là vous me touchez. J'oublie mon départ." },
+      { id: 'let_go', text: "Tu as raison, tu mérites mieux. Je te laisse partir.", effects: { morale: 6, force_transfer: true }, response: "Merci de votre honnêteté, coach. Ça me touche." },
+    ],
+  },
+  {
+    id: 'unhappy_warning',
+    title: 'Avant qu\'il ne soit trop tard',
+    weight: 5,
+    when: p => !p.transfer_request && (p.unhappy_streak || 0) >= 2,
+    message: "Coach, je préfère vous le dire en face plutôt que dans le dos : ça ne va pas. Si rien ne change, je vais demander à partir.",
+    choices: [
+      { id: 'listen', text: "Dis-moi précisément ce qui cloche, on va le régler.", effects: { morale: 18, clear_discontent: true }, response: "Merci de m'écouter. Ça suffit à me remettre d'aplomb." },
+      { id: 'effort', text: "Je vais faire un effort, mais toi aussi sur le terrain.", effects: { morale: 10 }, response: "Marché honnête. Je m'y tiens." },
+      { id: 'dismiss', text: "Tout le monde n'est pas content. C'est le métier.", effects: { morale: -12 }, response: "...Vous venez de prendre votre décision, pas moi." },
+    ],
+  },
+  {
+    id: 'dressing_room_split',
+    title: 'Le vestiaire se vide',
+    weight: 3,
+    when: (p, ctx) => !p.transfer_request && p.morale >= 60 && ctx.squad.some(x => x.transfer_request),
+    message: "Coach, plusieurs gars veulent partir et ça se sent à l'entraînement. Le groupe se délite, il faut faire quelque chose.",
+    choices: [
+      { id: 'meeting', text: "Réunion générale demain. On remet tout à plat.", effects: { morale: 14 }, response: "Il était temps. Ça va faire du bien à tout le monde." },
+      { id: 'core', text: "Ceux qui veulent partir partiront. On construit avec les autres.", effects: { morale: 10, overall: 1 }, response: "Message clair. Ceux qui restent seront soudés." },
+      { id: 'deny', text: "Il n'y a aucun problème dans ce vestiaire.", effects: { morale: -10 }, response: "Fermer les yeux ne réglera rien, coach." },
+    ],
+  },
+  {
+    id: 'farewell',
+    title: 'Les adieux',
+    weight: 3,
+    when: (p, ctx) => !!p.transfer_request && (p.unhappy_streak || 0) >= 8 && ctx.played >= 20,
+    message: "Coach, la saison se termine et je pars. Je voulais vous remercier malgré tout, j'ai appris ici.",
+    choices: [
+      { id: 'honor', text: "Tu auras un hommage au dernier match. Tu le mérites.", effects: { morale: 20 }, response: "Ça me touche énormément. Merci pour tout." },
+      { id: 'lastchance', text: "Il est encore temps de changer d'avis, tu sais.", effects: { morale: 16, clear_discontent: true }, response: "...Vous êtes tenace. D'accord, je reste." },
+      { id: 'cold', text: "Bonne continuation. Le club te remplacera.", effects: { morale: -10 }, response: "Voilà qui confirme que j'ai fait le bon choix." },
+    ],
+  },
 ];
 
 /**

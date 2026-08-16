@@ -1,4 +1,4 @@
-const { getDb, queryOne, run, saveDb } = require('./schema');
+const { getDb, queryOne, queryAll, run, saveDb } = require('./schema');
 const { v4: uuid } = require('uuid');
 const { DIVISIONS } = require('../data/divisions');
 const { REAL_TEAMS } = require('../data/realPlayers');
@@ -137,9 +137,20 @@ async function seedDivision(divisionLevel, difficulty) {
   // Ensure AI manager exists
   db.run("INSERT OR IGNORE INTO managers (id, username, budget) VALUES ('AI', 'CPU', 999999999)");
 
+  // Idempotence : sans ce garde-fou, appeler seedDivision sur une division déjà
+  // peuplée créait des équipes en double dans le même championnat.
+  // On saute donc tout nom déjà présent, quelle que soit la division.
+  const dejaPresents = new Set(
+    queryAll('SELECT name FROM teams').map(t => (t.name || '').toLowerCase())
+  );
+  const existeDeja = (nom) => dejaPresents.has((nom || '').toLowerCase());
+  let ignorees = 0;
+
   if (divisionLevel === 7 && REAL_TEAMS && REAL_TEAMS.length > 0) {
     // Ligue 1: use real teams
     for (const team of REAL_TEAMS) {
+      if (existeDeja(team.name)) { ignorees++; continue; }
+      dejaPresents.add(team.name.toLowerCase());
       const teamId = uuid();
       db.run("INSERT INTO teams (id, manager_id, name, formation, division) VALUES (?, 'AI', ?, ?, ?)",
         [teamId, team.name, team.formation, divisionLevel]);
@@ -163,13 +174,15 @@ async function seedDivision(divisionLevel, difficulty) {
         );
       }
     }
-    console.log(`Seeded ${REAL_TEAMS.length} real teams for Ligue 1.`);
+    console.log(`Seeded ${REAL_TEAMS.length - ignorees} real teams for Ligue 1${ignorees ? ` (${ignorees} already present, skipped)` : ''}.`);
   } else {
     // Generate procedural teams - difficulty affects AI overall
     // easy: AI teams are weaker (-3), normal: as-is, hard: AI teams are stronger (+3)
     const diffOffset = difficulty === 'easy' ? -3 : difficulty === 'hard' ? 3 : 0;
     const [overallMin, overallMax] = [division.overallRange[0] + diffOffset, division.overallRange[1] + diffOffset];
     for (const teamDef of division.teams) {
+      if (existeDeja(teamDef.name)) { ignorees++; continue; }
+      dejaPresents.add(teamDef.name.toLowerCase());
       const teamId = uuid();
       db.run("INSERT INTO teams (id, manager_id, name, formation, division) VALUES (?, 'AI', ?, ?, ?)",
         [teamId, teamDef.name, teamDef.formation, divisionLevel]);
@@ -194,7 +207,37 @@ async function seedDivision(divisionLevel, difficulty) {
         );
       }
     }
-    console.log(`Seeded ${division.teams.length} teams for ${division.name} (division ${divisionLevel}).`);
+    console.log(`Seeded ${division.teams.length - ignorees} teams for ${division.name} (division ${divisionLevel})${ignorees ? `, ${ignorees} already present` : ''}.`);
+
+    // Si les équipes canoniques de la division sont déjà prises ailleurs — elles
+    // ont pu monter ou descendre au fil des saisons — on complète avec des noms
+    // générés. Sans cela, une division vidée ne pouvait plus jamais se remplir.
+    const cible = division.teams.length;
+    let presentes = queryAll(
+      "SELECT id FROM teams WHERE manager_id = 'AI' AND division = ?", [divisionLevel]
+    ).length;
+
+    const { uniqueClubName } = require('../data/cup');
+    let garde = 0;
+    while (presentes < cible && garde++ < 60) {
+      const nom = uniqueClubName([...dejaPresents]);
+      dejaPresents.add(nom.toLowerCase());
+
+      const teamId = uuid();
+      db.run("INSERT INTO teams (id, manager_id, name, formation, division) VALUES (?, 'AI', ?, '4-4-2', ?)",
+        [teamId, nom, divisionLevel]);
+
+      const joueurs = generateTeamPlayers(overallMin, overallMax);
+      joueurs.forEach((p, i) => {
+        const value = Math.max(10000, Math.round(p.overall * p.overall * 80 * (1 - (p.age - 25) * 0.015)));
+        db.run(
+          "INSERT INTO players (id, team_id, first_name, last_name, age, position, overall, pace, shooting, passing, dribbling, defending, physical, stamina, morale, value, is_starter) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,100,?,?,?)",
+          [uuid(), teamId, p.first_name, p.last_name, p.age, p.position, p.overall, p.pace, p.shooting,
+           p.passing, p.dribbling, p.defending, p.physical, i < 11 ? 70 : 65, value, i < 11 ? 1 : 0]
+        );
+      });
+      presentes++;
+    }
   }
 
   saveDb();

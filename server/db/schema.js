@@ -153,6 +153,58 @@ function initTables() {
   } catch (e) {
     // Column already exists, ignore
   }
+
+  // Migrations : discipline, blessures et statistiques individuelles.
+  // Chaque ALTER est isolé : si une colonne existe déjà, les autres passent
+  // quand même (une seule instruction groupée échouerait en bloc).
+  const playerColumns = [
+    'yellow_cards INTEGER DEFAULT 0',      // cumul sur la saison
+    'red_cards INTEGER DEFAULT 0',
+    'suspended_matches INTEGER DEFAULT 0', // journées de suspension restantes
+    'injured_matches INTEGER DEFAULT 0',   // journées d'indisponibilité restantes
+    'appearances INTEGER DEFAULT 0',       // matchs joués sur la saison
+    'goals INTEGER DEFAULT 0',
+    'career_appearances INTEGER DEFAULT 0',
+    'career_goals INTEGER DEFAULT 0',
+    'unhappy_streak INTEGER DEFAULT 0',   // journées consécutives de mécontentement
+    'transfer_request INTEGER DEFAULT 0', // 1 = a officiellement demandé à partir
+  ];
+  for (const col of playerColumns) {
+    try { db.run(`ALTER TABLE players ADD COLUMN ${col}`); } catch (e) { /* déjà présente */ }
+  }
+
+  const teamColumns = [
+    'cup_data TEXT',              // état de la coupe nationale
+    'titles INTEGER DEFAULT 0',   // championnats remportés
+    'cups INTEGER DEFAULT 0',     // coupes remportées
+  ];
+  for (const col of teamColumns) {
+    try { db.run(`ALTER TABLE teams ADD COLUMN ${col}`); } catch (e) { /* déjà présente */ }
+  }
+
+  // Historique des saisons : sans lui, la carrière n'a aucune mémoire.
+  db.run(`
+    CREATE TABLE IF NOT EXISTS season_history (
+      id TEXT PRIMARY KEY,
+      team_id TEXT NOT NULL,
+      season INTEGER NOT NULL,
+      division INTEGER NOT NULL,
+      division_name TEXT,
+      rank INTEGER,
+      points INTEGER,
+      wins INTEGER,
+      draws INTEGER,
+      losses INTEGER,
+      goals_for INTEGER,
+      goals_against INTEGER,
+      promoted INTEGER DEFAULT 0,
+      relegated INTEGER DEFAULT 0,
+      cup_result TEXT,
+      top_scorer TEXT,
+      top_scorer_goals INTEGER,
+      created_at TEXT DEFAULT (datetime('now'))
+    )
+  `);
 }
 
 function queryAll(sql, params = []) {

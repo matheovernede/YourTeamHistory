@@ -53,6 +53,12 @@ export const api = {
   resolveEvent: (teamId, eventId, choiceId, managerId) => request(`/season/${teamId}/resolve-event`, { method: 'POST', body: JSON.stringify({ eventId, choiceId, managerId }) }),
 
   // Champions League
+  getCupStatus: (teamId) => request(`/season/${teamId}/cup/status`),
+  playCupMatch: (teamId, difficulty) => request(`/season/${teamId}/cup/play`, { method: 'POST', body: JSON.stringify({ difficulty }) }),
+  getSeasonHistory: (teamId) => request(`/season/${teamId}/history`),
+  getPlayerStats: (teamId) => request(`/season/${teamId}/stats`),
+  getSquadMood: (teamId) => request(`/season/${teamId}/mood`),
+
   getCLStatus: (teamId) => request(`/season/${teamId}/cl/status`),
   initCL: (teamId) => request(`/season/${teamId}/cl/init`, { method: 'POST' }),
   playCLMatch: (teamId) => request(`/season/${teamId}/cl/play`, { method: 'POST' }),

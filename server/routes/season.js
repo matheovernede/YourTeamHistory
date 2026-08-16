@@ -6,6 +6,25 @@ const { getRandomSponsors } = require('../data/sponsors');
 const { DIVISIONS } = require('../data/divisions');
 const { seedDivision } = require('../db/seed');
 const { getRandomEvent, buildEventContext, EVENTS } = require('../data/events');
+const {
+  applyMatchConsequences,
+  tickAvailability,
+  isAvailable,
+  unavailabilityReason,
+  resetSeasonStats,
+} = require('../engine/discipline');
+const { evolveSquad, retireOldPlayers, runAiTransferWindow } = require('../engine/progression');
+const {
+  updateDiscontent,
+  resolveDepartures,
+  resetDiscontent,
+  moodLabel,
+  grievances,
+  squadMedian,
+  REQUEST_THRESHOLD,
+  DEPARTURE_THRESHOLD,
+} = require('../engine/morale');
+const { describeResult: describeCupResult } = require('../data/cup');
 
 const router = express.Router();
 
@@ -92,6 +111,8 @@ router.post('/:teamId/play-matchday', async (req, res) => {
   const result = simulateMatch(homePlayers, awayPlayers, {
     homeFormation: team.formation,
     awayFormation: opponent.formation,
+    difficulty: req.body.difficulty || 'normal',
+    homeIsPlayer: true,
   });
   const matchId = uuid();
   const week = played + 1;
@@ -129,6 +150,23 @@ router.post('/:teamId/play-matchday', async (req, res) => {
   const won = result.homeGoals > result.awayGoals;
   const drew = result.homeGoals === result.awayGoals;
   applyMatchEffects(db, team.id, won, drew);
+
+  // Discipline, blessures et statistiques individuelles.
+  // L'ordre compte : on applique d'abord les suites du match, puis on décompte
+  // une journée — sinon la sanction du jour serait purgée immédiatement.
+  const consequences = applyMatchConsequences(db, queryOne, team.id, {
+    cards: result.cards ? result.cards.home : [],
+    injuries: result.injuries ? result.injuries.home : [],
+    scorers: (result.scorers || []).filter(s => s.team === 'home'),
+  });
+  tickAvailability(db, team.id);
+
+  // Mécontentement : évalué après le match, pour tenir compte du résultat
+  // et du temps de jeu qui viennent d'être enregistrés.
+  const mood = updateDiscontent(db, queryAll, team.id, {
+    matchday: week,
+    division,
+  });
 
   // Simulate AI matches within the same division
   simulateAiMatches(db, team.season, week, team.id, division);
@@ -182,6 +220,10 @@ router.post('/:teamId/play-matchday', async (req, res) => {
       resultText,
       matchBonus,
       matchday: week,
+      suspensions: consequences.suspensions,
+      injuries: consequences.injuries,
+      transferRequests: mood.requests,
+      moraleWarnings: mood.warnings,
     },
     team: updatedTeam,
     seasonOver,
@@ -469,7 +511,13 @@ router.get('/:teamId/conversations', (req, res) => {
   });
 
   const context = buildContext(team, players, recent);
-  const player = players[Math.floor(Math.random() * players.length)];
+
+  // Un joueur mécontent doit avoir la priorité pour venir s'expliquer : avec un
+  // tirage purement aléatoire, les dialogues de départ ne sortaient jamais.
+  const contrariés = players.filter(p => p.transfer_request || (p.unhappy_streak || 0) >= 2);
+  const bassin = contrariés.length && Math.random() < 0.7 ? contrariés : players;
+  const player = bassin[Math.floor(Math.random() * bassin.length)];
+
   const conversation = getRandomConversation(player, context);
   if (!conversation) return res.json({ conversation: null });
 
@@ -500,6 +548,17 @@ router.post('/:teamId/resolve-conversation', async (req, res) => {
   // Apply effects to the specific player
   if (effects.morale) {
     db.run('UPDATE players SET morale = MAX(20, MIN(100, morale + ?)) WHERE id = ?', [effects.morale, playerId]);
+  }
+
+  // Un choix peut enterrer la procédure de départ. Sans cet effet, promettre
+  // quoi que ce soit dans un dialogue n'aurait aucune portée réelle.
+  if (effects.clear_discontent) {
+    db.run('UPDATE players SET unhappy_streak = 0, transfer_request = 0 WHERE id = ?', [playerId]);
+  }
+  // À l'inverse, un choix peut précipiter le départ.
+  if (effects.force_transfer) {
+    db.run('UPDATE players SET transfer_request = 1, unhappy_streak = MAX(unhappy_streak, ?) WHERE id = ?',
+      [DEPARTURE_THRESHOLD, playerId]);
   }
   if (effects.stamina) {
     db.run('UPDATE players SET stamina = MAX(0, MIN(100, stamina + ?)) WHERE id = ?', [effects.stamina, playerId]);
@@ -770,18 +829,76 @@ router.post('/:teamId/end-season', async (req, res) => {
     db.run("UPDATE teams SET points = 0, wins = 0, draws = 0, losses = 0, goals_for = 0, goals_against = 0 WHERE manager_id = 'AI' AND division = ?", [newDivision]);
   }
 
+  // ---- Bilan individuel AVANT remise à zéro des compteurs ----
+  const scorers = queryAll(
+    'SELECT first_name, last_name, goals, appearances FROM players WHERE team_id = ? AND goals > 0 ORDER BY goals DESC, appearances ASC LIMIT 5',
+    [req.params.teamId]
+  );
+  const topScorer = scorers[0] || null;
+
+  // ---- Coupe : résultat puis remise à zéro ----
+  const cupState = team.cup_data ? (() => { try { return JSON.parse(team.cup_data); } catch { return null; } })() : null;
+  const cupResult = describeCupResult(cupState);
+  if (cupState && cupState.won) {
+    // Le compteur de coupes est déjà incrémenté à la victoire, rien à faire ici.
+  }
+  db.run('UPDATE teams SET cup_data = NULL WHERE id = ?', [req.params.teamId]);
+
+  // Titre de champion
+  if (rank === 1) {
+    db.run('UPDATE teams SET titles = COALESCE(titles, 0) + 1 WHERE id = ?', [req.params.teamId]);
+  }
+
+  // ---- Historique : sans lui, la carrière n'a aucune mémoire ----
+  db.run(
+    `INSERT INTO season_history
+       (id, team_id, season, division, division_name, rank, points, wins, draws, losses,
+        goals_for, goals_against, promoted, relegated, cup_result, top_scorer, top_scorer_goals)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    [uuid(), req.params.teamId, team.season, division, divisionInfo.name, rank,
+     team.points, team.wins, team.draws, team.losses, team.goals_for, team.goals_against,
+     promotion ? 1 : 0, relegation ? 1 : 0, cupResult,
+     topScorer ? `${topScorer.first_name} ${topScorer.last_name}` : null,
+     topScorer ? topScorer.goals : 0]
+  );
+
   // Reset Champions League state for new season
   db.run('UPDATE teams SET cl_data = NULL WHERE id = ?', [req.params.teamId]);
 
-  // Pre-season: full recovery + aging
+  // ---- Intersaison de l'effectif du joueur ----
+  // Les mécontents partent AVANT la progression : inutile de faire évoluer
+  // un joueur qui quitte le club.
+  const departures = resolveDepartures(db, queryAll, queryOne, req.params.teamId, managerId, {
+    matchday: team.wins + team.draws + team.losses,
+    division,
+  });
+
+  // Progression selon l'âge et le temps de jeu, puis départs des plus âgés.
+  const progression = evolveSquad(db, queryAll, req.params.teamId, 26);
+  const retirements = retireOldPlayers(db, queryAll, req.params.teamId, { minSquad: 14 });
+
   db.run('UPDATE players SET stamina = 100, morale = 80 WHERE team_id = ?', [req.params.teamId]);
-  db.run('UPDATE players SET age = age + 1 WHERE team_id = ?', [req.params.teamId]);
+  resetSeasonStats(db, req.params.teamId);
+  resetDiscontent(db, req.params.teamId);
+
+  // ---- Mercato des équipes IA : le championnat doit vivre ----
+  const aiTeams = queryAll("SELECT id, division FROM teams WHERE manager_id = 'AI'");
+  for (const ai of aiTeams) {
+    const info = getDivisionInfo(ai.division || 1);
+    const range = info && info.overallRange ? info.overallRange : [50, 60];
+    try {
+      runAiTransferWindow(db, queryAll, queryOne, ai.id, range, { targetSquad: 18 });
+    } catch (e) {
+      // Une équipe IA en échec ne doit pas bloquer la fin de saison du joueur.
+    }
+  }
 
   saveDb();
 
   const newDivisionInfo = getDivisionInfo(newDivision);
   const updatedManager = queryOne('SELECT * FROM managers WHERE id = ?', [managerId]);
   const updatedTeam = queryOne('SELECT * FROM teams WHERE id = ?', [req.params.teamId]);
+  const history = queryAll('SELECT * FROM season_history WHERE team_id = ? ORDER BY season DESC', [req.params.teamId]);
 
   res.json({
     seasonSummary: {
@@ -793,6 +910,13 @@ router.post('/:teamId/end-season', async (req, res) => {
       losses: team.losses,
       prizePool,
       divisionName: divisionInfo.name,
+      cupResult,
+      topScorer: topScorer ? `${topScorer.first_name} ${topScorer.last_name}` : null,
+      topScorerGoals: topScorer ? topScorer.goals : 0,
+      scorers,
+      progression: progression.slice(0, 8),
+      retirements,
+      departures,
     },
     promotion,
     relegation,
@@ -800,6 +924,69 @@ router.post('/:teamId/end-season', async (req, res) => {
     newDivisionLevel: newDivision,
     manager: updatedManager,
     team: updatedTeam,
+    history,
+  });
+});
+
+/** Historique des saisons passées, pour le palmarès. */
+router.get('/:teamId/history', (req, res) => {
+  const history = queryAll('SELECT * FROM season_history WHERE team_id = ? ORDER BY season DESC', [req.params.teamId]);
+  const team = queryOne('SELECT titles, cups FROM teams WHERE id = ?', [req.params.teamId]);
+  res.json({ history, titles: team ? team.titles || 0 : 0, cups: team ? team.cups || 0 : 0 });
+});
+
+/** Statistiques individuelles de la saison en cours. */
+router.get('/:teamId/stats', (req, res) => {
+  const players = queryAll(
+    `SELECT id, first_name, last_name, position, overall, appearances, goals,
+            yellow_cards, red_cards, suspended_matches, injured_matches,
+            career_appearances, career_goals, morale, unhappy_streak, transfer_request
+     FROM players WHERE team_id = ?
+     ORDER BY goals DESC, appearances ASC`,
+    [req.params.teamId]
+  );
+  res.json({ players });
+});
+
+/** Joueurs mécontents, pour que le manager puisse réagir avant les départs. */
+router.get('/:teamId/mood', (req, res) => {
+  const team = queryOne('SELECT * FROM teams WHERE id = ?', [req.params.teamId]);
+  if (!team) return res.status(404).json({ error: 'Équipe non trouvée' });
+
+  const matchday = team.wins + team.draws + team.losses;
+  const division = getTeamDivision(team);
+  const players = queryAll('SELECT * FROM players WHERE team_id = ?', [req.params.teamId]);
+  // Même contexte qu'au moment de l'évaluation, sinon les griefs affichés
+  // ne correspondent pas à ceux qui ont fait monter le compteur.
+  const ctx = { matchday, division, squadMedianOverall: squadMedian(players) };
+
+  const unhappy = players
+    .map(p => {
+      const mood = moodLabel(p);
+      if (!mood) return null;
+      const reasons = grievances(p, ctx);
+      return {
+        id: p.id,
+        name: `${p.first_name} ${p.last_name}`,
+        position: p.position,
+        overall: p.overall,
+        morale: p.morale,
+        streak: p.unhappy_streak || 0,
+        transferRequest: !!p.transfer_request,
+        // Un joueur peut avoir un compteur en cours alors que son grief vient de
+        // se résorber : on affiche alors un motif générique plutôt que rien.
+        reasons: reasons.length ? reasons : ['insatisfaction persistante'],
+        matchesBeforeLeaving: Math.max(0, DEPARTURE_THRESHOLD - (p.unhappy_streak || 0)),
+        ...mood,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.streak - a.streak);
+
+  res.json({
+    unhappy,
+    requestThreshold: REQUEST_THRESHOLD,
+    departureThreshold: DEPARTURE_THRESHOLD,
   });
 });
 

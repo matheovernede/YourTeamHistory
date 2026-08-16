@@ -11,6 +11,7 @@ const draftRoutes = require('./routes/draft');
 const seasonRoutes = require('./routes/season');
 const championsLeagueRoutes = require('./routes/championsLeague');
 const dreamteamRoutes = require('./routes/dreamteam');
+const cupRoutes = require('./routes/cup');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -27,6 +28,7 @@ app.use('/api/draft', draftRoutes);
 app.use('/api/season', seasonRoutes);
 app.use('/api/season', championsLeagueRoutes);
 app.use('/api/dreamteam', dreamteamRoutes);
+app.use('/api/season', cupRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -50,6 +52,38 @@ async function start() {
     dbRun('DELETE FROM teams WHERE id = ?', [t.id]);
   }
   if (orphanTeams.length > 0) saveDb();
+
+  // Auto-réparation : les sauvegardes créées avant le garde-fou de seedDivision
+  // peuvent contenir des équipes IA en double, ce qui casse les classements.
+  // Seules les équipes IA sont concernées, jamais celles d'un joueur.
+  const { dedupeTeams } = require('./db/dedupeTeams');
+  const doublons = await dedupeTeams();
+  if (doublons.length > 0) {
+    console.log(`Nettoyage : ${doublons.length} équipe(s) IA en double supprimée(s).`);
+  }
+
+  // Recomplètement des divisions trop peu fournies. Vérifié à chaque démarrage
+  // et non seulement après un nettoyage : une division peut aussi se vider au
+  // fil des montées et descentes. seedDivision ignore les noms déjà présents,
+  // l'opération est donc sans risque de doublon.
+  const { seedDivision } = require('./db/seed');
+  let recompletees = 0;
+  for (let level = 1; level <= 7; level++) {
+    const avant = queryAll("SELECT id FROM teams WHERE manager_id = 'AI' AND division = ?", [level]).length;
+    if (avant >= 10) continue;
+    try {
+      await seedDivision(level, 'normal');
+      const apres = queryAll("SELECT id FROM teams WHERE manager_id = 'AI' AND division = ?", [level]).length;
+      if (apres > avant) {
+        console.log(`  division ${level} recomplétée : ${avant} -> ${apres} équipes`);
+        recompletees++;
+      }
+    } catch (e) {
+      console.log(`  division ${level} non recomplétée : ${e.message}`);
+    }
+  }
+  if (doublons.length > 0 || recompletees > 0) saveDb();
+
   app.listen(PORT, () => {
     console.log(`⚽ Foot Manager API running on http://localhost:${PORT}`);
   });

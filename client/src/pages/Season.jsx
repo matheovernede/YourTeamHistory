@@ -26,6 +26,22 @@ function staminaTone(stamina) {
   return 'bad';
 }
 
+/**
+ * Un joueur suspendu ou blessé ne peut pas être aligné.
+ * Doit rester aligné sur isAvailable() de server/engine/discipline.js : le
+ * serveur rejette toute composition qui en contient.
+ */
+function isSelectable(player) {
+  return (player.suspended_matches || 0) === 0 && (player.injured_matches || 0) === 0;
+}
+
+/** Motif d'indisponibilité, pour l'expliquer à l'écran. */
+function unavailableLabel(player) {
+  if ((player.suspended_matches || 0) > 0) return `suspendu ${player.suspended_matches} match${player.suspended_matches > 1 ? 's' : ''}`;
+  if ((player.injured_matches || 0) > 0) return `blessé ${player.injured_matches} match${player.injured_matches > 1 ? 's' : ''}`;
+  return null;
+}
+
 function posClass(pos) {
   const group = getPositionGroup(pos);
   if (group === 'gk') return 'pos-gk';
@@ -94,6 +110,11 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
   const matchSpeedRef = useRef(1);
   const matchTimerRef = useRef(null);
   const [clState, setCLState] = useState(null);
+  const [cupState, setCupState] = useState(null);
+  const [cupResult, setCupResult] = useState(null);
+  const [history, setHistory] = useState(null);
+  const [playerStats, setPlayerStats] = useState([]);
+  const [mood, setMood] = useState(null);
   const [clLastResult, setCLLastResult] = useState(null);
   const [selectedPitchPlayer, setSelectedPitchPlayer] = useState(null);
   const [selectedBenchPlayer, setSelectedBenchPlayer] = useState(null);
@@ -132,6 +153,15 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
 
   /** Place un joueur sur un emplacement. S'il occupait déjà un slot, les deux sont permutés. */
   function assignToSlot(slotIdx, playerId) {
+    // Garde unique pour tous les chemins de placement : clic, glisser-déposer
+    // et panneau d'échange. Le serveur refuserait la sauvegarde de toute façon.
+    const cible = players.find(p => p.id === playerId);
+    if (cible && !isSelectable(cible)) {
+      setMessage(`${cible.first_name} ${cible.last_name} est ${unavailableLabel(cible)} — il ne peut pas être aligné.`);
+      setTimeout(() => setMessage(''), 4000);
+      return;
+    }
+
     const next = { ...slotAssignments };
     const previousSlot = Object.keys(next).find(k => next[k] === playerId);
 
@@ -171,6 +201,11 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
     const next = {};
     const used = new Set();
 
+    // Les joueurs suspendus ou blessés sont écartés d'office : le serveur
+    // refuse de toute façon une composition qui en contient, la sauvegarde
+    // échouerait sans que l'origine soit compréhensible.
+    const selectionnables = squad.filter(isSelectable);
+
     // Score = niveau du joueur pondéré par son adéquation au poste et sa forme.
     const scoreFor = (player, slotPos) =>
       player.overall
@@ -188,7 +223,7 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
     for (const { pos, idx } of order) {
       let best = null;
       let bestScore = -1;
-      for (const player of squad) {
+      for (const player of selectionnables) {
         if (used.has(player.id)) continue;
         const score = scoreFor(player, pos);
         if (score > bestScore) { bestScore = score; best = player; }
@@ -203,11 +238,28 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
 
   function handleAutoLineup() {
     if (players.length === 0) return;
+
+    const dispo = players.filter(isSelectable);
+    const ecartes = players.length - dispo.length;
+
+    if (dispo.length < slots.length) {
+      setMessage(
+        `Impossible de composer : seulement ${dispo.length} joueur${dispo.length > 1 ? 's' : ''} disponible${dispo.length > 1 ? 's' : ''} `
+        + `sur les ${slots.length} requis (${ecartes} suspendu${ecartes > 1 ? 's' : ''} ou blessé${ecartes > 1 ? 's' : ''}).`
+      );
+      setTimeout(() => setMessage(''), 5000);
+      return;
+    }
+
     applyAssignments(buildBestEleven(players, slots));
     setSelectedPitchPlayer(null);
     setSelectedBenchPlayer(null);
-    setMessage('Composition automatique appliquée — pensez à sauvegarder.');
-    setTimeout(() => setMessage(''), 2500);
+    setMessage(
+      ecartes > 0
+        ? `Composition automatique appliquée — ${ecartes} joueur${ecartes > 1 ? 's' : ''} indisponible${ecartes > 1 ? 's' : ''} écarté${ecartes > 1 ? 's' : ''}. Pensez à sauvegarder.`
+        : 'Composition automatique appliquée — pensez à sauvegarder.'
+    );
+    setTimeout(() => setMessage(''), 4000);
   }
 
   function handleClearLineup() {
@@ -219,6 +271,9 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
   useEffect(() => {
     loadStatus();
     loadPlayers();
+    loadCupStatus();
+    loadHistory();
+    loadMood();
     if (team.division >= 7) loadCLStatus();
   }, [team.id]);
 
@@ -275,6 +330,43 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
     } catch (e) {
       // CL not available or locked
       setCLState(null);
+    }
+  }
+
+  async function loadCupStatus() {
+    try { setCupState(await api.getCupStatus(team.id)); }
+    catch { setCupState(null); }
+  }
+
+  async function loadHistory() {
+    try { setHistory(await api.getSeasonHistory(team.id)); }
+    catch { setHistory(null); }
+  }
+
+  async function loadPlayerStats() {
+    try { setPlayerStats((await api.getPlayerStats(team.id)).players || []); }
+    catch { setPlayerStats([]); }
+  }
+
+  async function loadMood() {
+    try { setMood(await api.getSquadMood(team.id)); }
+    catch { setMood(null); }
+  }
+
+  async function handlePlayCup() {
+    setLoading(true);
+    try {
+      const difficulty = localStorage.getItem('footmanager_difficulty') || 'normal';
+      const result = await api.playCupMatch(team.id, difficulty);
+      setCupResult(result);
+      if (result.manager && onManagerUpdate) onManagerUpdate(result.manager);
+      if (result.team) onUpdate(result.team);
+      await Promise.all([loadCupStatus(), loadPlayers()]);
+    } catch (err) {
+      setMessage(err.message);
+      setTimeout(() => setMessage(''), 5000);
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -436,6 +528,8 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
             }
             loadStatus();
             loadPlayers();
+            loadMood();
+            loadCupStatus();
 
             if (result.event) {
               setPendingEvent(result.event);
@@ -653,6 +747,16 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
             Gestion
             {hasConvNotification && <span className="nav-notif-badge" />}
           </button>
+          <button
+            className={`${view === 'cup' ? 'active' : ''} nav-btn-effectif`}
+            onClick={() => { setView('cup'); loadCupStatus(); }}
+          >
+            Coupe
+            {cupState && cupState.available && <span className="nav-notif-badge" />}
+          </button>
+          <button className={view === 'history' ? 'active' : ''} onClick={() => { setView('history'); loadHistory(); loadPlayerStats(); }}>
+            Palmarès
+          </button>
           {team.division >= 7 && (
             <button className={`cl-tab ${view === 'cl' ? 'active' : ''}`} onClick={() => { setView('cl'); loadCLStatus(); }}>Champions League</button>
           )}
@@ -660,6 +764,37 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
       </div>
 
       {message && <div className="season-message">{message}<button onClick={() => setMessage('')}>×</button></div>}
+
+      {mood && mood.unhappy.length > 0 && (
+        <div className={`mood-alert ${mood.unhappy.some(p => p.transferRequest) ? 'critical' : ''}`}>
+          <div className="mood-alert-head">
+            <strong>
+              {mood.unhappy.some(p => p.transferRequest)
+                ? 'Des joueurs demandent à partir'
+                : 'Tensions dans le vestiaire'}
+            </strong>
+            <span className="mood-count">{mood.unhappy.length}</span>
+          </div>
+          <ul className="mood-list">
+            {mood.unhappy.slice(0, 5).map(p => (
+              <li key={p.id} className={`mood-row ${p.level}`}>
+                <span className={`lp-pos ${posClass(p.position)}`}>{p.position}</span>
+                <span className="mood-name">{p.name}</span>
+                <span className="mood-reasons">{p.reasons.join(', ')}</span>
+                <span className="mood-state">
+                  {p.transferRequest
+                    ? `part dans ${p.matchesBeforeLeaving} journée${p.matchesBeforeLeaving > 1 ? 's' : ''}`
+                    : p.label}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="mood-hint">
+            Remontez leur moral (entraînement de cohésion, dialogues, temps de jeu) pour annuler la procédure.
+            Un joueur qui force son départ n'est vendu qu'à 60 % de sa valeur.
+          </p>
+        </div>
+      )}
 
       {pendingEvent && (
         <div className="event-overlay">
@@ -929,6 +1064,14 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
               .filter(p => p && p.stamina < STAMINA_TIRED).length;
             if (tired > 0) issues.push(`${tired} titulaire${tired > 1 ? 's' : ''} sous les 50% de forme`);
 
+            // Un joueur indisponible bloque la validation côté serveur : il faut
+            // le signaler ici, sinon la sauvegarde échoue sans raison apparente.
+            const bloques = starterIds
+              .map(id => players.find(p => p.id === id))
+              .filter(p => p && ((p.suspended_matches || 0) > 0 || (p.injured_matches || 0) > 0))
+              .map(p => `${p.last_name} (${p.suspended_matches > 0 ? 'suspendu' : 'blessé'})`);
+            if (bloques.length) issues.push(`Indisponible${bloques.length > 1 ? 's' : ''} : ${bloques.join(', ')}`);
+
             if (issues.length === 0) return null;
             return (
               <div className="lineup-warnings">
@@ -1111,19 +1254,27 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
                   {candidates.map(({ p, fit }) => {
                     const info = getFitLabel(fit);
                     const isStarter = starterIdSet.has(p.id);
+                    const indispo = !isSelectable(p);
                     return (
                       <div
                         key={p.id}
                         role="button"
-                        tabIndex={0}
-                        className={`swap-candidate fit-${info.tone} ${isStarter ? 'is-starter' : ''}`}
-                        title={`${info.label} au poste de ${slotPos} (${Math.round(fit * 100)}%)`}
-                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSwapPlayers(p.id); } }}
-                        onClick={() => handleSwapPlayers(p.id)}
+                        tabIndex={indispo ? -1 : 0}
+                        aria-disabled={indispo}
+                        className={`swap-candidate fit-${info.tone} ${isStarter ? 'is-starter' : ''} ${indispo ? 'swap-unavailable' : ''}`}
+                        title={indispo
+                          ? `Indisponible — ${unavailableLabel(p)}`
+                          : `${info.label} au poste de ${slotPos} (${Math.round(fit * 100)}%)`}
+                        onKeyDown={(e) => { if (!indispo && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); handleSwapPlayers(p.id); } }}
+                        onClick={() => { if (!indispo) handleSwapPlayers(p.id); }}
                       >
                         <span className={`lp-pos ${posClass(p.position)}`}>{p.position}</span>
                         <span className="swap-name">{p.first_name} {p.last_name}</span>
-                        <span className="swap-fit">{Math.round(fit * 100)}%</span>
+                        {indispo ? (
+                          <span className="swap-indispo">{unavailableLabel(p)}</span>
+                        ) : (
+                          <span className="swap-fit">{Math.round(fit * 100)}%</span>
+                        )}
                         <span className="swap-ovr">{p.overall}</span>
                         <span className={`swap-stamina tone-${staminaTone(p.stamina)}`}>{p.stamina}%</span>
                         {isStarter && <span className="swap-starter-tag">TIT</span>}
@@ -1161,14 +1312,21 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
               }).map(p => {
                 const isBenchSelected = selectedBenchPlayer && selectedBenchPlayer.id === p.id;
                 const tone = staminaTone(p.stamina);
+                const suspendu = (p.suspended_matches || 0) > 0;
+                const blesse = (p.injured_matches || 0) > 0;
+                const indispo = suspendu || blesse;
+                const veutPartir = !!p.transfer_request;
                 return (
                   <div
                     key={p.id}
                     role="button"
                     tabIndex={0}
-                    draggable
-                    title={`${p.first_name} ${p.last_name} — ${p.position}\nNote ${p.overall} · Forme ${p.stamina}% · Moral ${p.morale}%`}
-                    className={`bench-player-card ${isBenchSelected ? 'bench-selected' : ''} ${draggedPlayerId === p.id ? 'dragging' : ''}`}
+                    draggable={!indispo}
+                    title={`${p.first_name} ${p.last_name} — ${p.position}\nNote ${p.overall} · Forme ${p.stamina}% · Moral ${p.morale}%`
+                      + (suspendu ? `\nSUSPENDU — ${p.suspended_matches} match(s)` : '')
+                      + (blesse ? `\nBLESSÉ — ${p.injured_matches} match(s)` : '')
+                      + (veutPartir ? '\nDEMANDE À PARTIR' : '')}
+                    className={`bench-player-card ${isBenchSelected ? 'bench-selected' : ''} ${draggedPlayerId === p.id ? 'dragging' : ''} ${indispo ? 'unavailable' : ''} ${veutPartir ? 'wants-out' : ''}`}
                     onDragStart={() => { setDraggedPlayerId(p.id); setSelectedPitchPlayer(null); setSelectedBenchPlayer(null); }}
                     onDragEnd={() => { setDraggedPlayerId(null); setDragOverSlot(null); }}
                     onKeyDown={(e) => {
@@ -1189,6 +1347,12 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
                     <span className={`pitch-stamina-bar tone-${tone}`}>
                       <i style={{ width: `${Math.max(0, Math.min(100, p.stamina))}%` }} />
                     </span>
+                    {indispo && (
+                      <span className="bench-unavailable">
+                        {suspendu ? `🟥 ${p.suspended_matches}` : `🚑 ${p.injured_matches}`}
+                      </span>
+                    )}
+                    {!indispo && veutPartir && <span className="bench-wants-out">✈</span>}
                   </div>
                 );
               })}
@@ -1202,6 +1366,153 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
               <span className="legend-sep">Forme : au-dessus de 50% aucun malus, en dessous le rendement chute</span>
             </div>
           </div>
+        </div>
+      )}
+
+      {view === 'cup' && (
+        <div className="cup-view">
+          <div className="cup-banner">
+            <h2>🏆 Coupe nationale</h2>
+            <p className="cup-subtitle">
+              Élimination directe, ouverte à toutes les divisions — un tour à disputer entre deux journées de championnat.
+            </p>
+          </div>
+
+          {!cupState ? (
+            <p className="no-data">Chargement…</p>
+          ) : cupState.state.won ? (
+            <div className="cup-status-card cup-won">
+              <strong>Vous avez remporté la coupe cette saison !</strong>
+              <p>Un titre de plus au palmarès du club.</p>
+            </div>
+          ) : cupState.state.eliminated ? (
+            <div className="cup-status-card cup-out">
+              <strong>{cupState.resultLabel}</strong>
+              <p>Rendez-vous la saison prochaine.</p>
+            </div>
+          ) : (
+            <div className="cup-status-card">
+              <div className="cup-next">
+                <span className="cup-round-name">{cupState.round ? cupState.round.name : '—'}</span>
+                {cupState.state.nextOpponent && (
+                  <span className="cup-opponent">
+                    contre <strong>{cupState.state.nextOpponent.name}</strong>
+                    <em> (niveau {cupState.state.nextOpponent.overall})</em>
+                  </span>
+                )}
+              </div>
+              {cupState.available ? (
+                <button className="btn-primary action-btn" onClick={handlePlayCup} disabled={loading}>
+                  Disputer le tour
+                </button>
+              ) : (
+                <p className="cup-locked">
+                  Disponible à partir de la journée {cupState.round ? cupState.round.minMatchday : '?'} — vous en êtes à la {cupState.matchday}.
+                </p>
+              )}
+            </div>
+          )}
+
+          {cupResult && (
+            <div className={`cup-result ${cupResult.won ? 'win' : 'loss'}`}>
+              <div className="cup-result-head">
+                <strong>{cupResult.round}</strong> contre {cupResult.opponent}
+                <span className="cup-score">{cupResult.score}</span>
+              </div>
+              <p>
+                {cupResult.cupWon ? 'Vous soulevez le trophée !'
+                  : cupResult.won ? 'Qualifié pour le tour suivant.'
+                  : 'Élimination.'}
+                {cupResult.prize > 0 && ` Dotation : ${formatMoney(cupResult.prize)}.`}
+              </p>
+              {cupResult.injuries && cupResult.injuries.length > 0 && (
+                <p className="cup-warn">Blessure : {cupResult.injuries.map(i => `${i.player} (${i.matches} matchs)`).join(', ')}</p>
+              )}
+              {cupResult.suspensions && cupResult.suspensions.length > 0 && (
+                <p className="cup-warn">Suspension : {cupResult.suspensions.map(s => `${s.player} — ${s.reason}`).join(', ')}</p>
+              )}
+              <button className="btn-small" onClick={() => setCupResult(null)}>Fermer</button>
+            </div>
+          )}
+
+          {cupState && cupState.state.history.length > 0 && (
+            <div className="cup-path">
+              <h3>Parcours</h3>
+              {cupState.state.history.map((h, i) => (
+                <div key={i} className={`cup-path-row ${h.won ? 'win' : 'loss'}`}>
+                  <span className="cup-path-round">{h.roundName}</span>
+                  <span className="cup-path-opp">{h.opponent}</span>
+                  <span className="cup-path-score">{h.score}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {view === 'history' && (
+        <div className="history-view">
+          <div className="palmares-row">
+            <div className="palmares-card">
+              <span className="palmares-val">{history ? history.titles : 0}</span>
+              <span className="palmares-label">Titres de champion</span>
+            </div>
+            <div className="palmares-card">
+              <span className="palmares-val">{history ? history.cups : 0}</span>
+              <span className="palmares-label">Coupes nationales</span>
+            </div>
+            <div className="palmares-card">
+              <span className="palmares-val">{history ? history.history.length : 0}</span>
+              <span className="palmares-label">Saisons disputées</span>
+            </div>
+          </div>
+
+          <h3 className="history-title">Meilleurs buteurs — saison en cours</h3>
+          {playerStats.filter(p => p.goals > 0).length === 0 ? (
+            <p className="no-data">Aucun but marqué pour l'instant cette saison.</p>
+          ) : (
+            <table className="standings-table">
+              <thead>
+                <tr><th>Joueur</th><th>Poste</th><th>Matchs</th><th>Buts</th><th>Cartons</th><th>Carrière</th></tr>
+              </thead>
+              <tbody>
+                {playerStats.filter(p => p.goals > 0).slice(0, 12).map(p => (
+                  <tr key={p.id}>
+                    <td className="team-name-cell">{p.first_name} {p.last_name}</td>
+                    <td><span className={`lp-pos ${posClass(p.position)}`}>{p.position}</span></td>
+                    <td>{p.appearances}</td>
+                    <td className="pts">{p.goals}</td>
+                    <td>{p.yellow_cards > 0 && `${p.yellow_cards}🟨 `}{p.red_cards > 0 && `${p.red_cards}🟥`}</td>
+                    <td>{p.career_goals} buts / {p.career_appearances} matchs</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+
+          <h3 className="history-title">Historique des saisons</h3>
+          {!history || history.history.length === 0 ? (
+            <p className="no-data">Aucune saison terminée pour l'instant.</p>
+          ) : (
+            <table className="standings-table">
+              <thead>
+                <tr><th>Saison</th><th>Division</th><th>Rang</th><th>Pts</th><th>Bilan</th><th>Coupe</th><th>Meilleur buteur</th></tr>
+              </thead>
+              <tbody>
+                {history.history.map(h => (
+                  <tr key={h.id} className={h.promoted ? 'zone-promo' : h.relegated ? 'zone-releg' : ''}>
+                    <td className="rank">{h.season}</td>
+                    <td className="team-name-cell">{h.division_name}</td>
+                    <td>{h.rank}{h.promoted ? ' ↑' : h.relegated ? ' ↓' : ''}</td>
+                    <td className="pts">{h.points}</td>
+                    <td>{h.wins}V {h.draws}N {h.losses}D</td>
+                    <td>{h.cup_result || '—'}</td>
+                    <td>{h.top_scorer ? `${h.top_scorer} (${h.top_scorer_goals})` : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       )}
 

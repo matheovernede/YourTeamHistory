@@ -114,7 +114,7 @@ const DIVISIONS = [
       { name: 'SC Sedan', formation: '4-4-2' },
       { name: 'Entente Sannois', formation: '4-2-3-1' },
       { name: 'Valenciennes FC', formation: '4-4-2' },
-      { name: 'US Boulogne', formation: '4-3-3' },
+      { name: 'GOAL FC', formation: '4-3-3' },
       { name: 'FC Annecy', formation: '4-4-2' },
       { name: 'Grenoble Foot', formation: '4-3-3' },
       { name: 'Chateauroux LB', formation: '4-4-2' },
@@ -132,7 +132,7 @@ const DIVISIONS = [
     teams: [
       { name: 'SM Caen', formation: '4-3-3' },
       { name: 'Paris FC', formation: '4-4-2' },
-      { name: 'SC Bastia', formation: '4-3-3' },
+      { name: 'Le Puy Foot', formation: '4-3-3' },
       { name: 'EA Guingamp', formation: '4-4-2' },
       { name: 'Girondins Bordeaux', formation: '4-3-3' },
       { name: 'FC Metz', formation: '4-2-3-1' },
