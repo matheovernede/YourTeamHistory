@@ -8,6 +8,7 @@ import { KOFI_URL, DISCORD_URL } from './config';
 import Draft from './pages/Draft';
 import Season from './pages/Season';
 import DreamTeam from './pages/DreamTeam';
+import Players from './pages/Players';
 
 function App() {
   const [manager, setManager] = useState(null);
@@ -15,6 +16,7 @@ function App() {
   const [phase, setPhase] = useState('login');
   const [seasonSummary, setSeasonSummary] = useState(null);
   const [showDreamTeam, setShowDreamTeam] = useState(false);
+  const [showPlayers, setShowPlayers] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem('footmanager_session');
@@ -157,10 +159,19 @@ function App() {
 
   let content;
 
-  if (showDreamTeam) {
+  if (showPlayers) {
+    content = <Players onBack={() => setShowPlayers(false)} currentTeamId={team?.id} />;
+  } else if (showDreamTeam) {
     content = <DreamTeam onBack={() => setShowDreamTeam(false)} onStartCareer={handleDreamTeamCareer} />;
   } else if (phase === 'login' || !manager) {
-    content = <Login onLogin={handleTeamCreated} onLoadSave={handleLoadSave} onDreamTeam={() => setShowDreamTeam(true)} />;
+    content = (
+      <Login
+        onLogin={handleTeamCreated}
+        onLoadSave={handleLoadSave}
+        onDreamTeam={() => setShowDreamTeam(true)}
+        onPlayers={() => setShowPlayers(true)}
+      />
+    );
   } else if (phase === 'draft' || phase === 'mercato') {
     content = (
       <div className="app">
@@ -240,6 +251,7 @@ function App() {
           <div className="top-actions">
             <button className="icon-btn" title="Exporter la sauvegarde" onClick={handleExportSave}>💾</button>
             <button className="icon-btn" title="Importer une sauvegarde" onClick={handleImportSave}>📂</button>
+            <button className="btn-players-top" onClick={() => setShowPlayers(true)}>🏅 Managers</button>
             <button className="btn-dreamteam-top" onClick={() => setShowDreamTeam(true)}>⭐ DreamTeam</button>
             <a
               className="btn-discord-top"

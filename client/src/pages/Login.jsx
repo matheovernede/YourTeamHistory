@@ -3,7 +3,7 @@ import { api } from '../api/client';
 import { KOFI_URL, DISCORD_URL } from '../config';
 import './Login.css';
 
-export default function Login({ onLogin, onLoadSave, onDreamTeam }) {
+export default function Login({ onLogin, onLoadSave, onDreamTeam, onPlayers }) {
   const [username, setUsername] = useState('');
   const [teamName, setTeamName] = useState('');
   const [difficulty, setDifficulty] = useState('normal');
@@ -119,6 +119,9 @@ export default function Login({ onLogin, onLoadSave, onDreamTeam }) {
             <div className="login-separator"><span>ou</span></div>
             <button className="btn-dreamteam" onClick={onDreamTeam}>
               DreamTeam
+            </button>
+            <button className="btn-players" onClick={onPlayers}>
+              🏅 Classement des managers
             </button>
 
             <a

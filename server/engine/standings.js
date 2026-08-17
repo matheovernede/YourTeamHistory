@@ -83,6 +83,15 @@ function computeStandings(teamId) {
   ).forEach((m) => mesMatchs.set(m.week, m));
 
   const forces = new Map();
+  const simuler = (week, homeId, awayId) => simulateAiMatchByStrength(
+    strengthOf(homeId, forces),
+    strengthOf(awayId, forces),
+    randFor(seed, week, homeId, awayId)
+  );
+
+  // Vrai quand l'historique détaillé manque : la sauvegarde a été importée sur
+  // un serveur neuf, où seuls les totaux de l'équipe ont été restaurés.
+  let historiqueIncomplet = false;
 
   for (let week = 1; week <= journees; week++) {
     for (const [homeId, awayId] of fixturesForWeek(pool, seed, week)) {
@@ -91,23 +100,42 @@ function computeStandings(teamId) {
 
       if (homeId === team.id || awayId === team.id) {
         const m = mesMatchs.get(week);
-        if (!m) continue; // journée pas encore disputée
-        // Le calendrier et la table `matches` s'accordent sur le terrain.
-        butsHome = m.home_team_id === homeId ? m.home_goals : m.away_goals;
-        butsAway = m.home_team_id === homeId ? m.away_goals : m.home_goals;
+
+        if (m) {
+          // On se repère sur l'identifiant du joueur, le seul qui survive à un
+          // import : sur un serveur neuf, les équipes IA ont de nouveaux
+          // identifiants et ceux enregistrés dans le match ne valent plus rien.
+          const jetaisADomicile = m.home_team_id === team.id;
+          const mesButs = jetaisADomicile ? m.home_goals : m.away_goals;
+          const sesButs = jetaisADomicile ? m.away_goals : m.home_goals;
+          butsHome = homeId === team.id ? mesButs : sesButs;
+          butsAway = homeId === team.id ? sesButs : mesButs;
+        } else {
+          // On comble la journée pour que l'adversaire ait bien joué son match,
+          // sinon lui seul afficherait un total inférieur aux autres. La ligne
+          // du joueur, elle, sera remplacée par ses totaux réels plus bas.
+          historiqueIncomplet = true;
+          ({ homeGoals: butsHome, awayGoals: butsAway } = simuler(week, homeId, awayId));
+        }
       } else {
-        const r = simulateAiMatchByStrength(
-          strengthOf(homeId, forces),
-          strengthOf(awayId, forces),
-          randFor(seed, week, homeId, awayId)
-        );
-        butsHome = r.homeGoals;
-        butsAway = r.awayGoals;
+        ({ homeGoals: butsHome, awayGoals: butsAway } = simuler(week, homeId, awayId));
       }
 
       enregistrer(table.get(homeId), butsHome, butsAway);
       enregistrer(table.get(awayId), butsAway, butsHome);
     }
+  }
+
+  // Les totaux stockés sur l'équipe font foi : ils sont exacts et voyagent
+  // toujours avec la sauvegarde, contrairement au détail des rencontres.
+  if (historiqueIncomplet) {
+    const ligne = table.get(team.id);
+    ligne.wins = team.wins;
+    ligne.draws = team.draws;
+    ligne.losses = team.losses;
+    ligne.goals_for = team.goals_for;
+    ligne.goals_against = team.goals_against;
+    ligne.points = team.points;
   }
 
   return [...table.values()]

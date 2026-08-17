@@ -34,6 +34,10 @@ export const api = {
   exportSave: (id) => request(`/manager/${id}/save`),
   importSave: (id, saveData) => request(`/manager/${id}/load`, { method: 'POST', body: JSON.stringify({ saveData }) }),
 
+  // Classement de tous les managers humains, avec leur statut de présence.
+  getPlayersRanking: () => request('/leaderboard/players'),
+  getPlayerProfile: (teamId) => request(`/leaderboard/players/${teamId}`),
+
   createTeam: (managerId, teamName, difficulty) => request('/team/create', { method: 'POST', body: JSON.stringify({ managerId, teamName, difficulty }) }),
   getPlayers: (teamId) => request(`/team/${teamId}/players`),
   setFormation: (teamId, formation) => request(`/team/${teamId}/formation`, { method: 'PUT', body: JSON.stringify({ formation }) }),

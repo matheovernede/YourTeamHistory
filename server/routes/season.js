@@ -16,6 +16,7 @@ const {
 const { evolveSquad, retireOldPlayers, runAiTransferWindow } = require('../engine/progression');
 const { findFixture, seedFor } = require('../engine/calendar');
 const { computeStandings } = require('../engine/standings');
+const { touchManager } = require('./leaderboard');
 const {
   updateDiscontent,
   resolveDepartures,
@@ -48,6 +49,10 @@ function getDivisionInfo(level) {
 router.get('/:teamId/status', (req, res) => {
   const team = queryOne('SELECT * FROM teams WHERE id = ?', [req.params.teamId]);
   if (!team) return res.status(404).json({ error: 'Équipe non trouvée' });
+
+  // Le client interroge cette route en permanence : c'est le meilleur signal
+  // de présence dont on dispose sans ouvrir de connexion permanente.
+  touchManager(team.manager_id);
 
   const division = getTeamDivision(team);
   const divisionInfo = getDivisionInfo(division);

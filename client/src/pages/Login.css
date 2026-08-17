@@ -401,6 +401,27 @@
 }
 
 /* ---- Soutien Ko-fi sur l ecran d accueil ---- */
+.btn-players {
+  width: 100%;
+  margin-top: var(--sp-3);
+  padding: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: var(--radius-md);
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+.btn-players:hover {
+  background: var(--surface-3);
+  border-color: var(--accent, #2eb257);
+  transform: translateY(-1px);
+}
+
 .login-discord {
   display: block;
   margin-top: var(--sp-4);

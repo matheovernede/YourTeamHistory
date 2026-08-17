@@ -57,10 +57,21 @@ router.get('/:id/save', (req, res) => {
 
   for (const team of teams) {
     const players = queryAll('SELECT * FROM players WHERE team_id = ?', [team.id]);
-    saveData.teams.push({ ...team, players });
+
+    // Le détail des rencontres accompagne l'équipe : le classement s'en déduit.
+    // Sans lui, une sauvegarde rechargée sur un serveur neuf afficherait un
+    // championnat où le joueur n'aurait disputé aucun match.
+    // Les faits de match ne sont pas repris : ils alourdiraient le fichier
+    // sans servir au classement.
+    const matches = queryAll(
+      'SELECT season, week, home_team_id, away_team_id, home_goals, away_goals, played_at FROM matches WHERE home_team_id = ? OR away_team_id = ? ORDER BY season, week',
+      [team.id, team.id]
+    );
+
+    saveData.teams.push({ ...team, players, matches });
   }
 
-  saveData.version = 1;
+  saveData.version = 2;
   saveData.exportedAt = new Date().toISOString();
   res.json(saveData);
 });
@@ -76,6 +87,7 @@ router.post('/:id/load', (req, res) => {
   // Clear existing data for this manager
   const existingTeams = queryAll("SELECT id FROM teams WHERE manager_id = ?", [managerId]);
   for (const t of existingTeams) {
+    run('DELETE FROM matches WHERE home_team_id = ? OR away_team_id = ?', [t.id, t.id]);
     run('DELETE FROM players WHERE team_id = ?', [t.id]);
     run('DELETE FROM teams WHERE id = ?', [t.id]);
   }
@@ -92,6 +104,16 @@ router.post('/:id/load', (req, res) => {
     for (const p of (team.players || [])) {
       run('INSERT INTO players (id, team_id, first_name, last_name, age, position, overall, pace, shooting, passing, dribbling, defending, physical, stamina, morale, value, is_starter) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
         [p.id, team.id, p.first_name, p.last_name, p.age, p.position, p.overall, p.pace, p.shooting, p.passing, p.dribbling, p.defending, p.physical, p.stamina, p.morale, p.value, p.is_starter]);
+    }
+
+    // Rencontres disputées : le classement de la saison en cours en découle.
+    // Absentes des sauvegardes d'avant la version 2, d'où le repli sur les
+    // totaux de l'équipe côté calcul du classement.
+    for (const m of (team.matches || [])) {
+      run(
+        "INSERT INTO matches (id, season, week, home_team_id, away_team_id, home_goals, away_goals, played, events, played_at) VALUES (?,?,?,?,?,?,?,1,'[]',?)",
+        [uuid(), m.season, m.week, m.home_team_id, m.away_team_id, m.home_goals, m.away_goals, m.played_at || null]
+      );
     }
   }
 

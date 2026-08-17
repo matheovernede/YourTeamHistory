@@ -1,0 +1,281 @@
+.players-page {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: var(--sp-5) var(--sp-4) var(--sp-6);
+}
+
+.players-header {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-5);
+}
+
+.players-back {
+  flex-shrink: 0;
+  padding: 9px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+.players-back:hover {
+  background: var(--surface-3);
+  transform: translateX(-2px);
+}
+
+.players-title h1 {
+  margin: 0;
+  font-size: 22px;
+  letter-spacing: -0.4px;
+}
+
+.players-sub {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 5px 0 0;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.players-sep { opacity: 0.5; }
+
+/* Pastille de présence : le vert seul ne suffit pas, on ajoute une pulsation
+   pour que l'information reste lisible sans distinguer les couleurs. */
+.players-dot-online {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #35d07f;
+  box-shadow: 0 0 0 0 rgba(53, 208, 127, 0.6);
+  animation: players-pulse 2s infinite;
+}
+
+@keyframes players-pulse {
+  70% { box-shadow: 0 0 0 7px rgba(53, 208, 127, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(53, 208, 127, 0); }
+}
+
+.players-empty {
+  padding: var(--sp-6);
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.players-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+}
+
+.players-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+
+.players-table th {
+  padding: 11px 12px;
+  text-align: left;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-muted);
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+
+.players-table td {
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.05));
+}
+
+.players-table tbody tr {
+  cursor: pointer;
+  transition: background var(--transition-fast, 0.12s);
+}
+
+.players-table tbody tr:hover { background: var(--surface-2); }
+.players-table tbody tr.is-open { background: var(--surface-3); }
+
+/* Le joueur se repère d'un coup d'œil dans une longue liste. */
+.players-table tbody tr.is-me {
+  background: rgba(46, 178, 87, 0.1);
+  box-shadow: inset 3px 0 0 var(--accent, #2eb257);
+}
+
+.players-table tbody tr.is-me:hover { background: rgba(46, 178, 87, 0.16); }
+
+.players-table .num { text-align: right; }
+.players-table .strong { font-weight: 800; }
+.players-table .col-rank { width: 44px; text-align: center; opacity: 0.7; }
+
+.col-team { min-width: 170px; white-space: normal; }
+
+.players-team-name {
+  display: block;
+  font-weight: 700;
+}
+
+.players-user {
+  display: block;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.players-div {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 700;
+  background: var(--surface-3);
+  color: var(--text-muted);
+}
+
+/* Plus la division est haute, plus la pastille est mise en valeur. */
+.players-div.div-5 { background: rgba(46, 178, 87, 0.16); color: #7fe0a3; }
+.players-div.div-6 { background: rgba(212, 175, 55, 0.16); color: #e6c964; }
+.players-div.div-7 { background: rgba(212, 175, 55, 0.26); color: #f2dc8a; }
+
+.col-seen { font-size: 11.5px; }
+
+.seen-online {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #7fe0a3;
+  font-weight: 700;
+}
+
+.seen-off { color: var(--text-muted); }
+
+/* ---- Fiche détaillée ---- */
+
+.players-detail {
+  margin-top: var(--sp-5);
+  padding: var(--sp-5);
+}
+
+.players-detail h2 {
+  margin: 0 0 var(--sp-4);
+  font-size: 18px;
+}
+
+.players-detail h2 .players-user {
+  display: inline;
+  margin-left: 8px;
+  font-size: 12px;
+}
+
+.players-detail h3 {
+  margin: var(--sp-5) 0 var(--sp-3);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+}
+
+.players-detail-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(115px, 1fr));
+  gap: var(--sp-3);
+}
+
+.players-detail-stats > div {
+  padding: 11px 13px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+
+.players-detail-stats span {
+  display: block;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-muted);
+  margin-bottom: 3px;
+}
+
+.players-detail-stats strong { font-size: 16px; }
+
+.players-history {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.players-history th,
+.players-history td {
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.players-history th {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+}
+
+.players-history .num { text-align: right; }
+
+.tag-promo,
+.tag-releg {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.tag-promo { background: rgba(46, 178, 87, 0.18); color: #7fe0a3; }
+.tag-releg { background: rgba(224, 78, 74, 0.18); color: #ff9c98; }
+
+.players-squad {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.players-squad li {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12.5px;
+}
+
+.squad-pos {
+  min-width: 34px;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-3);
+  font-size: 10.5px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.squad-name { flex: 1; font-weight: 600; }
+.squad-ovr { font-weight: 800; }
+.squad-stats { color: var(--text-muted); font-size: 11.5px; }
+
+@media (max-width: 720px) {
+  .players-page { padding: var(--sp-4) var(--sp-3); }
+  .players-table { font-size: 11.5px; }
+  .players-table th,
+  .players-table td { padding: 9px 8px; }
+}
