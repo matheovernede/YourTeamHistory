@@ -2,7 +2,18 @@ const initSqlJs = require('sql.js');
 const fs = require('fs');
 const path = require('path');
 
-const DB_PATH = path.join(__dirname, '..', '..', 'data', 'footmanager.db');
+/**
+ * Emplacement de la base.
+ *
+ * Configurable par la variable d'environnement DB_PATH : en production, la base
+ * doit vivre HORS du dossier applicatif, sinon un redéploiement qui remplace le
+ * répertoire efface toutes les sauvegardes.
+ *
+ * Exemple sur un serveur :  DB_PATH=/var/lib/footmanager/footmanager.db
+ */
+const DB_PATH = process.env.DB_PATH
+  ? path.resolve(process.env.DB_PATH)
+  : path.join(__dirname, '..', '..', 'data', 'footmanager.db');
 
 let db = null;
 let dbReady = null;
@@ -228,4 +239,4 @@ function run(sql, params = []) {
   saveDb();
 }
 
-module.exports = { getDb, queryAll, queryOne, run, saveDb };
+module.exports = { getDb, queryAll, queryOne, run, saveDb, DB_PATH };

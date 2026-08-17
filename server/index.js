@@ -84,8 +84,12 @@ async function start() {
   }
   if (doublons.length > 0 || recompletees > 0) saveDb();
 
-  app.listen(PORT, () => {
-    console.log(`⚽ Foot Manager API running on http://localhost:${PORT}`);
+  // HOST : sur un serveur derrière un reverse proxy, écouter sur 127.0.0.1
+  // suffit et évite d'exposer directement le port applicatif.
+  const HOST = process.env.HOST || '0.0.0.0';
+  app.listen(PORT, HOST, () => {
+    console.log(`⚽ Foot Manager API running on ${HOST}:${PORT}`);
+    console.log(`   base de données : ${require('./db/schema').DB_PATH}`);
   });
 }
 

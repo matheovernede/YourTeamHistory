@@ -18,6 +18,7 @@ const {
   updateDiscontent,
   resolveDepartures,
   resetDiscontent,
+  refreshAppeasement,
   moodLabel,
   grievances,
   squadMedian,
@@ -334,6 +335,9 @@ router.post('/:teamId/resolve-event', async (req, res) => {
     arrival = createPlayerForTeam(db, req.params.teamId, effects.recruit_player);
   }
 
+  // Un événement qui remonte le moral apaise aussi immédiatement.
+  refreshAppeasement(db, queryAll, req.params.teamId);
+
   saveDb();
 
   const updatedManager = queryOne('SELECT * FROM managers WHERE id = ?', [managerId]);
@@ -571,6 +575,10 @@ router.post('/:teamId/resolve-conversation', async (req, res) => {
     db.run('UPDATE managers SET budget = MAX(0, budget + ?) WHERE id = ?', [scaledBudget, managerId]);
   }
 
+  // Un moral remonté au vert doit apaiser sur-le-champ, sans attendre le
+  // match suivant : sinon le dialogue paraît sans effet.
+  const apaises = refreshAppeasement(db, queryAll, req.params.teamId);
+
   saveDb();
 
   const updatedPlayer = queryOne('SELECT * FROM players WHERE id = ?', [playerId]);
@@ -581,6 +589,7 @@ router.post('/:teamId/resolve-conversation', async (req, res) => {
     effects,
     player: updatedPlayer,
     manager: updatedManager,
+    appeased: apaises,
   });
 });
 
@@ -673,6 +682,9 @@ router.post('/:teamId/manage', async (req, res) => {
       return res.status(400).json({ error: 'Action inconnue' });
   }
 
+  // Une action qui remonte le moral (cohésion) doit apaiser immédiatement.
+  const apaisesAction = refreshAppeasement(db, queryAll, req.params.teamId);
+
   saveDb();
 
   const updatedManager = queryOne('SELECT * FROM managers WHERE id = ?', [managerId]);
@@ -684,6 +696,7 @@ router.post('/:teamId/manage', async (req, res) => {
     cost,
     manager: updatedManager,
     team: updatedTeam,
+    appeased: apaisesAction,
   });
 });
 

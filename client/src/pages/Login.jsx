@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { api } from '../api/client';
+import { KOFI_URL } from '../config';
 import './Login.css';
 
 export default function Login({ onLogin, onLoadSave, onDreamTeam }) {
@@ -119,6 +120,15 @@ export default function Login({ onLogin, onLoadSave, onDreamTeam }) {
             <button className="btn-dreamteam" onClick={onDreamTeam}>
               DreamTeam
             </button>
+
+            <a
+              className="login-kofi"
+              href={KOFI_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              ☕ Ce jeu vous plaît ? Soutenez son développement
+            </a>
           </>
         )}
 

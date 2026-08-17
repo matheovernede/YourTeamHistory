@@ -1,0 +1,85 @@
+name: Tests et déploiement
+
+# Déclenché à chaque envoi sur master, et manuellement depuis l'onglet Actions.
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  # ------------------------------------------------------------------
+  # 1. Les tests tournent toujours, même sans serveur configuré.
+  # ------------------------------------------------------------------
+  tests:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Node 22 : `node --test` n'accepte les motifs génériques qu'à partir
+      # de Node 21. Avec Node 20, `npm test` échouerait.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Installer les dépendances
+        run: npm install
+
+      - name: Lancer la suite de tests
+        run: npm test
+
+      - name: Vérifier que le client compile
+        run: npm run build
+
+  # ------------------------------------------------------------------
+  # 2. Déploiement sur le serveur, uniquement si les tests passent
+  #    ET si les secrets SSH sont configurés.
+  # ------------------------------------------------------------------
+  deploy:
+    name: Déploiement
+    needs: tests
+    runs-on: ubuntu-latest
+    # Sans secret SSH_HOST, l'étape est ignorée : le dépôt reste utilisable
+    # tel quel tant que le serveur n'est pas prêt.
+    if: ${{ github.ref == 'refs/heads/master' }}
+
+    steps:
+      - name: Vérifier que le serveur est configuré
+        id: check
+        run: |
+          if [ -z "${{ secrets.SSH_HOST }}" ]; then
+            echo "configured=false" >> $GITHUB_OUTPUT
+            echo "Aucun secret SSH_HOST : déploiement ignoré."
+          else
+            echo "configured=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Déployer par SSH
+        if: steps.check.outputs.configured == 'true'
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          script: |
+            set -e
+            cd ${{ secrets.APP_DIR || '/var/www/footmanager' }}
+
+            echo "--- Récupération du code ---"
+            git fetch --all
+            git reset --hard origin/master
+
+            echo "--- Dépendances et build ---"
+            npm install --omit=dev
+            npm install --include=dev --prefix client
+            npm run build
+
+            echo "--- Redémarrage du service ---"
+            sudo systemctl restart footmanager
+            sleep 3
+            sudo systemctl is-active footmanager
+
+            echo "--- Vérification ---"
+            curl -fsS http://127.0.0.1:3001/api/health || (echo "Health check en échec" && exit 1)
+            echo "Déploiement terminé."

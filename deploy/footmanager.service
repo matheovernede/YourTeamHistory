@@ -1,0 +1,43 @@
+# Service systemd pour Foot Manager.
+#
+# Installation :
+#   sudo cp deploy/footmanager.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now footmanager
+#
+# Adapter User, WorkingDirectory et DB_PATH à votre serveur.
+
+[Unit]
+Description=Foot Manager (YourTeamHistory)
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/var/www/footmanager
+
+Environment=NODE_ENV=production
+Environment=PORT=3001
+# On n'écoute que sur la boucle locale : nginx s'occupe de l'exposition publique.
+Environment=HOST=127.0.0.1
+# CRUCIAL : la base doit vivre hors du dossier applicatif, sinon un
+# redéploiement qui remplace le répertoire efface toutes les sauvegardes.
+Environment=DB_PATH=/var/lib/footmanager/footmanager.db
+
+ExecStart=/usr/bin/node server/index.js
+
+Restart=always
+RestartSec=5
+
+# Durcissement raisonnable : le service n'écrit que dans son dossier de données.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/var/lib/footmanager
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=footmanager
+
+[Install]
+WantedBy=multi-user.target

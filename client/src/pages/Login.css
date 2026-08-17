@@ -399,3 +399,31 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ---- Soutien Ko-fi sur l ecran d accueil ---- */
+.login-kofi {
+  display: block;
+  margin-top: var(--sp-4);
+  padding: 11px;
+  border-radius: var(--radius-md);
+  background: rgba(232, 68, 63, 0.08);
+  border: 1px solid rgba(232, 68, 63, 0.28);
+  color: #ff8b88;
+  font-size: 12.5px;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+  transition: all var(--transition-normal);
+}
+
+.login-kofi:hover {
+  background: rgba(232, 68, 63, 0.16);
+  border-color: rgba(232, 68, 63, 0.5);
+  color: #ffa9a6;
+  transform: translateY(-1px);
+}
+
+.login-kofi:focus-visible {
+  outline: 2px solid #ffb3b1;
+  outline-offset: 2px;
+}

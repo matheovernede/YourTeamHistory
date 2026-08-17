@@ -82,32 +82,37 @@ function updateDiscontent(db, queryAll, teamId, ctx = {}) {
 
   for (const p of players) {
     const griefs = grievances(p, context);
-    const morale = p.morale || 70;
     const streak = p.unhappy_streak || 0;
+    let morale = p.morale || 70;
 
-    // Un moral revenu au vert efface le contentieux, même une demande déposée.
-    if (morale >= MORALE_APPEASED && griefs.length === 0) {
+    // 1. Un grief use le joueur. C'est par l'érosion du moral qu'un motif
+    //    d'insatisfaction se traduit en mécontentement, jamais directement.
+    if (griefs.length > 0 && !griefs.includes('moral au plus bas')) {
+      morale = Math.max(20, morale - MORALE_DRAIN);
+      db.run('UPDATE players SET morale = ? WHERE id = ?', [morale, p.id]);
+    }
+
+    // 2. Le moral prime sur tout le reste : un joueur véritablement heureux
+    //    reste, même s'il joue peu ou se sent trop fort pour la division.
+    //    Une version précédente exigeait EN PLUS l'absence de grief, si bien
+    //    qu'un remplaçant au moral maximal continuait de réclamer son départ :
+    //    remonter son moral n'avait alors aucun effet.
+    if (morale >= MORALE_APPEASED) {
       if (streak > 0 || p.transfer_request) {
         db.run('UPDATE players SET unhappy_streak = 0, transfer_request = 0 WHERE id = ?', [p.id]);
       }
       continue;
     }
 
+    // 3. Sans grief actif, le contentieux se résorbe doucement.
     if (griefs.length === 0) {
-      // Ni content ni mécontent : le compteur redescend doucement.
       if (streak > 0) db.run('UPDATE players SET unhappy_streak = ? WHERE id = ?', [streak - 1, p.id]);
       continue;
     }
 
+    // 4. Grief actif ET moral bas : le mécontentement s'installe.
     const next = streak + 1;
     db.run('UPDATE players SET unhappy_streak = ? WHERE id = ?', [next, p.id]);
-
-    // Un grief entame le moral. Sans cela on aboutissait à des situations
-    // absurdes : un joueur à 100 de moral réclamant son transfert.
-    // Le mécanisme devient cohérent et se renforce de lui-même.
-    if (!griefs.includes('moral au plus bas')) {
-      db.run('UPDATE players SET morale = MAX(20, morale - ?) WHERE id = ?', [MORALE_DRAIN, p.id]);
-    }
 
     // Alerte à mi-parcours : le joueur doit prévenir avant de claquer la porte.
     if (next === Math.floor(REQUEST_THRESHOLD / 2) + 1) {
@@ -179,6 +184,27 @@ function resetDiscontent(db, teamId) {
   db.run('UPDATE players SET unhappy_streak = 0, transfer_request = 0 WHERE team_id = ?', [teamId]);
 }
 
+/**
+ * Apaise immédiatement tout joueur dont le moral est repassé au vert.
+ *
+ * À appeler après toute action qui remonte le moral (entraînement de cohésion,
+ * dialogue, événement) : sans cela, il fallait attendre la journée suivante pour
+ * voir la demande de transfert disparaître, et l'action semblait sans effet.
+ *
+ * @returns {Array} joueurs effectivement apaisés
+ */
+function refreshAppeasement(db, queryAll, teamId) {
+  const apaises = queryAll(
+    `SELECT id, first_name, last_name FROM players
+     WHERE team_id = ? AND morale >= ? AND (unhappy_streak > 0 OR transfer_request = 1)`,
+    [teamId, MORALE_APPEASED]
+  );
+  for (const p of apaises) {
+    db.run('UPDATE players SET unhappy_streak = 0, transfer_request = 0 WHERE id = ?', [p.id]);
+  }
+  return apaises.map(p => `${p.first_name} ${p.last_name}`);
+}
+
 /** Étiquette lisible de l'état d'un joueur, pour l'interface. */
 function moodLabel(player) {
   if (player.transfer_request) return { level: 'leaving', label: 'Demande à partir' };
@@ -191,6 +217,7 @@ function moodLabel(player) {
 module.exports = {
   MORALE_UNHAPPY,
   MORALE_APPEASED,
+  MORALE_DRAIN,
   REQUEST_THRESHOLD,
   DEPARTURE_THRESHOLD,
   MIN_SQUAD_AFTER_DEPARTURE,
@@ -199,5 +226,6 @@ module.exports = {
   updateDiscontent,
   resolveDepartures,
   resetDiscontent,
+  refreshAppeasement,
   moodLabel,
 };

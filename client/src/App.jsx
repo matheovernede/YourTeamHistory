@@ -3,6 +3,8 @@ import './App.css';
 import { api } from './api/client';
 import MusicPlayer from './components/MusicPlayer';
 import Login from './pages/Login';
+import { KOFI_URL } from './config';
+
 import Draft from './pages/Draft';
 import Season from './pages/Season';
 import DreamTeam from './pages/DreamTeam';
@@ -177,6 +179,15 @@ function App() {
             </div>
           </div>
           <div className="top-actions">
+            <a
+              className="btn-kofi-top"
+              href={KOFI_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Soutenir le développement du jeu sur Ko-fi"
+            >
+              ☕ Soutenir
+            </a>
             <button className="btn-new-career-top" onClick={handleNewCareer}>Nouvelle carrière</button>
           </div>
         </header>
@@ -221,6 +232,15 @@ function App() {
             <button className="icon-btn" title="Exporter la sauvegarde" onClick={handleExportSave}>💾</button>
             <button className="icon-btn" title="Importer une sauvegarde" onClick={handleImportSave}>📂</button>
             <button className="btn-dreamteam-top" onClick={() => setShowDreamTeam(true)}>⭐ DreamTeam</button>
+            <a
+              className="btn-kofi-top"
+              href={KOFI_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Soutenir le développement du jeu sur Ko-fi"
+            >
+              ☕ Soutenir
+            </a>
             <button className="btn-new-career-top" onClick={handleNewCareer}>Nouvelle carrière</button>
           </div>
         </header>

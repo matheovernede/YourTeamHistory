@@ -1,4 +1,20 @@
-const API_URL = import.meta.env.DEV ? 'http://localhost:3001/api' : '/api';
+/**
+ * Adresse de l'API.
+ *
+ * Par défaut le front et l'API sont servis par le même serveur, d'où le chemin
+ * relatif `/api`. Si les deux sont hébergés séparément — par exemple le front
+ * en statique chez un hébergeur mutualisé et l'API sur un serveur Node — il
+ * suffit de définir VITE_API_URL au moment du build :
+ *
+ *   VITE_API_URL=https://api.mondomaine.com npm run build
+ *
+ * Le serveur autorise déjà les requêtes d'origine croisée (cors).
+ */
+const API_URL = import.meta.env.VITE_API_URL
+  ? `${import.meta.env.VITE_API_URL.replace(/\/+$/, '')}/api`
+  : import.meta.env.DEV
+    ? 'http://localhost:3001/api'
+    : '/api';
 
 async function request(path, options = {}) {
   const res = await fetch(`${API_URL}${path}`, {
