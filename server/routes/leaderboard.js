@@ -1,5 +1,5 @@
 const express = require('express');
-const { queryAll, queryOne, run } = require('../db/schema');
+const { queryAll, queryOne } = require('../db/schema');
 const { computeStandings } = require('../engine/standings');
 const { DIVISIONS } = require('../data/divisions');
 
@@ -11,25 +11,38 @@ const router = express.Router();
 const DELAI_EN_LIGNE_MINUTES = 5;
 
 /**
- * Enregistre l'activité d'un manager.
+ * Présence des managers, gardée en mémoire et jamais écrite en base.
  *
- * Appelé depuis les routes que le client sollicite en jouant, ce qui suffit à
- * distinguer les joueurs présents de ceux qui ont fermé l'onglet il y a un mois.
+ * Le passage par la base a fait tomber le site : `run()` réécrit l'intégralité
+ * du fichier SQLite à chaque appel, de façon synchrone. Or la présence se note
+ * sur la route d'état, que le client interroge en boucle — chaque affichage
+ * provoquait donc une réécriture complète de la base et bloquait le serveur.
+ *
+ * Savoir qui est connecté n'a de toute façon aucune raison de survivre à un
+ * redémarrage : la mémoire du processus est le bon endroit.
  */
+const presences = new Map();
+
+/** Au-delà de ce volume, on purge les entrées trop vieilles pour être utiles. */
+const MAX_PRESENCES = 5000;
+
 function touchManager(managerId) {
   if (!managerId || managerId === 'AI') return;
-  try {
-    run("UPDATE managers SET last_seen = datetime('now') WHERE id = ?", [managerId]);
-  } catch (e) { /* colonne absente sur une base très ancienne */ }
+
+  presences.set(managerId, Date.now());
+
+  if (presences.size > MAX_PRESENCES) {
+    const limite = Date.now() - DELAI_EN_LIGNE_MINUTES * 60000;
+    for (const [id, vu] of presences) {
+      if (vu < limite) presences.delete(id);
+    }
+  }
 }
 
-function minutesDepuis(iso) {
-  if (!iso) return null;
-  // SQLite écrit « YYYY-MM-DD HH:MM:SS » en UTC : on le rend explicite,
-  // sans quoi le navigateur l'interpréterait en heure locale.
-  const date = new Date(iso.replace(' ', 'T') + 'Z');
-  if (Number.isNaN(date.getTime())) return null;
-  return (Date.now() - date.getTime()) / 60000;
+function minutesDepuis(managerId) {
+  const vu = presences.get(managerId);
+  if (!vu) return null;
+  return (Date.now() - vu) / 60000;
 }
 
 /**
@@ -45,7 +58,7 @@ function minutesDepuis(iso) {
  */
 router.get('/players', (req, res) => {
   const equipes = queryAll(`
-    SELECT t.*, m.username, m.reputation, m.budget, m.last_seen
+    SELECT t.*, m.username, m.reputation, m.budget
     FROM teams t
     JOIN managers m ON t.manager_id = m.id
     WHERE t.manager_id <> 'AI'
@@ -67,7 +80,7 @@ router.get('/players', (req, res) => {
       if (ligne) { rangDivision = ligne.rank; totalEquipes = table.length; }
     } catch (e) { /* sauvegarde incomplète : on affiche sans le rang */ }
 
-    const minutes = minutesDepuis(t.last_seen);
+    const minutes = minutesDepuis(t.manager_id);
     const division = t.division || 1;
 
     return {
@@ -117,7 +130,7 @@ router.get('/players', (req, res) => {
 /** Détail d'un manager : sa carrière saison par saison. */
 router.get('/players/:teamId', (req, res) => {
   const team = queryOne(
-    `SELECT t.*, m.username, m.reputation, m.budget, m.last_seen
+    `SELECT t.*, m.username, m.reputation, m.budget
      FROM teams t JOIN managers m ON t.manager_id = m.id
      WHERE t.id = ? AND t.manager_id <> 'AI'`,
     [req.params.teamId]

@@ -193,12 +193,7 @@ function initTables() {
     try { db.run(`ALTER TABLE teams ADD COLUMN ${col}`); } catch (e) { /* déjà présente */ }
   }
 
-  const managerColumns = [
-    'last_seen TEXT',             // dernière activité, pour le statut « en ligne »
-  ];
-  for (const col of managerColumns) {
-    try { db.run(`ALTER TABLE managers ADD COLUMN ${col}`); } catch (e) { /* déjà présente */ }
-  }
+
 
   // Historique des saisons : sans lui, la carrière n'a aucune mémoire.
   db.run(`
