@@ -3,7 +3,7 @@ import './App.css';
 import { api } from './api/client';
 import MusicPlayer from './components/MusicPlayer';
 import Login from './pages/Login';
-import { KOFI_URL } from './config';
+import { KOFI_URL, DISCORD_URL } from './config';
 
 import Draft from './pages/Draft';
 import Season from './pages/Season';
@@ -180,6 +180,15 @@ function App() {
           </div>
           <div className="top-actions">
             <a
+              className="btn-discord-top"
+              href={DISCORD_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Rejoindre le serveur Discord du jeu"
+            >
+              💬 Discord
+            </a>
+            <a
               className="btn-kofi-top"
               href={KOFI_URL}
               target="_blank"
@@ -232,6 +241,15 @@ function App() {
             <button className="icon-btn" title="Exporter la sauvegarde" onClick={handleExportSave}>💾</button>
             <button className="icon-btn" title="Importer une sauvegarde" onClick={handleImportSave}>📂</button>
             <button className="btn-dreamteam-top" onClick={() => setShowDreamTeam(true)}>⭐ DreamTeam</button>
+            <a
+              className="btn-discord-top"
+              href={DISCORD_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Rejoindre le serveur Discord du jeu"
+            >
+              💬 Discord
+            </a>
             <a
               className="btn-kofi-top"
               href={KOFI_URL}

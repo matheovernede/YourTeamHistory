@@ -58,7 +58,9 @@ export const api = {
   playMatchday: (teamId, difficulty) => request(`/season/${teamId}/play-matchday`, { method: 'POST', body: JSON.stringify({ difficulty }) }),
   getSponsors: (teamId) => request(`/season/${teamId}/sponsors`),
   chooseSponsor: (teamId, sponsorId, managerId) => request(`/season/${teamId}/choose-sponsor`, { method: 'POST', body: JSON.stringify({ sponsorId, managerId }) }),
-  endSeason: (teamId, managerId) => request(`/season/${teamId}/end-season`, { method: 'POST', body: JSON.stringify({ managerId }) }),
+  // La difficulté conditionne les départs de joueurs et le niveau des équipes
+  // IA générées pour la nouvelle saison : elle doit accompagner la requête.
+  endSeason: (teamId, managerId, difficulty) => request(`/season/${teamId}/end-season`, { method: 'POST', body: JSON.stringify({ managerId, difficulty }) }),
 
   getManagement: (teamId) => request(`/season/${teamId}/management`),
   buyManagement: (teamId, actionId, managerId) => request(`/season/${teamId}/manage`, { method: 'POST', body: JSON.stringify({ actionId, managerId }) }),

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { api } from '../api/client';
-import { KOFI_URL } from '../config';
+import { KOFI_URL, DISCORD_URL } from '../config';
 import './Login.css';
 
 export default function Login({ onLogin, onLoadSave, onDreamTeam }) {
@@ -63,7 +63,7 @@ export default function Login({ onLogin, onLoadSave, onDreamTeam }) {
       <div className="login-shell">
         <aside className="login-brand">
           <div className="login-badge">⚽</div>
-          <h1 className="login-title">Foot Manager</h1>
+          <h1 className="login-title">YourTeamHistory</h1>
           <p className="login-tagline">
             Recrutez votre équipe, disputez des matchs, grimpez au classement.
           </p>
@@ -120,6 +120,15 @@ export default function Login({ onLogin, onLoadSave, onDreamTeam }) {
             <button className="btn-dreamteam" onClick={onDreamTeam}>
               DreamTeam
             </button>
+
+            <a
+              className="login-discord"
+              href={DISCORD_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              💬 Rejoindre le Discord
+            </a>
 
             <a
               className="login-kofi"

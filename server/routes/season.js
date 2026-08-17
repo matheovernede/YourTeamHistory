@@ -14,6 +14,8 @@ const {
   resetSeasonStats,
 } = require('../engine/discipline');
 const { evolveSquad, retireOldPlayers, runAiTransferWindow } = require('../engine/progression');
+const { findFixture, seedFor } = require('../engine/calendar');
+const { computeStandings } = require('../engine/standings');
 const {
   updateDiscontent,
   resolveDepartures,
@@ -53,15 +55,9 @@ router.get('/:teamId/status', (req, res) => {
   const played = team.wins + team.draws + team.losses;
   const remaining = totalMatches - played;
 
-  // Only show AI teams + current player's team in the same division
-  const standings = queryAll(`
-    SELECT t.id, t.name, t.points, t.wins, t.draws, t.losses, t.goals_for, t.goals_against,
-           (t.goals_for - t.goals_against) as goal_diff
-    FROM teams t
-    WHERE t.division = ? AND (t.manager_id = 'AI' OR t.id = ?)
-    ORDER BY t.points DESC, goal_diff DESC, t.goals_for DESC
-  `, [division, req.params.teamId]);
-
+  // Classement propre à cette sauvegarde : recalculé depuis son calendrier et
+  // ses résultats, jamais lu dans les colonnes partagées des équipes IA.
+  const standings = computeStandings(req.params.teamId);
   const rank = standings.findIndex(t => t.id === req.params.teamId) + 1;
 
   res.json({
@@ -104,29 +100,60 @@ router.post('/:teamId/play-matchday', async (req, res) => {
     aiTeams = queryAll("SELECT * FROM teams WHERE manager_id = 'AI' AND division = ?", [division]);
     if (aiTeams.length === 0) return res.status(500).json({ error: "Pas d'adversaires dans cette division" });
   }
-  const opponent = aiTeams[Math.floor(Math.random() * aiTeams.length)];
-
-  const homePlayers = queryAll('SELECT * FROM players WHERE team_id = ?', [team.id]);
-  const awayPlayers = queryAll('SELECT * FROM players WHERE team_id = ?', [opponent.id]);
-
-  const result = simulateMatch(homePlayers, awayPlayers, {
-    homeFormation: team.formation,
-    awayFormation: opponent.formation,
-    difficulty: req.body.difficulty || 'normal',
-    homeIsPlayer: true,
-  });
-  const matchId = uuid();
   const week = played + 1;
+
+  // Le calendrier impose l'adversaire et le terrain. Auparavant l'adversaire
+  // était tiré au sort et le joueur recevait à chaque match : il bénéficiait
+  // donc de l'avantage du terrain sur les 26 journées, ce qui gonflait son
+  // classement, et pouvait affronter cinq fois la même équipe.
+  // La graine inclut l'équipe du joueur : chaque sauvegarde a son calendrier.
+  const poolIds = [team.id, ...aiTeams.map((t) => t.id)];
+  const seed = seedFor(team.id, team.season, division);
+  const fixture = findFixture(poolIds, seed, week, team.id);
+
+  // Division au nombre impair d'équipes : le joueur peut être exempt. On lui
+  // donne un adversaire de secours plutôt que de bloquer sa progression.
+  const opponentId = fixture
+    ? fixture.opponentId
+    : aiTeams[week % aiTeams.length].id;
+  const isHome = fixture ? fixture.isHome : true;
+  const opponent = queryOne('SELECT * FROM teams WHERE id = ?', [opponentId]);
+  if (!opponent) return res.status(500).json({ error: "Pas d'adversaires dans cette division" });
+
+  const myPlayers = queryAll('SELECT * FROM players WHERE team_id = ?', [team.id]);
+  const oppPlayers = queryAll('SELECT * FROM players WHERE team_id = ?', [opponent.id]);
+
+  const result = simulateMatch(
+    isHome ? myPlayers : oppPlayers,
+    isHome ? oppPlayers : myPlayers,
+    {
+      homeFormation: isHome ? team.formation : opponent.formation,
+      awayFormation: isHome ? opponent.formation : team.formation,
+      difficulty: req.body.difficulty || 'normal',
+      homeIsPlayer: isHome,
+    }
+  );
+
+  // À partir d'ici on raisonne du point de vue du joueur, quel que soit le terrain.
+  const side = isHome ? 'home' : 'away';
+  const myGoals = isHome ? result.homeGoals : result.awayGoals;
+  const oppGoals = isHome ? result.awayGoals : result.homeGoals;
+
+  const matchId = uuid();
 
   db.run(
     "INSERT INTO matches (id, season, week, home_team_id, away_team_id, home_goals, away_goals, played, events, played_at) VALUES (?,?,?,?,?,?,?,1,?,datetime('now'))",
-    [matchId, team.season, week, team.id, opponent.id, result.homeGoals, result.awayGoals, JSON.stringify(result.events)]
+    [matchId, team.season, week, isHome ? team.id : opponent.id, isHome ? opponent.id : team.id, result.homeGoals, result.awayGoals, JSON.stringify(result.events)]
   );
+
+  // Les compteurs des équipes IA ne sont plus tenus en base : ils sont
+  // communs à toutes les sauvegardes et les corrompaient mutuellement. Le
+  // classement les recalcule depuis le calendrier de cette partie.
 
   let pointsEarned = 0;
   let resultText = '';
   let matchBonus = 0;
-  const goalDiff = result.homeGoals - result.awayGoals;
+  const goalDiff = myGoals - oppGoals;
 
   // Win bonus scales with division
   const winBonusByDiv = [100000, 200000, 400000, 700000, 1200000, 2500000, 5000000];
@@ -136,29 +163,27 @@ router.post('/:teamId/play-matchday', async (req, res) => {
     pointsEarned = 3;
     resultText = 'Victoire';
     matchBonus = goalDiff >= 4 ? baseWinBonus * 3 : goalDiff >= 2 ? baseWinBonus * 2 : baseWinBonus;
-    db.run('UPDATE teams SET wins = wins + 1, points = points + 3, goals_for = goals_for + ?, goals_against = goals_against + ? WHERE id = ?', [result.homeGoals, result.awayGoals, team.id]);
     db.run('UPDATE managers SET budget = budget + ? WHERE id = ?', [matchBonus, team.manager_id]);
   } else if (goalDiff === 0) {
     pointsEarned = 1;
     resultText = 'Match nul';
-    db.run('UPDATE teams SET draws = draws + 1, points = points + 1, goals_for = goals_for + ?, goals_against = goals_against + ? WHERE id = ?', [result.homeGoals, result.awayGoals, team.id]);
   } else {
     resultText = 'Défaite';
-    db.run('UPDATE teams SET losses = losses + 1, goals_for = goals_for + ?, goals_against = goals_against + ? WHERE id = ?', [result.homeGoals, result.awayGoals, team.id]);
   }
+  recordResult(db, team.id, myGoals, oppGoals);
 
   // Apply stamina/morale effects to player's team
-  const won = result.homeGoals > result.awayGoals;
-  const drew = result.homeGoals === result.awayGoals;
+  const won = goalDiff > 0;
+  const drew = goalDiff === 0;
   applyMatchEffects(db, team.id, won, drew);
 
   // Discipline, blessures et statistiques individuelles.
   // L'ordre compte : on applique d'abord les suites du match, puis on décompte
   // une journée — sinon la sanction du jour serait purgée immédiatement.
   const consequences = applyMatchConsequences(db, queryOne, team.id, {
-    cards: result.cards ? result.cards.home : [],
-    injuries: result.injuries ? result.injuries.home : [],
-    scorers: (result.scorers || []).filter(s => s.team === 'home'),
+    cards: result.cards ? result.cards[side] : [],
+    injuries: result.injuries ? result.injuries[side] : [],
+    scorers: (result.scorers || []).filter(s => s.team === side),
   });
   tickAvailability(db, team.id);
 
@@ -167,10 +192,11 @@ router.post('/:teamId/play-matchday', async (req, res) => {
   const mood = updateDiscontent(db, queryAll, team.id, {
     matchday: week,
     division,
+    difficulty: req.body.difficulty || 'normal',
   });
 
-  // Simulate AI matches within the same division
-  simulateAiMatches(db, team.season, week, team.id, division);
+  // Les autres affiches de la journée ne sont plus jouées ici : elles sont
+  // recalculées à la demande par computeStandings, propre à cette sauvegarde.
   saveDb();
 
   const updatedTeam = queryOne('SELECT * FROM teams WHERE id = ?', [team.id]);
@@ -178,7 +204,7 @@ router.post('/:teamId/play-matchday', async (req, res) => {
   const seasonOver = newPlayed >= 26;
 
   // Check if a random event triggers after this match
-  const standings = queryAll("SELECT t.id FROM teams t WHERE t.division = ? AND (t.manager_id = 'AI' OR t.id = ?) ORDER BY t.points DESC", [division, team.id]);
+  const standings = computeStandings(team.id);
   const currentRank = standings.findIndex(t => t.id === team.id) + 1;
   const isLosing = currentRank > Math.ceil(standings.length / 2);
 
@@ -214,6 +240,12 @@ router.post('/:teamId/play-matchday', async (req, res) => {
     match: {
       id: matchId,
       opponent: opponent.name,
+      // Le joueur ne reçoit plus systématiquement : le score doit donc être
+      // lu de son point de vue, sans quoi une victoire à l'extérieur
+      // s'afficherait comme une défaite.
+      isHome,
+      goalsFor: myGoals,
+      goalsAgainst: oppGoals,
       homeGoals: result.homeGoals,
       awayGoals: result.awayGoals,
       events: result.events,
@@ -393,41 +425,17 @@ function pickPlayerToRemove(squad, criterion) {
 /**
  * Only simulates matches between teams in the same division.
  */
-function simulateAiMatches(db, season, week, excludeTeamId, division) {
-  const aiTeams = queryAll("SELECT * FROM teams WHERE manager_id = 'AI' AND division = ?", [division]);
-  const shuffled = [...aiTeams].sort(() => Math.random() - 0.5);
-
-  for (let i = 0; i < shuffled.length - 1; i += 2) {
-    const home = shuffled[i];
-    const away = shuffled[i + 1];
-    if (!away) break;
-
-    // Get average overall of each team's starters for realistic simulation
-    const homePlayers = queryAll('SELECT overall FROM players WHERE team_id = ? AND is_starter = 1', [home.id]);
-    const awayPlayers = queryAll('SELECT overall FROM players WHERE team_id = ? AND is_starter = 1', [away.id]);
-
-    const homeAvg = homePlayers.length > 0
-      ? homePlayers.reduce((s, p) => s + p.overall, 0) / homePlayers.length
-      : 60;
-    const awayAvg = awayPlayers.length > 0
-      ? awayPlayers.reduce((s, p) => s + p.overall, 0) / awayPlayers.length
-      : 60;
-
-    const result = simulateAiMatchByStrength(homeAvg, awayAvg);
-    const { homeGoals, awayGoals } = result;
-
-    if (homeGoals > awayGoals) {
-      db.run('UPDATE teams SET wins = wins + 1, points = points + 3, goals_for = goals_for + ?, goals_against = goals_against + ? WHERE id = ?', [homeGoals, awayGoals, home.id]);
-      db.run('UPDATE teams SET losses = losses + 1, goals_for = goals_for + ?, goals_against = goals_against + ? WHERE id = ?', [awayGoals, homeGoals, away.id]);
-    } else if (homeGoals === awayGoals) {
-      db.run('UPDATE teams SET draws = draws + 1, points = points + 1, goals_for = goals_for + ?, goals_against = goals_against + ? WHERE id = ?', [homeGoals, awayGoals, home.id]);
-      db.run('UPDATE teams SET draws = draws + 1, points = points + 1, goals_for = goals_for + ?, goals_against = goals_against + ? WHERE id = ?', [awayGoals, homeGoals, away.id]);
-    } else {
-      db.run('UPDATE teams SET losses = losses + 1, goals_for = goals_for + ?, goals_against = goals_against + ? WHERE id = ?', [homeGoals, awayGoals, home.id]);
-      db.run('UPDATE teams SET wins = wins + 1, points = points + 3, goals_for = goals_for + ?, goals_against = goals_against + ? WHERE id = ?', [awayGoals, homeGoals, away.id]);
-    }
+function recordResult(db, teamId, scored, conceded) {
+  if (scored > conceded) {
+    db.run('UPDATE teams SET wins = wins + 1, points = points + 3, goals_for = goals_for + ?, goals_against = goals_against + ? WHERE id = ?', [scored, conceded, teamId]);
+  } else if (scored === conceded) {
+    db.run('UPDATE teams SET draws = draws + 1, points = points + 1, goals_for = goals_for + ?, goals_against = goals_against + ? WHERE id = ?', [scored, conceded, teamId]);
+  } else {
+    db.run('UPDATE teams SET losses = losses + 1, goals_for = goals_for + ?, goals_against = goals_against + ? WHERE id = ?', [scored, conceded, teamId]);
   }
 }
+
+
 
 /**
  * Management actions - costs scale with division level.
@@ -751,15 +759,8 @@ router.post('/:teamId/end-season', async (req, res) => {
   const division = getTeamDivision(team);
   const divisionInfo = getDivisionInfo(division);
 
-  // Get standings for the player's division (AI + current player only)
-  const standings = queryAll(`
-    SELECT t.id, t.name, t.points, t.wins, t.draws, t.losses, t.goals_for, t.goals_against,
-           (t.goals_for - t.goals_against) as goal_diff
-    FROM teams t
-    WHERE t.division = ? AND (t.manager_id = 'AI' OR t.id = ?)
-    ORDER BY t.points DESC, goal_diff DESC, t.goals_for DESC
-  `, [division, req.params.teamId]);
-
+  // Classement de cette sauvegarde uniquement.
+  const standings = computeStandings(req.params.teamId);
   const rank = standings.findIndex(t => t.id === req.params.teamId) + 1;
   const totalTeams = standings.length;
 
@@ -804,27 +805,17 @@ router.post('/:teamId/end-season', async (req, res) => {
   db.run('UPDATE teams SET season = ?, division = ?, points = 0, wins = 0, draws = 0, losses = 0, goals_for = 0, goals_against = 0 WHERE id = ?',
     [newSeason, newDivision, req.params.teamId]);
 
-  // AI promotion/relegation in the same division
-  const aiInDiv = queryAll("SELECT id, name, points, goals_for, goals_against FROM teams WHERE manager_id = 'AI' AND division = ? ORDER BY points DESC, (goals_for - goals_against) DESC", [division]);
-
-  // Top 2 AI teams get promoted (if division < 7)
-  if (division < 7) {
-    const promoted = aiInDiv.slice(0, 2);
-    for (const ai of promoted) {
-      db.run('UPDATE teams SET division = ?, points = 0, wins = 0, draws = 0, losses = 0, goals_for = 0, goals_against = 0 WHERE id = ?', [division + 1, ai.id]);
-    }
-  }
-
-  // Bottom 2 AI teams get relegated (if division > 1)
-  if (division > 1) {
-    const relegated = aiInDiv.slice(-2);
-    for (const ai of relegated) {
-      db.run('UPDATE teams SET division = ?, points = 0, wins = 0, draws = 0, losses = 0, goals_for = 0, goals_against = 0 WHERE id = ?', [division - 1, ai.id]);
-    }
-  }
-
-  // Reset remaining AI teams in this division for new season
-  db.run("UPDATE teams SET points = 0, wins = 0, draws = 0, losses = 0, goals_for = 0, goals_against = 0 WHERE manager_id = 'AI' AND division = ?", [division]);
+  // Les équipes IA ne changent plus de division en fin de saison.
+  //
+  // Ce déplacement était global : il s'appliquait à la base entière alors qu'il
+  // ne concernait qu'une sauvegarde. Deux conséquences, toutes deux visibles
+  // dans le classement. D'une part la division du joueur perdait 4 équipes par
+  // saison sans qu'aucune n'arrive, jusqu'à des championnats à 17 équipes.
+  // D'autre part, terminer une saison réorganisait la division des autres
+  // parties en cours.
+  //
+  // Chaque sauvegarde a désormais son propre championnat, calculé par
+  // computeStandings ; les effectifs des divisions restent donc fixes.
 
   // Make sure the new division has enough AI teams (seed if needed)
   const aiInNewDiv = queryAll("SELECT id FROM teams WHERE manager_id = 'AI' AND division = ?", [newDivision]);
@@ -884,6 +875,7 @@ router.post('/:teamId/end-season', async (req, res) => {
   const departures = resolveDepartures(db, queryAll, queryOne, req.params.teamId, managerId, {
     matchday: team.wins + team.draws + team.losses,
     division,
+    difficulty: req.body.difficulty || 'normal',
   });
 
   // Progression selon l'âge et le temps de jeu, puis départs des plus âgés.

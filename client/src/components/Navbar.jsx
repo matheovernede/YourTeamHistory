@@ -12,7 +12,7 @@ export default function Navbar({ currentPage, onNavigate, manager, team, onNewCa
     <nav className="navbar">
       <div className="navbar-brand">
         <span className="navbar-logo">⚽</span>
-        <span className="navbar-title">Foot Manager</span>
+        <span className="navbar-title">YourTeamHistory</span>
       </div>
 
       <div className="navbar-links">

@@ -36,6 +36,17 @@ const MIN_SQUAD_AFTER_DEPARTURE = 14;
 const MORALE_DRAIN = 4;
 
 /**
+ * Difficultés où un joueur ne quitte jamais le club de son propre chef.
+ * Le mécontentement reste visible et le moral continue d'agir sur les
+ * performances, mais aucun départ n'est imposé au manager.
+ */
+const NO_DEPARTURE_DIFFICULTIES = ['easy'];
+
+function departuresAllowed(difficulty) {
+  return !NO_DEPARTURE_DIFFICULTIES.includes(difficulty);
+}
+
+/**
  * Raisons de mécontentement autres que le moral brut.
  * Renvoie la liste des griefs, pour pouvoir l'expliquer au joueur.
  */
@@ -79,6 +90,7 @@ function updateDiscontent(db, queryAll, teamId, ctx = {}) {
   const requests = [];
   const warnings = [];
   const context = { ...ctx, squadMedianOverall: squadMedian(players) };
+  const autorise = departuresAllowed(ctx.difficulty);
 
   for (const p of players) {
     const griefs = grievances(p, context);
@@ -114,6 +126,15 @@ function updateDiscontent(db, queryAll, teamId, ctx = {}) {
     const next = streak + 1;
     db.run('UPDATE players SET unhappy_streak = ? WHERE id = ?', [next, p.id]);
 
+    // En difficulté facile, le mécontentement s'affiche mais ne débouche jamais
+    // sur une demande de transfert : le manager n'est pas mis sous pression.
+    if (!autorise) {
+      if (p.transfer_request) {
+        db.run('UPDATE players SET transfer_request = 0 WHERE id = ?', [p.id]);
+      }
+      continue;
+    }
+
     // Alerte à mi-parcours : le joueur doit prévenir avant de claquer la porte.
     if (next === Math.floor(REQUEST_THRESHOLD / 2) + 1) {
       warnings.push({
@@ -146,6 +167,9 @@ function updateDiscontent(db, queryAll, teamId, ctx = {}) {
  * @returns {Array} joueurs partis, avec l'indemnité perçue
  */
 function resolveDepartures(db, queryAll, queryOne, teamId, managerId, ctx = {}) {
+  // En difficulté facile, personne ne s'en va de son propre chef.
+  if (!departuresAllowed(ctx.difficulty)) return [];
+
   const players = queryAll('SELECT * FROM players WHERE team_id = ? ORDER BY unhappy_streak DESC', [teamId]);
   const departures = [];
   let remaining = players.length;

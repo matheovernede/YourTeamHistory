@@ -93,14 +93,14 @@ function analyzeTeam(players, formation = null) {
   };
 }
 
-function poissonRandom(lambda) {
+function poissonRandom(lambda, rand = Math.random) {
   if (lambda <= 0) return 0;
   const L = Math.exp(-lambda);
   let k = 0;
   let p = 1;
   do {
     k++;
-    p *= Math.random();
+    p *= rand();
   } while (p > L);
   return k - 1;
 }
@@ -314,12 +314,17 @@ function simulateMatch(homePlayers, awayPlayers, {
 /**
  * Lightweight AI vs AI simulation using overall ratings.
  */
-function simulateAiMatchByStrength(homeOverall, awayOverall) {
+/**
+ * @param {function} [rand]  source d'aléa. En fournir une déterministe permet
+ *                           de rejouer une rencontre à l'identique, ce dont
+ *                           dépend le calcul du classement par sauvegarde.
+ */
+function simulateAiMatchByStrength(homeOverall, awayOverall, rand = Math.random) {
   const home = { attack: homeOverall, midfield: homeOverall, defense: homeOverall, physical: homeOverall * 0.8, morale: 70 };
   const away = { attack: awayOverall, midfield: awayOverall, defense: awayOverall, physical: awayOverall * 0.8, morale: 70 };
   const xG = calculateExpectedGoals(home, away);
-  let homeGoals = poissonRandom(xG.home);
-  let awayGoals = poissonRandom(xG.away);
+  const homeGoals = poissonRandom(xG.home, rand);
+  const awayGoals = poissonRandom(xG.away, rand);
   return { homeGoals: Math.min(homeGoals, 6), awayGoals: Math.min(awayGoals, 6) };
 }
 

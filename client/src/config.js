@@ -7,3 +7,6 @@
 
 /** Page de soutien du projet. */
 export const KOFI_URL = 'https://ko-fi.com/yourteamhistory';
+
+/** Serveur Discord de la communauté. */
+export const DISCORD_URL = 'https://discord.gg/znYjqZ7qXW';

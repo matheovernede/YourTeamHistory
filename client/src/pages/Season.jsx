@@ -677,7 +677,8 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
   async function handleEndSeason() {
     setLoading(true);
     try {
-      const result = await api.endSeason(team.id, manager.id);
+      const difficulty = localStorage.getItem('footmanager_difficulty') || 'normal';
+      const result = await api.endSeason(team.id, manager.id, difficulty);
       onSeasonEnd(result);
     } catch (err) {
       // Sans ce catch, un échec serveur ne produisait aucun retour : le bouton
@@ -692,6 +693,7 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
   if (!status) return <div className="page-loading">Chargement...</div>;
 
   const seasonOver = status.played >= status.totalMatches;
+  const difficulty = localStorage.getItem('footmanager_difficulty') || 'normal';
 
   // Rappel de dégraissage : on alerte dès SQUAD_WARN pour laisser le temps de
   // réagir avant le plafond, et on passe en critique une fois celui-ci atteint.
@@ -790,8 +792,10 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
             ))}
           </ul>
           <p className="mood-hint">
-            Remontez leur moral (entraînement de cohésion, dialogues, temps de jeu) pour annuler la procédure.
-            Un joueur qui force son départ n'est vendu qu'à 60 % de sa valeur.
+            Remontez leur moral (entraînement de cohésion, dialogues, temps de jeu) pour les apaiser.
+            {difficulty === 'easy'
+              ? " En difficulté facile, un joueur mécontent ne quitte jamais le club de lui-même — mais son moral pèse toujours sur ses performances."
+              : " Un joueur qui force son départ n'est vendu qu'à 60 % de sa valeur."}
           </p>
         </div>
       )}
@@ -893,10 +897,19 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
 
           {lastMatch && (
             <div className="last-match card">
-              <h3>Dernier match (J{lastMatch.matchday})</h3>
+              <h3>
+                Dernier match (J{lastMatch.matchday})
+                {lastMatch.isHome !== undefined && (
+                  <span className="match-venue">
+                    {lastMatch.isHome ? ' — à domicile' : ' — à l\'extérieur'}
+                  </span>
+                )}
+              </h3>
               <div className="match-score">
                 <span className="team-name">{team.name}</span>
-                <span className="score">{lastMatch.homeGoals} - {lastMatch.awayGoals}</span>
+                <span className="score">
+                  {lastMatch.goalsFor ?? lastMatch.homeGoals} - {lastMatch.goalsAgainst ?? lastMatch.awayGoals}
+                </span>
                 <span className="team-name">{lastMatch.opponent}</span>
               </div>
               <span className={`result-tag ${lastMatch.resultText.toLowerCase().replace(' ', '-')}`}>

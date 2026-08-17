@@ -52,14 +52,23 @@ export default function Match({ team, manager, onUpdate }) {
 
       {matchResult && (
         <div className="match-result card">
+          {matchResult.match.isHome !== undefined && (
+            <div className="result-venue">
+              {matchResult.match.isHome ? 'À domicile' : 'À l\'extérieur'}
+            </div>
+          )}
           <div className="result-score">
             <div className="result-team">
               <span className="result-name">{team.name}</span>
-              <span className="result-goals">{matchResult.match.homeGoals}</span>
+              <span className="result-goals">
+                {matchResult.match.goalsFor ?? matchResult.match.homeGoals}
+              </span>
             </div>
             <span className="result-vs">-</span>
             <div className="result-team">
-              <span className="result-goals">{matchResult.match.awayGoals}</span>
+              <span className="result-goals">
+                {matchResult.match.goalsAgainst ?? matchResult.match.awayGoals}
+              </span>
               <span className="result-name">{matchResult.match.opponent}</span>
             </div>
           </div>

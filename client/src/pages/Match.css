@@ -40,6 +40,15 @@
   margin-bottom: 24px;
 }
 
+.result-venue {
+  text-align: center;
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.65;
+  padding-top: 14px;
+}
+
 .result-score {
   display: flex;
   align-items: center;

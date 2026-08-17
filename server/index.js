@@ -44,7 +44,7 @@ app.get('*', (req, res, next) => {
 });
 
 async function start() {
-  await getDb();
+  const db = await getDb();
   const { queryAll, run: dbRun, saveDb } = require('./db/schema');
   const orphanTeams = queryAll("SELECT id FROM teams WHERE manager_id != 'AI' AND id NOT IN (SELECT id FROM teams WHERE manager_id IN (SELECT id FROM managers))");
   for (const t of orphanTeams) {
@@ -62,15 +62,14 @@ async function start() {
     console.log(`Nettoyage : ${doublons.length} équipe(s) IA en double supprimée(s).`);
   }
 
-  // Recomplètement des divisions trop peu fournies. Vérifié à chaque démarrage
-  // et non seulement après un nettoyage : une division peut aussi se vider au
-  // fil des montées et descentes. seedDivision ignore les noms déjà présents,
-  // l'opération est donc sans risque de doublon.
+  // Recomplètement des divisions incomplètes. seedDivision ignore les noms
+  // déjà présents, l'opération est donc sans risque de doublon.
   const { seedDivision } = require('./db/seed');
+  const { AI_PAR_DIVISION, rebalanceDivisions } = require('./engine/divisions');
   let recompletees = 0;
   for (let level = 1; level <= 7; level++) {
     const avant = queryAll("SELECT id FROM teams WHERE manager_id = 'AI' AND division = ?", [level]).length;
-    if (avant >= 10) continue;
+    if (avant >= AI_PAR_DIVISION) continue;
     try {
       await seedDivision(level, 'normal');
       const apres = queryAll("SELECT id FROM teams WHERE manager_id = 'AI' AND division = ?", [level]).length;
@@ -82,7 +81,18 @@ async function start() {
       console.log(`  division ${level} non recomplétée : ${e.message}`);
     }
   }
-  if (doublons.length > 0 || recompletees > 0) saveDb();
+
+  // Remise à niveau des effectifs : chaque division doit compter exactement
+  // 13 équipes IA, sinon le calendrier aller-retour de 26 journées ne tombe
+  // pas juste et le classement compare des équipes n'ayant pas joué autant
+  // de matchs. Répare les sauvegardes d'avant la correction des montées.
+  const equilibrage = rebalanceDivisions(db);
+  const bouge = equilibrage.deplacees + equilibrage.dissoutes;
+  if (bouge > 0) {
+    console.log(`Équilibrage des divisions : ${equilibrage.deplacees} redistribuée(s), ${equilibrage.dissoutes} dissoute(s).`);
+  }
+
+  if (doublons.length > 0 || recompletees > 0 || bouge > 0) saveDb();
 
   // HOST : sur un serveur derrière un reverse proxy, écouter sur 127.0.0.1
   // suffit et évite d'exposer directement le port applicatif.

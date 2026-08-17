@@ -25,8 +25,14 @@ function fakeDb(players) {
         row.unhappy_streak = params[0];
       } else if (/SET transfer_request = 1/.test(sql)) {
         row.transfer_request = 1;
+      } else if (/SET transfer_request = 0/.test(sql)) {
+        row.transfer_request = 0;
       } else if (/SET morale = \?/.test(sql)) {
         row.morale = params[0];
+      } else {
+        // Filet de sécurité : une requête non reconnue signale que le
+        // simulateur a pris du retard sur le code testé.
+        throw new Error(`requête non gérée par la base factice : ${sql}`);
       }
     },
   };
@@ -117,6 +123,59 @@ test('refreshAppeasement apaise immédiatement, sans attendre un match', () => {
   assert.equal(rows[0].transfer_request, 0, 'le joueur au moral haut doit être apaisé');
   assert.equal(rows[1].transfer_request, 1, 'celui au moral bas doit rester mécontent');
   assert.equal(apaises.length, 1);
+});
+
+// =====================================================================
+// Difficulté facile : aucun départ subi.
+// =====================================================================
+test('facile : un joueur mécontent ne demande jamais à partir', () => {
+  const { db, queryAll, rows } = fakeDb([remplacant({ morale: 80 })]);
+  for (let j = 1; j <= 26; j++) {
+    morale.updateDiscontent(db, queryAll, 'T', { matchday: j, division: 3, difficulty: 'easy' });
+  }
+  assert.equal(rows[0].transfer_request, 0, 'aucune demande de transfert en facile');
+  assert.ok(rows[0].unhappy_streak > 0, 'le mécontentement reste visible');
+  assert.ok(rows[0].morale < 80, 'le moral s’érode quand même : il pèse sur les performances');
+});
+
+test('facile : une demande déjà déposée est annulée', () => {
+  const { db, queryAll, rows } = fakeDb([
+    remplacant({ morale: 30, unhappy_streak: 12, transfer_request: 1 }),
+  ]);
+  morale.updateDiscontent(db, queryAll, 'T', { matchday: 15, division: 3, difficulty: 'easy' });
+  assert.equal(rows[0].transfer_request, 0,
+    'passer en facile doit lever une demande en cours');
+});
+
+test('facile : aucun départ en fin de saison', () => {
+  const players = Array.from({ length: 20 }, (_, i) =>
+    remplacant({ id: 'p' + i, morale: 22, unhappy_streak: 20, transfer_request: 1 }));
+  const { db, queryAll, rows } = fakeDb(players);
+
+  const partants = morale.resolveDepartures(db, queryAll, () => null, 'T', 'M', { difficulty: 'easy' });
+  assert.deepEqual(partants, [], 'personne ne doit partir en facile');
+  assert.equal(rows.length, 20, 'l’effectif est intact');
+});
+
+test('normal et difficile : les départs restent actifs', () => {
+  for (const difficulty of ['normal', 'hard']) {
+    const { db, queryAll, rows } = fakeDb([remplacant({ morale: 80 })]);
+    for (let j = 1; j <= 26; j++) {
+      morale.updateDiscontent(db, queryAll, 'T', { matchday: j, division: 3, difficulty });
+    }
+    assert.equal(rows[0].transfer_request, 1,
+      `en difficulté ${difficulty}, un joueur ignoré doit finir par demander à partir`);
+  }
+});
+
+test('difficulté absente : comportement par défaut inchangé', () => {
+  // Les anciens appels ne transmettaient pas la difficulté : ils doivent
+  // continuer de se comporter comme en mode normal.
+  const { db, queryAll, rows } = fakeDb([remplacant({ morale: 80 })]);
+  for (let j = 1; j <= 26; j++) {
+    morale.updateDiscontent(db, queryAll, 'T', { matchday: j, division: 3 });
+  }
+  assert.equal(rows[0].transfer_request, 1);
 });
 
 test('le seuil d’apaisement est atteignable par les leviers du jeu', () => {

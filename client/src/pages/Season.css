@@ -352,6 +352,11 @@
   font-weight: 600;
 }
 
+.match-venue {
+  opacity: 0.75;
+  font-weight: 500;
+}
+
 .match-score {
   display: flex;
   align-items: center;
