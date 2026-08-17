@@ -31,7 +31,20 @@ app.use('/api/dreamteam', dreamteamRoutes);
 app.use('/api/season', cupRoutes);
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  // uptime et memoire servent au diagnostic a distance : un uptime qui repart
+  // sans cesse de zero trahit un processus qui redemarre en boucle, ce qu'on ne
+  // peut pas distinguer d'un serveur simplement lent vu du dehors.
+  const mem = process.memoryUsage();
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    uptimeSeconds: Math.round(process.uptime()),
+    pid: process.pid,
+    memory: {
+      rssMB: Math.round(mem.rss / 1048576),
+      heapUsedMB: Math.round(mem.heapUsed / 1048576),
+    },
+  });
 });
 
 // Serve frontend in production
@@ -103,4 +116,19 @@ async function start() {
   });
 }
 
-start();
+// Un plantage non intercepté tue le processus en silence : l'hébergeur le
+// relance et, vu du navigateur, le site « charge à l'infini » le temps du
+// redémarrage. On trace la cause avant de rendre la main.
+process.on('uncaughtException', (err) => {
+  console.error('PLANTAGE non intercepté :', err && err.stack ? err.stack : err);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (raison) => {
+  console.error('PROMESSE rejetée sans traitement :', raison);
+});
+
+start().catch((err) => {
+  console.error('ÉCHEC DU DÉMARRAGE :', err && err.stack ? err.stack : err);
+  process.exit(1);
+});
