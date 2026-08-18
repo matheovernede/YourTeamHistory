@@ -120,6 +120,32 @@ export default function Draft({ manager, team, onFinish, isInitialDraft, isWinte
     }
   }
 
+  async function handleAutoSquad() {
+    setLoading(true);
+    try {
+      const difficulty = localStorage.getItem('footmanager_difficulty') || 'normal';
+      const result = await api.draftAuto(manager.id, team.id, difficulty);
+
+      setBudget(result.newBudget);
+      setRecruits(r => r + result.recruited);
+      await loadSquad();
+      // Le marché doit être retiré des joueurs qu'on vient de signer.
+      await loadDraft();
+
+      setMessage(
+        result.recruited > 0
+          ? t('mercato.autoResultat', { n: result.recruited, montant: formatMoney(result.spent || 0) })
+          : t('mercato.autoRien')
+      );
+      setTimeout(() => setMessage(''), 5000);
+    } catch (err) {
+      setMessage(t('commun.erreur', { message: err.message }));
+      setTimeout(() => setMessage(''), 4000);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   function refreshMarket() {
     setLoading(true);
     loadDraft();
@@ -206,6 +232,11 @@ export default function Draft({ manager, team, onFinish, isInitialDraft, isWinte
             </span>
           );
         })}
+        {/* Composer une équipe en un clic : c'est devant l'écran de recrutement
+            que la plupart des nouveaux venus abandonnaient. */}
+        <button className="btn-auto-squad" onClick={handleAutoSquad} disabled={loading}>
+          {t('mercato.autoComposer')}
+        </button>
         <button className="btn-refresh" onClick={refreshMarket}>{t('mercato.rafraichir')}</button>
         {(isInitialDraft ? squad.length >= 11 : true) && (
           <button className="btn-primary btn-finish" onClick={handleFinish}>

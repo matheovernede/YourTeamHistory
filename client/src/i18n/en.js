@@ -139,6 +139,9 @@ export default {
 
   mercato: {
     chargement: 'Loading the transfer window...',
+    autoComposer: '⚡ Build my squad',
+    autoResultat: '{n} players signed for {montant}. Adjust as you like, then confirm.',
+    autoRien: 'Nothing to sign: your squad is already complete.',
     titreHiver: 'January Transfer Window',
     sousTitreHiver: 'A short list and inflated prices: nobody rebuilds a squad in January',
     reprendreSaison: '⚽ Back to the season',
@@ -402,6 +405,8 @@ export default {
       vendu: '{joueur} sold for {prix}',
       saisonTerminee: 'Season over! Check your review.',
       mercatoHiverOuvert: 'Halfway there: the January window is opening…',
+      derbyGagne: 'Derby won! The dressing room is buzzing.',
+      derbyPerdu: 'Derby lost. It is going to be a long week.',
       gestionAppliquee: '{icone} {nom} applied! (-{cout})',
       clotureImpossible: 'Unable to close the season: {message}',
     },
@@ -444,7 +449,11 @@ export default {
       points: '+{n} pts',
     },
 
-    classement: {
+    derby: {
+      etiquette: ' — DERBY',
+      annonce: '🔥 Derby against {adversaire}: twice the morale at stake, and a bigger bonus if you win.',
+    },    classement: {
+      rival: 'Your rivals',
       colEquipe: 'Team',
       colPoints: 'Pts',
       colVictoires: 'W',

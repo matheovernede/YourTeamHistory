@@ -192,6 +192,10 @@ function initTables() {
     // saison et non un simple drapeau : il se réarme ainsi tout seul l'année
     // suivante, sans remise à zéro à penser en fin de saison.
     'winter_window_season INTEGER DEFAULT 0',
+    // Club rival. La division est retenue avec lui : changer d'échelon fait
+    // naître une nouvelle rivalité, l'ancienne n'ayant plus de terrain.
+    'rival_team_id TEXT',
+    'rival_division INTEGER',
   ];
   for (const col of teamColumns) {
     try { db.run(`ALTER TABLE teams ADD COLUMN ${col}`); } catch (e) { /* déjà présente */ }

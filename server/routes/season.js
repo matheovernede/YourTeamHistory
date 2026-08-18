@@ -16,6 +16,7 @@ const {
 const { evolveSquad, retireOldPlayers, runAiTransferWindow } = require('../engine/progression');
 const { findFixture, seedFor } = require('../engine/calendar');
 const { computeStandings } = require('../engine/standings');
+const { ensureRival, infosRival, estDerby, INTENSITE_MORAL, PRIME_DERBY } = require('../engine/rival');
 const { touchManager } = require('./leaderboard');
 const {
   updateDiscontent,
@@ -137,7 +138,7 @@ function libelleCoupe(state, langue) {
   return t('coupe.resultat.elimineTour', langue, { tour: nom });
 }
 
-router.get('/:teamId/status', (req, res) => {
+router.get('/:teamId/status', async (req, res) => {
   const langue = langueDe(req);
   const team = queryOne('SELECT * FROM teams WHERE id = ?', [req.params.teamId]);
   if (!team) return res.status(404).json({ error: t('erreur.equipeIntrouvable', langue) });
@@ -152,6 +153,32 @@ router.get('/:teamId/status', (req, res) => {
   const played = team.wins + team.draws + team.losses;
   const remaining = totalMatches - played;
 
+  // Le rival est désigné à la première consultation, puis renouvelé à chaque
+  // changement de division.
+  const dbStatus = await getDb();
+  ensureRival(dbStatus, team);
+  const equipeAJour = queryOne('SELECT * FROM teams WHERE id = ?', [req.params.teamId]);
+  const rival = infosRival(equipeAJour);
+
+  // Adversaire de la prochaine journée : le calendrier le connaît d'avance, ce
+  // qui permet d'annoncer le derby avant le coup d'envoi.
+  let prochainAdversaire = null;
+  if (played < totalMatches) {
+    const aiIds = queryAll("SELECT id FROM teams WHERE manager_id = 'AI' AND division = ?", [division]).map(t => t.id);
+    const fixture = findFixture([team.id, ...aiIds], seedFor(team.id, team.season, division), played + 1, team.id);
+    if (fixture) {
+      const adv = queryOne('SELECT id, name FROM teams WHERE id = ?', [fixture.opponentId]);
+      if (adv) {
+        prochainAdversaire = {
+          id: adv.id,
+          name: adv.name,
+          isHome: fixture.isHome,
+          isDerby: estDerby(equipeAJour, adv.id),
+        };
+      }
+    }
+  }
+
   // Classement propre à cette sauvegarde : recalculé depuis son calendrier et
   // ses résultats, jamais lu dans les colonnes partagées des équipes IA.
   const standings = computeStandings(req.params.teamId);
@@ -165,6 +192,8 @@ router.get('/:teamId/status', (req, res) => {
     totalMatches,
     winterWindow: mercatoHivernalOuvert(team),
     winterWindowMatchday: JOURNEE_MERCATO_HIVER,
+    rival,
+    nextOpponent: prochainAdversaire,
     rank,
     standings,
     team,
@@ -259,10 +288,14 @@ router.post('/:teamId/play-matchday', async (req, res) => {
   const winBonusByDiv = [100000, 200000, 400000, 700000, 1200000, 2500000, 5000000];
   const baseWinBonus = winBonusByDiv[division - 1] || 1000000;
 
+  // Derby : la recette du guichet et la ferveur valent une prime majorée.
+  const derby = estDerby(team, opponent.id);
+
   if (goalDiff > 0) {
     pointsEarned = 3;
     resultText = 'Victoire';
     matchBonus = goalDiff >= 4 ? baseWinBonus * 3 : goalDiff >= 2 ? baseWinBonus * 2 : baseWinBonus;
+    if (derby) matchBonus = Math.round(matchBonus * PRIME_DERBY);
     db.run('UPDATE managers SET budget = budget + ? WHERE id = ?', [matchBonus, team.manager_id]);
   } else if (goalDiff === 0) {
     pointsEarned = 1;
@@ -286,7 +319,8 @@ router.post('/:teamId/play-matchday', async (req, res) => {
   // Apply stamina/morale effects to player's team
   const won = goalDiff > 0;
   const drew = goalDiff === 0;
-  applyMatchEffects(db, team.id, won, drew);
+  // Un derby marque le vestiaire deux fois plus qu'une rencontre ordinaire.
+  applyMatchEffects(db, team.id, won, drew, derby ? INTENSITE_MORAL : 1);
 
   // Discipline, blessures et statistiques individuelles.
   // L'ordre compte : on applique d'abord les suites du match, puis on décompte
@@ -351,6 +385,7 @@ router.post('/:teamId/play-matchday', async (req, res) => {
     match: {
       id: matchId,
       opponent: opponent.name,
+      isDerby: derby,
       // Le joueur ne reçoit plus systématiquement : le score doit donc être
       // lu de son point de vue, sans quoi une victoire à l'extérieur
       // s'afficherait comme une défaite.

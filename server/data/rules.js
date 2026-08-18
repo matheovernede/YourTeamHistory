@@ -23,9 +23,37 @@ const STARTERS_REQUIRED = 11;
 /** Seuil à partir duquel l'interface invite à dégraisser. */
 const SQUAD_WARN = 20;
 
+/** Regroupement des postes par ligne, aligné sur formations.js. */
+const LINE_POSITIONS = {
+  GAR: ['GAR'],
+  DEF: ['DC', 'ARG', 'ARD', 'PG', 'PD'],
+  MIL: ['MC', 'MOC', 'MDF', 'MG', 'MD'],
+  ATT: ['BU', 'AIG', 'AID'],
+};
+
+/**
+ * Effectif conseillé par ligne : un onze de départ et de quoi tourner sur une
+ * saison. C'est la cible du recrutement automatique.
+ */
+const RECOMMENDED = { GAR: 2, DEF: 6, MIL: 6, ATT: 4 };
+
+/** Compte les joueurs par ligne. */
+function countByLine(players) {
+  const counts = { GAR: 0, DEF: 0, MIL: 0, ATT: 0 };
+  for (const p of players) {
+    for (const [line, list] of Object.entries(LINE_POSITIONS)) {
+      if (list.includes(p.position)) { counts[line]++; break; }
+    }
+  }
+  return counts;
+}
+
 module.exports = {
   SQUAD_MAX,
   SQUAD_MIN_TO_SELL,
   STARTERS_REQUIRED,
   SQUAD_WARN,
+  LINE_POSITIONS,
+  RECOMMENDED,
+  countByLine,
 };

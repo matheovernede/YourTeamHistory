@@ -78,6 +78,8 @@ export const api = {
   // `window` vaut 'winter' pendant le mercato d'hiver : marché restreint et majoré.
   getDraftPlayers: (division, reputation, teamId, difficulty, window) => request(`/draft/available?division=${division || 1}&reputation=${reputation || 50}&teamId=${teamId || ''}&difficulty=${difficulty || 'normal'}${window ? `&window=${window}` : ''}`),
   draftBuy: (managerId, teamId, player) => request('/draft/buy', { method: 'POST', body: JSON.stringify({ managerId, teamId, player }) }),
+  // Recrute d'un coup l'effectif conseillé : 2 gardiens, 6 défenseurs, 6 milieux, 4 attaquants.
+  draftAuto: (managerId, teamId, difficulty) => request('/draft/auto', { method: 'POST', body: JSON.stringify({ managerId, teamId, difficulty }) }),
   draftFinish: (managerId, teamId, window) => request('/draft/finish', { method: 'POST', body: JSON.stringify({ managerId, teamId, window }) }),
 
   getSeasonStatus: (teamId) => request(`/season/${teamId}/status`),

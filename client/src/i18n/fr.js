@@ -137,6 +137,9 @@ export default {
 
   mercato: {
     chargement: 'Chargement du mercato...',
+    autoComposer: '⚡ Composer mon équipe',
+    autoResultat: '{n} joueurs recrutés pour {montant}. Vous pouvez ajuster, puis valider.',
+    autoRien: 'Rien à recruter : votre effectif est déjà au complet.',
     titreHiver: "Mercato d'hiver",
     sousTitreHiver: "Marché restreint et prix majorés : on ne reconstruit pas une équipe en janvier",
     reprendreSaison: '⚽ Reprendre la saison',
@@ -400,6 +403,8 @@ export default {
       vendu: '{joueur} vendu pour {prix}',
       saisonTerminee: 'Saison terminée ! Consultez le bilan.',
       mercatoHiverOuvert: "Mi-saison : le mercato d'hiver ouvre…",
+      derbyGagne: 'Derby remporté ! Le vestiaire exulte.',
+      derbyPerdu: 'Derby perdu. La semaine va être longue.',
       gestionAppliquee: '{icone} {nom} appliqué ! (-{cout})',
       clotureImpossible: 'Impossible de clôturer la saison : {message}',
     },
@@ -442,7 +447,11 @@ export default {
       points: '+{n} pts',
     },
 
-    classement: {
+    derby: {
+      etiquette: ' — DERBY',
+      annonce: '🔥 Derby contre {adversaire} : deux fois plus de moral en jeu, et une prime majorée en cas de victoire.',
+    },    classement: {
+      rival: 'Votre rival',
       colEquipe: 'Équipe',
       colPoints: 'Pts',
       colVictoires: 'V',

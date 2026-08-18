@@ -328,8 +328,13 @@ function simulateAiMatchByStrength(homeOverall, awayOverall, rand = Math.random)
   return { homeGoals: Math.min(homeGoals, 6), awayGoals: Math.min(awayGoals, 6) };
 }
 
-function applyMatchEffects(db, teamId, won, drew) {
-  const moraleChange = won ? 4 : drew ? -1 : -4;
+/**
+ * @param {number} [intensite]  multiplie l'effet sur le moral. Un derby marque
+ *                              le vestiaire bien plus qu'une rencontre banale :
+ *                              la victoire euphorise, la défaite laisse des traces.
+ */
+function applyMatchEffects(db, teamId, won, drew, intensite = 1) {
+  const moraleChange = Math.round((won ? 4 : drew ? -1 : -4) * intensite);
 
   // Titulaires: perdent 10 points de stamina par match
   db.run('UPDATE players SET stamina = MAX(0, stamina - 10), morale = MAX(20, MIN(100, morale + ?)) WHERE team_id = ? AND is_starter = 1', [moraleChange, teamId]);

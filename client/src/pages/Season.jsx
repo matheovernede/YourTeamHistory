@@ -927,6 +927,13 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
 
           {!seasonOver && (
             <div className="season-actions">
+              {/* Le calendrier connaît l'adversaire d'avance : on annonce le
+                  derby avant le coup d'envoi, sinon il passerait inaperçu. */}
+              {status.nextOpponent && status.nextOpponent.isDerby && (
+                <div className="derby-announce">
+                  {t('saison.derby.annonce', { adversaire: status.nextOpponent.name })}
+                </div>
+              )}
               <button className="btn-primary action-btn" onClick={handlePlayMatch} disabled={loading}>
                 {t('saison.actions.jouerJournee', { n: status.played + 1 })}
               </button>
@@ -961,6 +968,7 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
                     {lastMatch.isHome ? t('saison.dernierMatch.domicile') : t('saison.dernierMatch.exterieur')}
                   </span>
                 )}
+                {lastMatch.isDerby && <span className="derby-tag">{t('saison.derby.etiquette')}</span>}
               </h3>
               <div className="match-score">
                 <span className="team-name">{team.name}</span>
@@ -1006,26 +1014,37 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
               </tr>
             </thead>
             <tbody>
-              {status.standings.map((t, i) => (
+              {/* La ligne s'appelle `equipe` et non `t` : `t` est la fonction de
+                  traduction, que le paramètre masquerait dans toute la boucle. */}
+              {status.standings.map((equipe, i) => (
                 <tr
-                  key={t.id}
+                  key={equipe.id}
                   className={[
-                    t.id === team.id ? 'my-team' : '',
-                    t.id !== team.id ? 'clickable-row' : '',
+                    equipe.id === team.id ? 'my-team' : '',
+                    equipe.id !== team.id ? 'clickable-row' : '',
+                    status.rival && equipe.id === status.rival.id ? 'rival-row' : '',
                     i < 2 ? 'zone-promo' : '',
                     i >= status.standings.length - 2 ? 'zone-releg' : '',
                   ].filter(Boolean).join(' ')}
-                  onClick={() => handleViewTeam(t)}
+                  onClick={() => handleViewTeam(equipe)}
                 >
                   <td className="rank">{i + 1}</td>
-                  <td className="team-name-cell">{t.name} {t.id !== team.id && <span className="view-squad-hint">👁</span>}</td>
-                  <td className="pts">{t.points}</td>
-                  <td>{t.wins}</td>
-                  <td>{t.draws}</td>
-                  <td>{t.losses}</td>
-                  <td>{t.goals_for}</td>
-                  <td>{t.goals_against}</td>
-                  <td className={t.goal_diff > 0 ? 'pos' : t.goal_diff < 0 ? 'neg' : ''}>{t.goal_diff > 0 ? '+' : ''}{t.goal_diff}</td>
+                  <td className="team-name-cell">
+                    {equipe.name}
+                    {status.rival && equipe.id === status.rival.id && (
+                      <span className="rival-badge" title={t('saison.classement.rival')}>🔥</span>
+                    )}
+                    {equipe.id !== team.id && <span className="view-squad-hint">👁</span>}
+                  </td>
+                  <td className="pts">{equipe.points}</td>
+                  <td>{equipe.wins}</td>
+                  <td>{equipe.draws}</td>
+                  <td>{equipe.losses}</td>
+                  <td>{equipe.goals_for}</td>
+                  <td>{equipe.goals_against}</td>
+                  <td className={equipe.goal_diff > 0 ? 'pos' : equipe.goal_diff < 0 ? 'neg' : ''}>
+                    {equipe.goal_diff > 0 ? '+' : ''}{equipe.goal_diff}
+                  </td>
                 </tr>
               ))}
             </tbody>
