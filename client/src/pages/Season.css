@@ -2960,3 +2960,84 @@
 @media (max-width: 620px) {
   .scouting-chiffres { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* Infirmerie : une liste dense, chaque ligne portant son devis. */
+.infirmerie {
+  margin-bottom: var(--sp-4);
+  padding: var(--sp-4);
+  border: 1px solid rgba(224, 78, 74, 0.3);
+}
+
+.infirmerie h3 {
+  margin: 0 0 6px;
+  font-size: 14px;
+}
+
+.infirmerie-note {
+  margin: 0 0 12px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.infirmerie-ligne {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  border-top: 1px solid var(--border);
+  font-size: 12.5px;
+}
+
+.inf-poste {
+  min-width: 36px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--surface-3);
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.inf-nom { flex: 1; font-weight: 600; }
+.inf-ovr { font-weight: 800; }
+
+.inf-duree {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: rgba(224, 78, 74, 0.16);
+  color: #ff9c98;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.inf-soigner {
+  padding: 7px 13px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--accent, #2eb257);
+  background: rgba(46, 178, 87, 0.16);
+  color: #8fe6b0;
+  font-size: 11.5px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--transition-normal);
+}
+
+.inf-soigner:hover:not(:disabled) {
+  background: rgba(46, 178, 87, 0.3);
+}
+
+.inf-soigner:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  border-color: var(--border);
+  color: var(--text-muted);
+  background: transparent;
+}
+
+@media (max-width: 620px) {
+  .infirmerie-ligne { flex-wrap: wrap; }
+  .inf-nom { flex-basis: 100%; order: -1; }
+}

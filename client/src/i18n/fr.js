@@ -476,6 +476,17 @@ export default {
       annonce: '🔥 Derby contre {adversaire} : deux fois plus de moral en jeu, et une prime majorée en cas de victoire.',
     },
 
+    /** Infirmerie : écourter une blessure contre paiement. */
+    soins: {
+      titre: '🏥 Infirmerie',
+      note: "Un retour anticipé coûte d'autant plus cher que la blessure est longue. Le joueur revient disponible, mais pas au mieux de sa forme.",
+      match: '{n} match',
+      matchs: '{n} matchs',
+      bouton: 'Soigner — {montant}',
+      tropCher: 'Budget insuffisant',
+      confirme: '{joueur} est rétabli : {n} match(s) d\'absence évités.',
+    },
+
     /** Fiche de l'adversaire, consultable avant le coup d'envoi. */
     scouting: {
       recoit: 'Vous recevez',

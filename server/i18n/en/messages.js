@@ -42,6 +42,7 @@ module.exports = {
 
     // ---- Effectif et mercato ----
     budgetInsuffisant: 'Not enough funds',
+    joueurPasBlesse: 'This player is not injured',
     effectifMaximum: 'Squad limit reached ({nombre} players)',
     effectifMinimum: 'Minimum squad size required ({nombre} players)',
     joueurPasAVous: 'This player does not belong to you',

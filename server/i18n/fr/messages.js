@@ -44,6 +44,7 @@ module.exports = {
 
     // ---- Effectif et mercato ----
     budgetInsuffisant: 'Budget insuffisant',
+    joueurPasBlesse: "Ce joueur n'est pas blessé",
     effectifMaximum: 'Effectif maximum atteint ({nombre} joueurs)',
     effectifMinimum: 'Effectif minimum requis ({nombre} joueurs)',
     joueurPasAVous: 'Ce joueur ne vous appartient pas',

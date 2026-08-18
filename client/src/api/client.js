@@ -104,6 +104,8 @@ export const api = {
   getSeasonHistory: (teamId) => request(`/season/${teamId}/history`),
   getPlayerStats: (teamId) => request(`/season/${teamId}/stats`),
   getSquadMood: (teamId) => request(`/season/${teamId}/mood`),
+  // Écourte une blessure contre paiement : le joueur revient avec une forme diminuée.
+  healPlayer: (teamId, playerId, managerId) => request(`/season/${teamId}/heal`, { method: 'POST', body: JSON.stringify({ playerId, managerId }) }),
 
   getCLStatus: (teamId) => request(`/season/${teamId}/cl/status`),
   initCL: (teamId) => request(`/season/${teamId}/cl/init`, { method: 'POST' }),

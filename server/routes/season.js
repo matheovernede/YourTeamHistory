@@ -657,6 +657,27 @@ const MANAGEMENT_ACTIONS = [
   { id: 'medical', icon: '🏥', cooldown: 0 },
 ];
 
+/**
+ * Coût d'un retour anticipé de blessure.
+ *
+ * Trois facteurs : la durée restante, le niveau du joueur, et la division —
+ * une clinique de Ligue 1 ne facture pas comme un cabinet de Régional 2.
+ *
+ * Le prix croît plus vite que la durée : soigner une entorse est une dépense de
+ * confort, écourter une blessure de deux mois doit peser autant qu'un transfert.
+ * Sans cela, l'argent effacerait purement et simplement les blessures.
+ */
+function coutSoin(player, divisionLevel) {
+  const restants = player.injured_matches || 0;
+  if (restants <= 0) return 0;
+
+  const echelle = [1, 2.5, 5, 10, 20, 40, 70][divisionLevel - 1] || 1;
+  const parMatch = 120000 * echelle * ((player.overall || 60) / 60);
+  const majoration = 1 + (restants - 1) * 0.25;
+
+  return Math.round(parMatch * restants * majoration);
+}
+
 /** Action de gestion enrichie de ses textes, dans la langue demandée. */
 function actionLocalisee(action, langue) {
   if (!action) return action;
@@ -802,7 +823,61 @@ router.get('/:teamId/management', (req, res) => {
     cooldownRemaining: action.id === 'training' && !trainingAvailable ? 3 - (played - lastTraining) : 0,
   }));
 
-  res.json({ actions, budget: null }); // budget comes from manager on client side
+  // Blessés soignables, avec leur devis. Renvoyés ici plutôt que calculés côté
+  // client : le prix est une règle de jeu, elle doit vivre au même endroit que
+  // le reste et ne pas pouvoir être contournée.
+  const blesses = queryAll(
+    'SELECT id, first_name, last_name, position, overall, injured_matches FROM players WHERE team_id = ? AND injured_matches > 0 ORDER BY injured_matches DESC',
+    [req.params.teamId]
+  ).map((p) => ({ ...p, healCost: coutSoin(p, division) }));
+
+  res.json({ actions, injured: blesses, budget: null }); // budget comes from manager on client side
+});
+
+/**
+ * Retour anticipé d'un joueur blessé, contre paiement.
+ *
+ * Le joueur revient avec une forme diminuée : il est disponible, pas remis.
+ * Sans cette contrepartie, l'argent supprimerait la blessure comme mécanique,
+ * et faire tourner son effectif n'aurait plus d'intérêt.
+ */
+router.post('/:teamId/heal', async (req, res) => {
+  const langue = langueDe(req);
+  const { playerId, managerId } = req.body;
+  if (!playerId || !managerId) {
+    return res.status(400).json({ error: t('erreur.requis.playerManager', langue) });
+  }
+
+  const db = await getDb();
+  const team = queryOne('SELECT * FROM teams WHERE id = ?', [req.params.teamId]);
+  if (!team) return res.status(404).json({ error: t('erreur.equipeIntrouvable', langue) });
+
+  const manager = queryOne('SELECT * FROM managers WHERE id = ?', [managerId]);
+  if (!manager) return res.status(404).json({ error: t('erreur.managerIntrouvable', langue) });
+
+  const player = queryOne('SELECT * FROM players WHERE id = ? AND team_id = ?', [playerId, req.params.teamId]);
+  if (!player) return res.status(404).json({ error: t('erreur.joueurIntrouvable', langue) });
+  if ((player.injured_matches || 0) <= 0) {
+    return res.status(400).json({ error: t('erreur.joueurPasBlesse', langue) });
+  }
+
+  const cout = coutSoin(player, getTeamDivision(team));
+  if (manager.budget < cout) {
+    return res.status(400).json({ error: t('erreur.budgetInsuffisant', langue) });
+  }
+
+  db.run('UPDATE managers SET budget = budget - ? WHERE id = ?', [cout, managerId]);
+  // Forme plafonnée : de retour, mais pas au mieux.
+  db.run('UPDATE players SET injured_matches = 0, stamina = MIN(stamina, 60) WHERE id = ?', [playerId]);
+  saveDb();
+
+  const majour = queryOne('SELECT budget FROM managers WHERE id = ?', [managerId]);
+  res.json({
+    healed: `${player.first_name} ${player.last_name}`,
+    matchesSaved: player.injured_matches,
+    cost: cout,
+    newBudget: majour.budget,
+  });
 });
 
 router.post('/:teamId/manage', async (req, res) => {

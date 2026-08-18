@@ -122,6 +122,7 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [managementActions, setManagementActions] = useState([]);
+  const [blesses, setBlesses] = useState([]);
   const [pendingEvent, setPendingEvent] = useState(null);
   const [eventResult, setEventResult] = useState(null);
   const [sponsorResult, setSponsorResult] = useState(null);
@@ -632,6 +633,24 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
   async function loadManagement() {
     const data = await api.getManagement(team.id);
     setManagementActions(data.actions);
+    setBlesses(data.injured || []);
+  }
+
+  async function handleHeal(joueur) {
+    setLoading(true);
+    try {
+      const r = await api.healPlayer(team.id, joueur.id, manager.id);
+      setMessage(t('saison.soins.confirme', { joueur: r.healed, n: r.matchesSaved }));
+      onManagerUpdate({ ...manager, budget: r.newBudget });
+      await loadManagement();
+      await loadPlayers();
+      setTimeout(() => setMessage(''), 5000);
+    } catch (err) {
+      setMessage(t('commun.erreur', { message: err.message }));
+      setTimeout(() => setMessage(''), 4000);
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleBuyManagement(actionId) {
@@ -1943,6 +1962,36 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
 
           {!conversation && (
             <p className="conv-no-problem">{t('saison.gestion.aucunProbleme')}</p>
+          )}
+
+          {/* Infirmerie : écourter une blessure contre paiement. Placée avant
+              les actions générales, c'est la dépense la plus urgente quand un
+              cadre manque. */}
+          {blesses.length > 0 && (
+            <div className="infirmerie card">
+              <h3>{t('saison.soins.titre')}</h3>
+              <p className="infirmerie-note">{t('saison.soins.note')}</p>
+              {blesses.map((j) => (
+                <div key={j.id} className="infirmerie-ligne">
+                  <span className="inf-poste">{j.position}</span>
+                  <span className="inf-nom">{j.first_name} {j.last_name}</span>
+                  <span className="inf-ovr">{j.overall}</span>
+                  <span className="inf-duree">
+                    {j.injured_matches > 1
+                      ? t('saison.soins.matchs', { n: j.injured_matches })
+                      : t('saison.soins.match', { n: j.injured_matches })}
+                  </span>
+                  <button
+                    className="inf-soigner"
+                    onClick={() => handleHeal(j)}
+                    disabled={loading || manager.budget < j.healCost}
+                    title={manager.budget < j.healCost ? t('saison.soins.tropCher') : undefined}
+                  >
+                    {t('saison.soins.bouton', { montant: formatMoney(j.healCost) })}
+                  </button>
+                </div>
+              ))}
+            </div>
           )}
 
           <p className="management-hint">{t('saison.gestion.indice')}</p>

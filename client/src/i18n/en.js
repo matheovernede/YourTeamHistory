@@ -478,6 +478,17 @@ export default {
       annonce: '🔥 Derby against {adversaire}: twice the morale at stake, and a bigger bonus if you win.',
     },
 
+    /** Treatment room: cut an injury short for a fee. */
+    soins: {
+      titre: '🏥 Treatment room',
+      note: 'The longer the injury, the dearer the early return. The player comes back available, but short of full fitness.',
+      match: '{n} match',
+      matchs: '{n} matches',
+      bouton: 'Treat — {montant}',
+      tropCher: 'Not enough funds',
+      confirme: '{joueur} is back: {n} match(es) of absence avoided.',
+    },
+
     /** Opponent report, available before kick-off. */
     scouting: {
       recoit: 'You host',
