@@ -175,3 +175,26 @@
   text-align: center;
   padding: 20px;
 }
+
+/* Faits de match : votre equipe a gauche, l'adversaire a droite. */
+.match-events {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.event.evt-nous {
+  align-self: flex-start;
+  max-width: 90%;
+  padding-left: 9px;
+  border-left: 3px solid var(--accent, #2eb257);
+}
+
+.event.evt-eux {
+  align-self: flex-end;
+  max-width: 90%;
+  padding-right: 9px;
+  text-align: right;
+  flex-direction: row-reverse;
+  border-right: 3px solid rgba(224, 78, 74, 0.75);
+}

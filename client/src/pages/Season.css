@@ -3041,3 +3041,63 @@
   .infirmerie-ligne { flex-wrap: wrap; }
   .inf-nom { flex-basis: 100%; order: -1; }
 }
+
+/* Fil du direct : vos faits de match a gauche, ceux de l'adversaire a droite.
+   Le cote se lit immediatement, sans avoir a dechiffrer le nom du club. */
+.live-events-feed {
+  max-width: 560px;
+}
+
+.live-event.evt-nous {
+  align-self: flex-start;
+  max-width: 88%;
+  border-left: 3px solid var(--accent, #2eb257);
+}
+
+.live-event.evt-eux {
+  align-self: flex-end;
+  max-width: 88%;
+  /* Inversion de l'ordre : la minute et l'icone se retrouvent a droite,
+     face a la ligne mediane, comme sur un fil de commentaires. */
+  flex-direction: row-reverse;
+  text-align: right;
+  border-right: 3px solid rgba(224, 78, 74, 0.75);
+  border-left: 1px solid var(--border);
+}
+
+.live-event.evt-nous .live-event-text {
+  font-weight: 700;
+}
+
+.live-event.evt-eux .live-event-team,
+.live-event.evt-nous .live-event-team {
+  opacity: 0.65;
+  font-size: 11px;
+}
+
+@media (max-width: 620px) {
+  .live-event.evt-nous,
+  .live-event.evt-eux { max-width: 96%; }
+}
+
+/* Bilan du dernier match : vos buts a gauche, ceux encaisses a droite.
+   La liste ne disait pas a qui appartenait un buteur. */
+.match-events-mini {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.event-mini.evt-nous {
+  align-self: flex-start;
+  padding-left: 8px;
+  border-left: 3px solid var(--accent, #2eb257);
+  color: var(--text);
+}
+
+.event-mini.evt-eux {
+  align-self: flex-end;
+  padding-right: 8px;
+  text-align: right;
+  border-right: 3px solid rgba(224, 78, 74, 0.75);
+}

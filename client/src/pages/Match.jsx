@@ -83,16 +83,23 @@ export default function Match({ team, manager, onUpdate }) {
 
           {matchResult.match.events.length > 0 && (
             <div className="match-events">
-              {matchResult.match.events.map((event, i) => (
-                <div key={i} className={`event event-${event.type}`}>
-                  <span className="event-minute">{event.minute}'</span>
-                  <span className="event-icon">
-                    {event.type === 'goal' ? '⚽' : '🟨'}
-                  </span>
-                  <span className="event-player">{event.player}</span>
-                  <span className="event-team">({event.team === 'home' ? team.name : matchResult.match.opponent})</span>
-                </div>
-              ))}
+              {matchResult.match.events.map((event, i) => {
+                // Le camp de l'événement désigne le terrain, pas votre équipe :
+                // à l'extérieur, « home » est l'adversaire.
+                const aMoi = event.team === (matchResult.match.isHome === false ? 'away' : 'home');
+                return (
+                  <div key={i} className={`event event-${event.type} ${aMoi ? 'evt-nous' : 'evt-eux'}`}>
+                    <span className="event-minute">{event.minute}'</span>
+                    <span className="event-icon">
+                      {event.type === 'goal' ? '⚽' : '🟨'}
+                    </span>
+                    <span className="event-player">{event.player}</span>
+                    <span className="event-team">
+                      ({aMoi ? team.name : matchResult.match.opponent})
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

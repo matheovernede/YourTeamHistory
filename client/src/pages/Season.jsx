@@ -139,6 +139,7 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
   const [matchSpeed, setMatchSpeed] = useState(1);
   const matchSpeedRef = useRef(1);
   const matchTimerRef = useRef(null);
+  const panneauEquipeRef = useRef(null);
   const [clState, setCLState] = useState(null);
   const [cupState, setCupState] = useState(null);
   const [cupResult, setCupResult] = useState(null);
@@ -538,6 +539,9 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
       setView('live');
 
       const events = result.match.events || [];
+      // Camp occupé par votre équipe dans ce match : les événements du moteur
+      // raisonnent en domicile/extérieur, l'affichage en « vous / eux ».
+      const monCamp = result.match.isHome === false ? 'away' : 'home';
       const baseInterval = 10000 / 90;
 
       let minute = 0;
@@ -549,14 +553,17 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
         if (eventsNow.length > 0) {
           setLiveEvents(prev => [...prev, ...eventsNow]);
           setLiveScore(prev => {
-            let [h, a] = prev;
+            // Le tableau affiche votre club à gauche, mais les événements
+            // désignent les camps par le TERRAIN. À l'extérieur, compter le
+            // camp « home » pour vous inversait le score, qui ne correspondait
+            // alors plus au résultat final.
+            let [miens, siens] = prev;
             eventsNow.forEach(e => {
-              if (e.type === 'goal') {
-                if (e.team === 'home') h++;
-                else a++;
-              }
+              if (e.type !== 'goal') return;
+              if (e.team === monCamp) miens++;
+              else siens++;
             });
-            return [h, a];
+            return [miens, siens];
           });
         }
 
@@ -735,10 +742,16 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
   }
 
   async function handleViewTeam(t) {
-    if (t.id === team.id) return;
-    setViewingTeam(t);
-    const players = await api.getPlayers(t.id);
-    setViewingPlayers(players);
+        if (t.id === team.id) return;
+        setViewingTeam(t);
+        const players = await api.getPlayers(t.id);
+        setViewingPlayers(players);
+
+        // Le panneau s'affiche en bas de l'écran : ouvert depuis la fiche
+        // d'avant-match, il resterait hors de vue sans ce défilement.
+        setTimeout(() => {
+          panneauEquipeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 60);
   }
 
   function formatMoney(amount) {
@@ -933,14 +946,22 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
             </div>
           </div>
           <div className="live-events-feed">
-            {liveEvents.map((e, i) => (
-              <div key={i} className={`live-event ${e.type}`}>
-                <span className="live-event-minute">{e.minute}'</span>
-                <span className="live-event-icon">{e.type === 'goal' ? '⚽' : '🟨'}</span>
-                <span className="live-event-text">{e.player}</span>
-                <span className="live-event-team">{e.team === 'home' ? team.name : liveMatch.match.opponent}</span>
-              </div>
-            ))}
+            {liveEvents.map((e, i) => {
+              // Le camp de l'événement désigne le TERRAIN, pas votre équipe :
+              // à l'extérieur, « home » est l'adversaire.
+              const monCamp = liveMatch.match.isHome === false ? 'away' : 'home';
+              const aMoi = e.team === monCamp;
+              return (
+                <div key={i} className={`live-event ${e.type} ${aMoi ? 'evt-nous' : 'evt-eux'}`}>
+                  <span className="live-event-minute">{e.minute}'</span>
+                  <span className="live-event-icon">{e.type === 'goal' ? '⚽' : '🟨'}</span>
+                  <span className="live-event-text">{e.player}</span>
+                  <span className="live-event-team">
+                    {aMoi ? team.name : liveMatch.match.opponent}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -1086,11 +1107,16 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
               </span>
               {lastMatch.events.length > 0 && (
                 <div className="match-events-mini">
-                  {lastMatch.events.filter(e => e.type === 'goal').map((e, i) => (
-                    <div key={i} className="event-mini">
-                      ⚽ {e.minute}' {e.player}
-                    </div>
-                  ))}
+                  {lastMatch.events.filter(e => e.type === 'goal').map((e, i) => {
+                    // Sans distinction de camp, on ne savait pas si un but
+                    // était marqué par son équipe ou encaissé.
+                    const aMoi = e.team === (lastMatch.isHome === false ? 'away' : 'home');
+                    return (
+                      <div key={i} className={`event-mini ${aMoi ? 'evt-nous' : 'evt-eux'}`}>
+                        ⚽ {e.minute}' {e.player}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -1156,58 +1182,6 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
             <span><i className="lg-releg" />{t('saison.classement.legendeReleg')}</span>
           </div>
 
-          {viewingTeam && (
-            <div className="viewing-team-panel card">
-              <div className="vt-header">
-                <h3>{viewingTeam.name}</h3>
-                <button className="btn-small" onClick={() => setViewingTeam(null)}>{t('commun.fermer')}</button>
-              </div>
-
-              {(() => {
-                const starters = viewingPlayers.filter(p => p.is_starter);
-                const stats = computeTeamStats(starters, t);
-                if (!stats) return null;
-                return (
-                  <div className="vt-stats">
-                    {stats.map(s => (
-                      <div key={s.cle} className="vt-stat-bar">
-                        <div className="vt-bar-header">
-                          <span className="vt-bar-label">{s.label}</span>
-                          <span className="vt-bar-val">{s.val}</span>
-                        </div>
-                        <div className="vt-bar-track">
-                          <div className="vt-bar-fill" style={{ width: `${s.val}%`, background: s.color }} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })()}
-
-              <div className="vt-players">
-                <div className="vt-section">
-                  <h4>{t('saison.classement.titulaires')}</h4>
-                  {viewingPlayers.filter(p => p.is_starter).map(p => (
-                    <div key={p.id} className="vt-player">
-                      <span className={`lp-pos ${posClass(p.position)}`}>{p.position}</span>
-                      <span className="vt-name">{p.first_name} {p.last_name}</span>
-                      <span className="vt-ovr">{p.overall}</span>
-                    </div>
-                  ))}
-                </div>
-                <div className="vt-section">
-                  <h4>{t('saison.classement.remplacants')}</h4>
-                  {viewingPlayers.filter(p => !p.is_starter).map(p => (
-                    <div key={p.id} className="vt-player sub">
-                      <span className={`lp-pos ${posClass(p.position)}`}>{p.position}</span>
-                      <span className="vt-name">{p.first_name} {p.last_name}</span>
-                      <span className="vt-ovr">{p.overall}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       )}
 
@@ -2114,11 +2088,17 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
                   )}
                   {clLastResult.result.events && clLastResult.result.events.filter(e => e.type === 'goal').length > 0 && (
                     <div className="match-events-mini">
-                      {clLastResult.result.events.filter(e => e.type === 'goal').map((e, i) => (
-                        <div key={i} className="event-mini">
-                          {e.minute}' {e.player} ({e.team === 'home' ? t('saison.cl.domicileCourt') : t('saison.cl.exterieurCourt')})
-                        </div>
-                      ))}
+                      {clLastResult.result.events.filter(e => e.type === 'goal').map((e, i) => {
+                        // Indiquer « domicile » ou « extérieur » était exact mais
+                        // sans intérêt : ce qu'on veut savoir, c'est si le but
+                        // est pour nous.
+                        const aMoi = e.team === (clLastResult.result.isHome === false ? 'away' : 'home');
+                        return (
+                          <div key={i} className={`event-mini ${aMoi ? 'evt-nous' : 'evt-eux'}`}>
+                            ⚽ {e.minute}' {e.player}
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -2182,6 +2162,63 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
           )}
 
           <button className="btn-back" onClick={() => setView('season')}>{t('commun.retour')}</button>
+        </div>
+      )}
+
+      {/* Effectif d'une autre équipe. Rendu au niveau de l'écran et non dans un
+          onglet : il s'ouvre depuis le classement comme depuis la fiche
+          d'avant-match, et restait invisible tant qu'il vivait sous l'onglet
+          Classement. */}
+      {viewingTeam && (
+        <div className="viewing-team-panel card" ref={panneauEquipeRef}>
+          <div className="vt-header">
+            <h3>{viewingTeam.name}</h3>
+            <button className="btn-small" onClick={() => setViewingTeam(null)}>{t('commun.fermer')}</button>
+          </div>
+
+          {(() => {
+            const starters = viewingPlayers.filter(p => p.is_starter);
+            const stats = computeTeamStats(starters, t);
+            if (!stats) return null;
+            return (
+              <div className="vt-stats">
+                {stats.map(s => (
+                  <div key={s.cle} className="vt-stat-bar">
+                    <div className="vt-bar-header">
+                      <span className="vt-bar-label">{s.label}</span>
+                      <span className="vt-bar-val">{s.val}</span>
+                    </div>
+                    <div className="vt-bar-track">
+                      <div className="vt-bar-fill" style={{ width: `${s.val}%`, background: s.color }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+
+          <div className="vt-players">
+            <div className="vt-section">
+              <h4>{t('saison.classement.titulaires')}</h4>
+              {viewingPlayers.filter(p => p.is_starter).map(p => (
+                <div key={p.id} className="vt-player">
+                  <span className={`lp-pos ${posClass(p.position)}`}>{p.position}</span>
+                  <span className="vt-name">{p.first_name} {p.last_name}</span>
+                  <span className="vt-ovr">{p.overall}</span>
+                </div>
+              ))}
+            </div>
+            <div className="vt-section">
+              <h4>{t('saison.classement.remplacants')}</h4>
+              {viewingPlayers.filter(p => !p.is_starter).map(p => (
+                <div key={p.id} className="vt-player sub">
+                  <span className={`lp-pos ${posClass(p.position)}`}>{p.position}</span>
+                  <span className="vt-name">{p.first_name} {p.last_name}</span>
+                  <span className="vt-ovr">{p.overall}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
     </div>
