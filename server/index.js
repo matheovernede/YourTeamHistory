@@ -16,7 +16,27 @@ const cupRoutes = require('./routes/cup');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-app.use(cors());
+// Le front peut être hébergé ailleurs (Vercel, Netlify…) et appeler cette API
+// depuis un autre domaine. ALLOWED_ORIGINS restreint alors qui a le droit
+// d'appeler. Non défini, on autorise tout : c'est le cas quand le serveur sert
+// lui-même le front, où la question ne se pose pas.
+const originesAutorisees = (process.env.ALLOWED_ORIGINS || '')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+app.use(cors(
+  originesAutorisees.length > 0
+    ? {
+        origin(origin, callback) {
+          // Sans origine : appel direct (curl, sonde de supervision), on laisse passer.
+          if (!origin || originesAutorisees.includes(origin)) return callback(null, true);
+          callback(new Error(`Origine non autorisée : ${origin}`));
+        },
+      }
+    : undefined
+));
+
 app.use(express.json());
 
 app.use('/api/manager', managerRoutes);
@@ -47,14 +67,27 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Serve frontend in production
+// Service du front, uniquement s'il est présent à côté du serveur.
+//
+// Quand le site est hébergé ailleurs (Vercel), ce dossier n'existe pas et le
+// serveur se comporte en API seule. Sans ce test, chaque page demandée
+// répondait une erreur de fichier introuvable au lieu d'un franc 404.
 const path = require('path');
+const fs = require('fs');
 const clientDist = path.join(__dirname, '..', 'client', 'dist');
-app.use(express.static(clientDist));
-app.get('*', (req, res, next) => {
-  if (req.path.startsWith('/api')) return next();
-  res.sendFile(path.join(clientDist, 'index.html'));
-});
+const frontPresent = fs.existsSync(path.join(clientDist, 'index.html'));
+
+if (frontPresent) {
+  app.use(express.static(clientDist));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api')) return next();
+    res.sendFile(path.join(clientDist, 'index.html'));
+  });
+} else {
+  app.get('/', (req, res) => {
+    res.json({ service: 'YourTeamHistory API', frontend: 'hébergé séparément' });
+  });
+}
 
 async function start() {
   const db = await getDb();
