@@ -50,6 +50,23 @@ app.use('/api/season', championsLeagueRoutes);
 app.use('/api/dreamteam', dreamteamRoutes);
 app.use('/api/season', cupRoutes);
 
+/**
+ * Version déployée, lue une seule fois au démarrage.
+ *
+ * Sans elle, rien ne permet de savoir quelle version tourne réellement : le
+ * code peut être sur GitHub depuis des heures sans que le serveur l'ait reçu,
+ * et l'écart passe inaperçu.
+ */
+const VERSION = (() => {
+  try {
+    return require('child_process')
+      .execSync('git rev-parse --short HEAD', { cwd: __dirname + '/..', stdio: ['ignore', 'pipe', 'ignore'] })
+      .toString().trim();
+  } catch {
+    return 'inconnue';
+  }
+})();
+
 app.get('/api/health', (req, res) => {
   // uptime et memoire servent au diagnostic a distance : un uptime qui repart
   // sans cesse de zero trahit un processus qui redemarre en boucle, ce qu'on ne
@@ -57,6 +74,7 @@ app.get('/api/health', (req, res) => {
   const mem = process.memoryUsage();
   res.json({
     status: 'ok',
+    version: VERSION,
     timestamp: new Date().toISOString(),
     uptimeSeconds: Math.round(process.uptime()),
     pid: process.pid,
