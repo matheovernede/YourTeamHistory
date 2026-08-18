@@ -89,6 +89,14 @@ jobs:
             sleep 6
             sudo -n systemctl is-active yourteamhistory
 
+            # Le bot Discord vit dans le même dépôt : sans ce redémarrage, il
+            # continuerait de tourner sur l'ancien code après un déploiement.
+            if systemctl list-unit-files | grep -q '^yth-bot.service'; then
+              sudo -n systemctl restart yth-bot
+              sleep 3
+              echo "bot : $(systemctl is-active yth-bot)"
+            fi
+
             echo "--- Vérification ---"
             REPONSE=$(curl -fsS --max-time 15 http://127.0.0.1:3001/api/health)
             echo "$REPONSE"
