@@ -72,6 +72,17 @@ function App() {
     save(result.manager, result.team, 'mercato');
   }
 
+  /**
+   * Ouverture du mercato d'hiver, signalée par le serveur à la mi-saison.
+   * La saison reprend là où elle s'est arrêtée : rien n'est remis à zéro.
+   */
+  function handleWinterWindow(updatedManager, updatedTeam) {
+    if (updatedManager) setManager(updatedManager);
+    if (updatedTeam) setTeam(updatedTeam);
+    setPhase('winter');
+    save(updatedManager || manager, updatedTeam || team, 'winter');
+  }
+
   function handleMercatoFinish(updatedManager, updatedTeam) {
     setManager(updatedManager);
     setTeam(updatedTeam);
@@ -175,7 +186,7 @@ function App() {
         onPlayers={() => setShowPlayers(true)}
       />
     );
-  } else if (phase === 'draft' || phase === 'mercato') {
+  } else if (phase === 'draft' || phase === 'mercato' || phase === 'winter') {
     content = (
       <div className="app">
         <header className="top-bar">
@@ -233,7 +244,13 @@ function App() {
             </div>
           </div>
         )}
-        <Draft manager={manager} team={team} onFinish={handleMercatoFinish} isInitialDraft={phase === 'draft'} />
+        <Draft
+          manager={manager}
+          team={team}
+          onFinish={handleMercatoFinish}
+          isInitialDraft={phase === 'draft'}
+          isWinterWindow={phase === 'winter'}
+        />
       </div>
     );
   } else {
@@ -289,6 +306,7 @@ function App() {
           onUpdate={handleTeamUpdate}
           onManagerUpdate={handleManagerUpdate}
           onSeasonEnd={handleSeasonEnd}
+          onWinterWindow={handleWinterWindow}
         />
       </div>
     );

@@ -7,7 +7,7 @@ import './Draft.css';
 
 const formatMoney = (v) => v >= 1000000 ? `${(v / 1000000).toFixed(1)}M€` : `${Math.round(v / 1000)}k€`;
 
-export default function Draft({ manager, team, onFinish, isInitialDraft }) {
+export default function Draft({ manager, team, onFinish, isInitialDraft, isWinterWindow }) {
   const { t } = useI18n();
   const [available, setAvailable] = useState([]);
   // Effectif RÉEL en base : en mercato il contient déjà les joueurs de la
@@ -29,7 +29,13 @@ export default function Draft({ manager, team, onFinish, isInitialDraft }) {
   async function loadDraft() {
     try {
       const difficulty = localStorage.getItem('footmanager_difficulty') || 'normal';
-      const players = await api.getDraftPlayers(team.division || 1, manager.reputation || 50, team.id, difficulty);
+      const players = await api.getDraftPlayers(
+        team.division || 1,
+        manager.reputation || 50,
+        team.id,
+        difficulty,
+        isWinterWindow ? 'winter' : undefined
+      );
       setAvailable(players);
     } catch (err) {
       // Un marché indisponible doit être signalé, pas afficher une page vide.
@@ -106,7 +112,7 @@ export default function Draft({ manager, team, onFinish, isInitialDraft }) {
     }
 
     try {
-      const result = await api.draftFinish(manager.id, team.id);
+      const result = await api.draftFinish(manager.id, team.id, isWinterWindow ? 'winter' : undefined);
       onFinish({ ...manager, budget }, result.team);
     } catch (err) {
       setMessage(t('commun.erreur', { message: err.message }));
@@ -148,8 +154,16 @@ export default function Draft({ manager, team, onFinish, isInitialDraft }) {
     <div className="draft-page">
       <div className="draft-header">
         <div className="draft-title">
-          <h1>{isInitialDraft ? t('mercato.titreInitial') : t('mercato.titre')}</h1>
-          <p>{isInitialDraft ? t('mercato.sousTitreInitial') : t('mercato.sousTitre')}</p>
+          <h1>
+            {isWinterWindow
+              ? t('mercato.titreHiver')
+              : isInitialDraft ? t('mercato.titreInitial') : t('mercato.titre')}
+          </h1>
+          <p>
+            {isWinterWindow
+              ? t('mercato.sousTitreHiver')
+              : isInitialDraft ? t('mercato.sousTitreInitial') : t('mercato.sousTitre')}
+          </p>
         </div>
         <div className="draft-status">
           <div className="draft-budget">{(budget / 1000000).toFixed(1)}M€</div>
@@ -195,7 +209,9 @@ export default function Draft({ manager, team, onFinish, isInitialDraft }) {
         <button className="btn-refresh" onClick={refreshMarket}>{t('mercato.rafraichir')}</button>
         {(isInitialDraft ? squad.length >= 11 : true) && (
           <button className="btn-primary btn-finish" onClick={handleFinish}>
-            {isInitialDraft ? t('mercato.validerEffectif') : t('mercato.terminerMercato')}
+            {isWinterWindow
+              ? t('mercato.reprendreSaison')
+              : isInitialDraft ? t('mercato.validerEffectif') : t('mercato.terminerMercato')}
           </button>
         )}
       </div>

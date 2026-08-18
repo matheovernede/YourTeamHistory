@@ -139,6 +139,9 @@ export default {
 
   mercato: {
     chargement: 'Loading the transfer window...',
+    titreHiver: 'January Transfer Window',
+    sousTitreHiver: 'A short list and inflated prices: nobody rebuilds a squad in January',
+    reprendreSaison: '⚽ Back to the season',
     titreInitial: 'Initial Transfer Window',
     titre: 'Transfer Window',
     sousTitreInitial: 'Sign at least 11 players to put a squad together',
@@ -398,6 +401,7 @@ export default {
       confirmerVente: 'Sell {joueur} for {prix}?',
       vendu: '{joueur} sold for {prix}',
       saisonTerminee: 'Season over! Check your review.',
+      mercatoHiverOuvert: 'Halfway there: the January window is opening…',
       gestionAppliquee: '{icone} {nom} applied! (-{cout})',
       clotureImpossible: 'Unable to close the season: {message}',
     },

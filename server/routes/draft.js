@@ -16,11 +16,22 @@ function shuffle(arr) {
   return a;
 }
 
+/**
+ * Mercato d'hiver : marché restreint et plus cher.
+ *
+ * Un club ne se reconstruit pas en janvier. Sans ces limites, la fenêtre
+ * hivernale rendrait celle d'été accessoire : on attendrait la mi-saison pour
+ * recruter en connaissant déjà son classement.
+ */
+const HIVER_TAILLE_MARCHE = 14;   // contre 42 en été
+const HIVER_SURCOUT = 1.3;        // +30 % : la concurrence sait que vous êtes pressé
+
 router.get('/available', (req, res) => {
-  const { division, reputation, teamId, difficulty } = req.query;
+  const { division, reputation, teamId, difficulty, window } = req.query;
   const divLevel = parseInt(division) || 1;
   const rep = parseInt(reputation) || 50;
   const diff = difficulty || 'normal';
+  const hiver = window === 'winter';
 
   // Get current squad names to exclude from market
   let ownedNames = new Set();
@@ -79,7 +90,7 @@ router.get('/available', (req, res) => {
   }
 
   const shuffled = shuffle(filtered);
-  let selection = shuffled.slice(0, 42);
+  let selection = shuffled.slice(0, hiver ? HIVER_TAILLE_MARCHE : 42);
 
   // High reputation attracts better players: sort by overall and keep more top ones
   if (rep >= 70) {
@@ -93,7 +104,7 @@ router.get('/available', (req, res) => {
   const players = selection.map(p => ({
     ...p,
     id: uuid(),
-    value: calculateDraftPrice(p),
+    value: Math.round(calculateDraftPrice(p) * (hiver ? HIVER_SURCOUT : 1)),
   }));
 
   res.json(players);
@@ -134,7 +145,7 @@ router.post('/buy', async (req, res) => {
 
 router.post('/finish', async (req, res) => {
   const langue = langueDe(req);
-  const { managerId, teamId } = req.body;
+  const { managerId, teamId, window } = req.body;
   if (!managerId || !teamId) {
     return res.status(400).json({ error: t('erreur.requis.managerTeam', langue) });
   }
@@ -144,10 +155,18 @@ router.post('/finish', async (req, res) => {
     return res.status(400).json({ error: t('erreur.minimumOnzeJoueurs', langue, { nombre: playerCount ? playerCount.count : 0 }) });
   }
 
-  // Leave lineup empty — player must organize their squad manually.
-  // slot_index doit être vidé en même temps, sinon d'anciens emplacements
-  // survivent au mercato et faussent la reconstruction de la composition.
-  run('UPDATE players SET is_starter = 0, slot_index = NULL WHERE team_id = ?', [teamId]);
+  if (window === 'winter') {
+    // On marque la fenêtre comme utilisée pour la saison en cours, et on
+    // s'arrête là : la composition est en place depuis treize journées, la
+    // vider obligerait à tout refaire pour une ou deux recrues.
+    const equipe = queryOne('SELECT season FROM teams WHERE id = ?', [teamId]);
+    run('UPDATE teams SET winter_window_season = ? WHERE id = ?', [equipe ? equipe.season : 1, teamId]);
+  } else {
+    // Entre deux saisons, l'effectif a pu changer en profondeur : on repart
+    // d'une composition vierge. slot_index doit être vidé en même temps, sinon
+    // d'anciens emplacements survivent et faussent la reconstruction.
+    run('UPDATE players SET is_starter = 0, slot_index = NULL WHERE team_id = ?', [teamId]);
+  }
 
   const team = queryOne('SELECT * FROM teams WHERE id = ?', [teamId]);
   const manager = queryOne('SELECT * FROM managers WHERE id = ?', [managerId]);

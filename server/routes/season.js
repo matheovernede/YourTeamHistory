@@ -42,6 +42,27 @@ const {
 const router = express.Router();
 
 /**
+ * Journée à l'issue de laquelle le mercato d'hiver s'ouvre.
+ *
+ * La saison compte 26 journées : la fenêtre tombe donc à la moitié, comme le
+ * mercato hivernal réel.
+ */
+const JOURNEE_MERCATO_HIVER = 13;
+
+/**
+ * Le mercato d'hiver est-il ouvert pour cette équipe ?
+ *
+ * Il s'ouvre une fois la 13e journée disputée, et une seule fois par saison :
+ * `winter_window_season` retient l'exercice où il a été utilisé.
+ */
+function mercatoHivernalOuvert(team) {
+  const joues = (team.wins || 0) + (team.draws || 0) + (team.losses || 0);
+  return joues >= JOURNEE_MERCATO_HIVER
+    && joues < 26
+    && (team.winter_window_season || 0) !== team.season;
+}
+
+/**
  * Get the player's current division level.
  */
 function getTeamDivision(team) {
@@ -142,6 +163,8 @@ router.get('/:teamId/status', (req, res) => {
     played,
     remaining,
     totalMatches,
+    winterWindow: mercatoHivernalOuvert(team),
+    winterWindowMatchday: JOURNEE_MERCATO_HIVER,
     rank,
     standings,
     team,
@@ -351,6 +374,10 @@ router.post('/:teamId/play-matchday', async (req, res) => {
     },
     team: updatedTeam,
     seasonOver,
+    // Le mercato d'hiver s'ouvre à la mi-saison. Il est signalé ici plutôt que
+    // découvert au prochain rafraîchissement, pour enchaîner directement après
+    // la journée qui le déclenche.
+    winterWindow: !seasonOver && mercatoHivernalOuvert(updatedTeam),
     event: localiserEvenement(event, langue) || null,
   });
 });

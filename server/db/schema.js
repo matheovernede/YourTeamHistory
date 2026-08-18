@@ -188,6 +188,10 @@ function initTables() {
     'cup_data TEXT',              // état de la coupe nationale
     'titles INTEGER DEFAULT 0',   // championnats remportés
     'cups INTEGER DEFAULT 0',     // coupes remportées
+    // Saison pour laquelle le mercato d'hiver a déjà été utilisé. On stocke la
+    // saison et non un simple drapeau : il se réarme ainsi tout seul l'année
+    // suivante, sans remise à zéro à penser en fin de saison.
+    'winter_window_season INTEGER DEFAULT 0',
   ];
   for (const col of teamColumns) {
     try { db.run(`ALTER TABLE teams ADD COLUMN ${col}`); } catch (e) { /* déjà présente */ }

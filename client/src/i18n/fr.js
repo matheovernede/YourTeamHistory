@@ -137,6 +137,9 @@ export default {
 
   mercato: {
     chargement: 'Chargement du mercato...',
+    titreHiver: "Mercato d'hiver",
+    sousTitreHiver: "Marché restreint et prix majorés : on ne reconstruit pas une équipe en janvier",
+    reprendreSaison: '⚽ Reprendre la saison',
     titreInitial: 'Mercato Initial',
     titre: 'Mercato',
     sousTitreInitial: 'Recrutez au minimum 11 joueurs pour former votre équipe',
@@ -396,6 +399,7 @@ export default {
       confirmerVente: 'Vendre {joueur} pour {prix} ?',
       vendu: '{joueur} vendu pour {prix}',
       saisonTerminee: 'Saison terminée ! Consultez le bilan.',
+      mercatoHiverOuvert: "Mi-saison : le mercato d'hiver ouvre…",
       gestionAppliquee: '{icone} {nom} appliqué ! (-{cout})',
       clotureImpossible: 'Impossible de clôturer la saison : {message}',
     },

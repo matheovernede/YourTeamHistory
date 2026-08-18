@@ -75,9 +75,10 @@ export const api = {
 
   getLeaderboard: () => request('/leaderboard'),
 
-  getDraftPlayers: (division, reputation, teamId, difficulty) => request(`/draft/available?division=${division || 1}&reputation=${reputation || 50}&teamId=${teamId || ''}&difficulty=${difficulty || 'normal'}`),
+  // `window` vaut 'winter' pendant le mercato d'hiver : marché restreint et majoré.
+  getDraftPlayers: (division, reputation, teamId, difficulty, window) => request(`/draft/available?division=${division || 1}&reputation=${reputation || 50}&teamId=${teamId || ''}&difficulty=${difficulty || 'normal'}${window ? `&window=${window}` : ''}`),
   draftBuy: (managerId, teamId, player) => request('/draft/buy', { method: 'POST', body: JSON.stringify({ managerId, teamId, player }) }),
-  draftFinish: (managerId, teamId) => request('/draft/finish', { method: 'POST', body: JSON.stringify({ managerId, teamId }) }),
+  draftFinish: (managerId, teamId, window) => request('/draft/finish', { method: 'POST', body: JSON.stringify({ managerId, teamId, window }) }),
 
   getSeasonStatus: (teamId) => request(`/season/${teamId}/status`),
   playMatchday: (teamId, difficulty) => request(`/season/${teamId}/play-matchday`, { method: 'POST', body: JSON.stringify({ difficulty }) }),

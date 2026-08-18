@@ -109,7 +109,7 @@ function computeTeamStats(starters, t) {
   ];
 }
 
-export default function Season({ manager, team, onUpdate, onManagerUpdate, onSeasonEnd }) {
+export default function Season({ manager, team, onUpdate, onManagerUpdate, onSeasonEnd, onWinterWindow }) {
   const { t } = useI18n();
   const [status, setStatus] = useState(null);
   const [lastMatch, setLastMatch] = useState(null);
@@ -578,6 +578,11 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
             }
             if (result.seasonOver) {
               setMessage(t('saison.messages.saisonTerminee'));
+            } else if (result.winterWindow && onWinterWindow) {
+              // On laisse le résultat du match s'afficher avant de basculer :
+              // sinon la journée qui ouvre la fenêtre passerait inaperçue.
+              setMessage(t('saison.messages.mercatoHiverOuvert'));
+              setTimeout(() => onWinterWindow(null, result.team), 2200);
             }
           }, 800 / matchSpeedRef.current);
         } else {
