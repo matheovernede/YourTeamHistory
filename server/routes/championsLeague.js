@@ -2,8 +2,24 @@ const express = require('express');
 const { getDb, queryOne, queryAll, run, saveDb } = require('../db/schema');
 const { simulateMatch, simulateAiMatchByStrength, applyMatchEffects } = require('../engine/match');
 const { EUROPEAN_TEAMS, CL_PRIZES, generateCLDraw, generateGroupFixtures } = require('../data/championsLeague');
+const { langueDe, t } = require('../i18n');
 
 const router = express.Router();
+
+/**
+ * Résultat d'un match de Champions League.
+ *
+ * `resultText` conserve sa valeur française : le client la transforme en nom de
+ * classe CSS (`.result-tag.victoire`, `.match-nul`…). La changer casserait la
+ * mise en forme. Le texte destiné à l'affichage voyage donc à côté, dans
+ * `resultLabel`.
+ */
+function resultatCl(won, drew, langue) {
+  return {
+    resultText: won ? 'Victoire' : drew ? 'Match nul' : 'Defaite',
+    resultLabel: t(won ? 'cl.victoire' : drew ? 'cl.nul' : 'cl.defaite', langue),
+  };
+}
 
 /**
  * Helper: get or parse CL state from team's cl_data column.
@@ -38,16 +54,17 @@ function getPlayerTeamOverall(teamId) {
  * Returns the current Champions League state for the team.
  */
 router.get('/:teamId/cl/status', (req, res) => {
+  const langue = langueDe(req);
   const team = queryOne('SELECT * FROM teams WHERE id = ?', [req.params.teamId]);
-  if (!team) return res.status(404).json({ error: 'Equipe non trouvee' });
+  if (!team) return res.status(404).json({ error: t('erreur.cl.equipeIntrouvable', langue) });
 
   if (team.division < 7) {
-    return res.status(403).json({ error: 'La Champions League est accessible uniquement en Ligue 1 (division 7)', locked: true });
+    return res.status(403).json({ error: t('erreur.cl.reserveeLigue1', langue), locked: true });
   }
 
   const clState = getCLState(team);
   if (!clState) {
-    return res.json({ active: false, message: 'Champions League non initialisee. Jouez un match de championnat pour lancer la phase de groupes.' });
+    return res.json({ active: false, message: t('cl.nonInitialisee', langue) });
   }
 
   // Determine next match info
@@ -88,17 +105,18 @@ router.get('/:teamId/cl/status', (req, res) => {
  * Initialize CL for the current season (called automatically or manually).
  */
 router.post('/:teamId/cl/init', async (req, res) => {
+  const langue = langueDe(req);
   const db = await getDb();
   const team = queryOne('SELECT * FROM teams WHERE id = ?', [req.params.teamId]);
-  if (!team) return res.status(404).json({ error: 'Equipe non trouvee' });
+  if (!team) return res.status(404).json({ error: t('erreur.cl.equipeIntrouvable', langue) });
 
   if (team.division < 7) {
-    return res.status(403).json({ error: 'La Champions League est accessible uniquement en Ligue 1 (division 7)', locked: true });
+    return res.status(403).json({ error: t('erreur.cl.reserveeLigue1', langue), locked: true });
   }
 
   const existing = getCLState(team);
   if (existing && !existing.eliminated && !existing.winner) {
-    return res.status(400).json({ error: 'Champions League deja en cours' });
+    return res.status(400).json({ error: t('erreur.cl.dejaEnCours', langue) });
   }
 
   const playerOverall = getPlayerTeamOverall(team.id);
@@ -119,7 +137,7 @@ router.post('/:teamId/cl/init', async (req, res) => {
 
   saveCLState(team.id, clState);
 
-  res.json({ success: true, message: 'Champions League initialisee !', groups });
+  res.json({ success: true, message: t('cl.initialisee', langue), groups });
 });
 
 /**
@@ -127,38 +145,39 @@ router.post('/:teamId/cl/init', async (req, res) => {
  * Play the next CL match.
  */
 router.post('/:teamId/cl/play', async (req, res) => {
+  const langue = langueDe(req);
   const db = await getDb();
   const team = queryOne('SELECT * FROM teams WHERE id = ?', [req.params.teamId]);
-  if (!team) return res.status(404).json({ error: 'Equipe non trouvee' });
+  if (!team) return res.status(404).json({ error: t('erreur.cl.equipeIntrouvable', langue) });
 
   if (team.division < 7) {
-    return res.status(403).json({ error: 'Champions League non accessible', locked: true });
+    return res.status(403).json({ error: t('erreur.cl.nonAccessible', langue), locked: true });
   }
 
   let clState = getCLState(team);
   if (!clState) {
-    return res.status(400).json({ error: 'Champions League non initialisee. Utilisez /cl/init d\'abord.' });
+    return res.status(400).json({ error: t('erreur.cl.nonInitialisee', langue) });
   }
 
   if (clState.eliminated) {
-    return res.status(400).json({ error: 'Vous avez ete elimine de la Champions League cette saison.' });
+    return res.status(400).json({ error: t('erreur.cl.dejaElimine', langue) });
   }
 
   if (clState.winner) {
-    return res.status(400).json({ error: 'Vous avez deja remporte la Champions League cette saison !' });
+    return res.status(400).json({ error: t('erreur.cl.dejaRemportee', langue) });
   }
 
   if (clState.phase === 'group') {
-    return playGroupMatch(db, team, clState, res);
+    return playGroupMatch(db, team, clState, res, langue);
   } else {
-    return playKnockoutMatch(db, team, clState, res);
+    return playKnockoutMatch(db, team, clState, res, langue);
   }
 });
 
 /**
  * Play a group stage match.
  */
-function playGroupMatch(db, team, clState, res) {
+function playGroupMatch(db, team, clState, res, langue) {
   if (clState.currentMatchday >= 6) {
     // Group stage done, advance to knockouts
     advanceToKnockouts(clState, team.name);
@@ -168,7 +187,7 @@ function playGroupMatch(db, team, clState, res) {
       return res.json({
         phase: 'group_ended',
         eliminated: true,
-        message: 'Vous n\'avez pas termine dans le top 2 de votre groupe. Elimine !',
+        message: t('cl.groupeElimine', langue),
         groups: clState.groups,
         totalEarnings: clState.totalEarnings,
       });
@@ -176,7 +195,7 @@ function playGroupMatch(db, team, clState, res) {
 
     return res.json({
       phase: 'knockout_start',
-      message: 'Phase de groupes terminee ! Vous etes qualifie pour les quarts de finale !',
+      message: t('cl.groupeQualifie', langue),
       groups: clState.groups,
       knockout: clState.knockout,
       totalEarnings: clState.totalEarnings,
@@ -192,7 +211,7 @@ function playGroupMatch(db, team, clState, res) {
     // Player has no match this day (shouldn't happen), skip
     clState.currentMatchday++;
     saveCLState(team.id, clState);
-    return res.json({ message: 'Pas de match cette journee, on avance.', phase: 'group', currentMatchday: clState.currentMatchday });
+    return res.json({ message: t('cl.pasDeMatch', langue), phase: 'group', currentMatchday: clState.currentMatchday });
   }
 
   const isHome = playerMatch.home === team.name;
@@ -275,7 +294,7 @@ function playGroupMatch(db, team, clState, res) {
       opponentGoals,
       isHome,
       events: matchResult.events,
-      resultText: won ? 'Victoire' : drew ? 'Match nul' : 'Defaite',
+      ...resultatCl(won, drew, langue),
     },
     groups: clState.groups,
     currentMatchday: clState.currentMatchday,
@@ -287,10 +306,10 @@ function playGroupMatch(db, team, clState, res) {
 /**
  * Play a knockout match (QF, SF, Final).
  */
-function playKnockoutMatch(db, team, clState, res) {
+function playKnockoutMatch(db, team, clState, res, langue) {
   const ko = clState.knockout;
   if (!ko || !ko.nextMatch) {
-    return res.status(400).json({ error: 'Pas de match knockout en attente.' });
+    return res.status(400).json({ error: t('erreur.cl.pasDeMatchKnockout', langue) });
   }
 
   const match = ko.nextMatch;
@@ -412,7 +431,7 @@ function playKnockoutMatch(db, team, clState, res) {
       isHome,
       leg: match.leg,
       events: matchResult.events,
-      resultText: won ? 'Victoire' : drew ? 'Match nul' : 'Defaite',
+      ...resultatCl(won, drew, langue),
       aggregate: resultEntry.aggregate || null,
       penalties: resultEntry.penalties || false,
       penaltyWin: resultEntry.penaltyWin,

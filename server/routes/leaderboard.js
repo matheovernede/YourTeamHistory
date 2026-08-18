@@ -2,6 +2,7 @@ const express = require('express');
 const { queryAll, queryOne } = require('../db/schema');
 const { computeStandings } = require('../engine/standings');
 const { DIVISIONS } = require('../data/divisions');
+const { langueDe, t, localiserDonnee } = require('../i18n');
 
 const getDivisionInfo = (level) => DIVISIONS.find((d) => d.level === level) || DIVISIONS[0];
 
@@ -57,6 +58,7 @@ function minutesDepuis(managerId) {
  * titres, puis les points de la saison en cours.
  */
 router.get('/players', (req, res) => {
+  const langue = langueDe(req);
   const equipes = queryAll(`
     SELECT t.*, m.username, m.reputation, m.budget
     FROM teams t
@@ -88,7 +90,9 @@ router.get('/players', (req, res) => {
       username: t.username,
       teamName: t.name,
       division,
-      divisionName: getDivisionInfo(division).name,
+      // Nom de division traduit à l'affichage seulement : `division` (le niveau
+      // numérique) reste la donnée sur laquelle le classement est trié.
+      divisionName: localiserDonnee('divisions', getDivisionInfo(division).name, langue),
       season: t.season || 1,
       rankInDivision: rangDivision,
       teamsInDivision: totalEquipes,
@@ -129,13 +133,14 @@ router.get('/players', (req, res) => {
 
 /** Détail d'un manager : sa carrière saison par saison. */
 router.get('/players/:teamId', (req, res) => {
+  const langue = langueDe(req);
   const team = queryOne(
     `SELECT t.*, m.username, m.reputation, m.budget
      FROM teams t JOIN managers m ON t.manager_id = m.id
      WHERE t.id = ? AND t.manager_id <> 'AI'`,
     [req.params.teamId]
   );
-  if (!team) return res.status(404).json({ error: 'Joueur introuvable' });
+  if (!team) return res.status(404).json({ error: t('erreur.classementJoueurIntrouvable', langue) });
 
   const history = queryAll(
     'SELECT * FROM season_history WHERE team_id = ? ORDER BY season DESC',

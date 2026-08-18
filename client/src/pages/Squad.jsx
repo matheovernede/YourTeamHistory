@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api/client';
 import PlayerCard from '../components/PlayerCard';
+import { useI18n } from '../i18n';
 import './Squad.css';
 
 export default function Squad({ team, onUpdate }) {
+  const { t } = useI18n();
   const [players, setPlayers] = useState([]);
   const [formation, setFormation] = useState(team.formation);
   const [loading, setLoading] = useState(true);
@@ -26,7 +28,7 @@ export default function Squad({ team, onUpdate }) {
     const newFormation = e.target.value;
     setFormation(newFormation);
     await api.setFormation(team.id, newFormation);
-    setMessage(`Formation changée en ${newFormation}`);
+    setMessage(t('effectifPage.formationChangee', { formation: newFormation }));
     setTimeout(() => setMessage(''), 2000);
   }
 
@@ -42,7 +44,7 @@ export default function Squad({ team, onUpdate }) {
       }
     } else {
       if (starters.length >= 11) {
-        setMessage('Maximum 11 titulaires !');
+        setMessage(t('effectifPage.maxTitulaires'));
         setTimeout(() => setMessage(''), 2000);
         return;
       }
@@ -50,7 +52,7 @@ export default function Squad({ team, onUpdate }) {
       if (newStarters.length === 11) {
         const updated = await api.setLineup(team.id, newStarters);
         setPlayers(updated);
-        setMessage('Composition mise à jour !');
+        setMessage(t('effectifPage.compoMaj'));
         setTimeout(() => setMessage(''), 2000);
         return;
       }
@@ -74,12 +76,12 @@ export default function Squad({ team, onUpdate }) {
   const starters = players.filter(p => p.is_starter);
   const subs = players.filter(p => !p.is_starter);
 
-  if (loading) return <div className="page-loading">Chargement...</div>;
+  if (loading) return <div className="page-loading">{t('commun.chargement')}</div>;
 
   return (
     <div className="squad-page">
       <div className="squad-header">
-        <h2>Mon Effectif</h2>
+        <h2>{t('effectifPage.titre')}</h2>
         <div className="squad-controls">
           <select value={formation} onChange={handleFormation}>
             <option value="4-4-2">4-4-2</option>
@@ -90,7 +92,7 @@ export default function Squad({ team, onUpdate }) {
             <option value="3-4-3">3-4-3</option>
           </select>
           <button className="btn-primary" onClick={handleTrain}>
-            🏋️ Entraîner
+            {t('effectifPage.entrainer')}
           </button>
         </div>
       </div>
@@ -98,7 +100,7 @@ export default function Squad({ team, onUpdate }) {
       {message && <div className="squad-message">{message}</div>}
 
       <div className="squad-section">
-        <h3>Titulaires ({starters.length}/11)</h3>
+        <h3>{t('effectifPage.titulaires', { n: starters.length })}</h3>
         <div className="players-grid">
           {starters.map(player => (
             <PlayerCard
@@ -106,7 +108,7 @@ export default function Squad({ team, onUpdate }) {
               player={player}
               actions={
                 <button className="btn-small btn-danger" onClick={() => toggleStarter(player.id)}>
-                  Remplaçant
+                  {t('effectifPage.versRemplacant')}
                 </button>
               }
             />
@@ -115,7 +117,7 @@ export default function Squad({ team, onUpdate }) {
       </div>
 
       <div className="squad-section">
-        <h3>Remplaçants ({subs.length})</h3>
+        <h3>{t('effectifPage.remplacants', { n: subs.length })}</h3>
         <div className="players-grid">
           {subs.map(player => (
             <PlayerCard
@@ -123,7 +125,7 @@ export default function Squad({ team, onUpdate }) {
               player={player}
               actions={
                 <button className="btn-small btn-primary" onClick={() => toggleStarter(player.id)}>
-                  Titulaire
+                  {t('effectifPage.versTitulaire')}
                 </button>
               }
             />

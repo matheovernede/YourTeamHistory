@@ -2,8 +2,14 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Le PNG est donné en premier : les navigateurs retiennent le dernier
+         format qu'ils savent lire, le SVG reste donc en repli. -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/logo-192.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
     <title>YourTeamHistory — Jeu de gestion de football</title>
     <meta name="description" content="Prenez les commandes d'un club de football et gravissez les sept divisions, du Régional 2 à la Ligue 1." />
 
@@ -12,6 +18,8 @@
     <meta property="og:description" content="Prenez les commandes d'un club de football et gravissez les sept divisions, du Régional 2 à la Ligue 1." />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://yourteamhistory.com" />
+    <meta property="og:image" content="https://yourteamhistory.com/logo.png" />
+    <meta name="twitter:card" content="summary" />
     <meta name="theme-color" content="#2eb257" />
   </head>
   <body>

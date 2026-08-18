@@ -1,13 +1,15 @@
 const express = require('express');
 const { v4: uuid } = require('uuid');
 const { queryOne, queryAll, run } = require('../db/schema');
+const { langueDe, t } = require('../i18n');
 
 const router = express.Router();
 
 router.post('/register', (req, res) => {
+  const langue = langueDe(req);
   const { username } = req.body;
   if (!username || username.trim().length < 2) {
-    return res.status(400).json({ error: 'Pseudo requis (min 2 caractères)' });
+    return res.status(400).json({ error: t('erreur.pseudoRequis', langue) });
   }
 
   const existing = queryOne('SELECT * FROM managers WHERE username = ?', [username.trim()]);
@@ -22,20 +24,23 @@ router.post('/register', (req, res) => {
 });
 
 router.get('/:id', (req, res) => {
+  const langue = langueDe(req);
   const manager = queryOne('SELECT * FROM managers WHERE id = ?', [req.params.id]);
-  if (!manager) return res.status(404).json({ error: 'Manager non trouvé' });
+  if (!manager) return res.status(404).json({ error: t('erreur.managerIntrouvable', langue) });
   res.json(manager);
 });
 
 router.get('/:id/team', (req, res) => {
+  const langue = langueDe(req);
   const team = queryOne("SELECT * FROM teams WHERE manager_id = ? AND manager_id != 'AI'", [req.params.id]);
-  if (!team) return res.status(404).json({ error: "Pas encore d'équipe" });
+  if (!team) return res.status(404).json({ error: t('erreur.pasEncoreEquipe', langue) });
   res.json(team);
 });
 
 router.post('/reset', (req, res) => {
+  const langue = langueDe(req);
   const { managerId } = req.body;
-  if (!managerId) return res.status(400).json({ error: 'managerId requis' });
+  if (!managerId) return res.status(400).json({ error: t('erreur.requis.managerId', langue) });
 
   const teams = queryAll("SELECT id FROM teams WHERE manager_id = ?", [managerId]);
   for (const t of teams) {
@@ -49,8 +54,9 @@ router.post('/reset', (req, res) => {
 });
 
 router.get('/:id/save', (req, res) => {
+  const langue = langueDe(req);
   const manager = queryOne('SELECT * FROM managers WHERE id = ?', [req.params.id]);
-  if (!manager) return res.status(404).json({ error: 'Manager non trouvé' });
+  if (!manager) return res.status(404).json({ error: t('erreur.managerIntrouvable', langue) });
 
   const teams = queryAll("SELECT * FROM teams WHERE manager_id = ?", [req.params.id]);
   const saveData = { manager, teams: [] };
@@ -77,9 +83,10 @@ router.get('/:id/save', (req, res) => {
 });
 
 router.post('/:id/load', (req, res) => {
+  const langue = langueDe(req);
   const { saveData } = req.body;
   if (!saveData || !saveData.manager || !saveData.teams) {
-    return res.status(400).json({ error: 'Sauvegarde invalide' });
+    return res.status(400).json({ error: t('erreur.sauvegardeInvalide', langue) });
   }
 
   const managerId = req.params.id;

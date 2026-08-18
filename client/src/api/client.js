@@ -16,8 +16,29 @@ const API_URL = import.meta.env.VITE_API_URL
     ? 'http://localhost:3001/api'
     : '/api';
 
+/**
+ * Langue courante, lue directement dans le stockage local.
+ *
+ * Ce module n'est pas un composant React : il ne peut pas consulter le
+ * contexte de traduction. Il lit donc la même clé que lui, ce qui évite d'avoir
+ * à passer la langue en paramètre à chaque appel de l'API.
+ */
+function langueCourante() {
+  try {
+    return localStorage.getItem('yth_langue') || 'fr';
+  } catch {
+    return 'fr';
+  }
+}
+
 async function request(path, options = {}) {
-  const res = await fetch(`${API_URL}${path}`, {
+  // La langue accompagne chaque requête : événements, dialogues et messages
+  // d'erreur sont produits par le serveur, qui doit savoir dans quelle langue
+  // les rendre.
+  const separateur = path.includes('?') ? '&' : '?';
+  const url = `${API_URL}${path}${separateur}lang=${langueCourante()}`;
+
+  const res = await fetch(url, {
     headers: { 'Content-Type': 'application/json' },
     ...options,
   });

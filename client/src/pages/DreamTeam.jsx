@@ -1,5 +1,6 @@
-import { useState, useEffect, useMemo } from 'react';
+﻿import { useState, useEffect, useMemo } from 'react';
 import { api } from '../api/client';
+import { useI18n } from '../i18n';
 import './DreamTeam.css';
 
 const POSITIONS = ['GAR', 'DC', 'ARG', 'ARD', 'MC', 'MOC', 'MDF', 'AIG', 'AID', 'BU'];
@@ -13,20 +14,11 @@ const FORMATIONS = {
   '4-1-4-1': { slots: ['GAR', 'ARG', 'DC', 'DC', 'ARD', 'MDF', 'AIG', 'MC', 'MC', 'AID', 'BU'] },
 };
 
-const POSITION_LABELS = {
-  GAR: 'Gardien',
-  DC: 'Def. Central',
-  ARG: 'Arr. Gauche',
-  ARD: 'Arr. Droit',
-  MC: 'Milieu',
-  MOC: 'Milieu Off.',
-  MDF: 'Milieu Def.',
-  AIG: 'Ailier Gauche',
-  AID: 'Ailier Droit',
-  BU: 'Buteur',
-};
+// Le nom complet du poste est traduit (dreamteam.postes.*) ; le code du poste
+// (GAR, DC, MC…) reste tel quel, c'est un identifiant partagé avec le serveur.
 
 export default function DreamTeam({ onBack, onStartCareer }) {
+  const { t } = useI18n();
   const [allPlayers, setAllPlayers] = useState([]);
   const [filterLeague, setFilterLeague] = useState('');
   const [filterPosition, setFilterPosition] = useState('');
@@ -102,7 +94,7 @@ export default function DreamTeam({ onBack, onStartCareer }) {
   }
 
   function resetTeam() {
-    if (!confirm('Reinitialiser votre DreamTeam ?')) return;
+    if (!confirm(t('dreamteam.confirmerReset'))) return;
     setTeam([]);
     setBench([]);
   }
@@ -155,7 +147,7 @@ export default function DreamTeam({ onBack, onStartCareer }) {
       setClBracket({ quarter: qfPairings, semi: [], final: [], results: [] });
       setClRound('quarter');
     } catch (e) {
-      alert('Erreur: ' + e.message);
+      alert(t('commun.erreur', { message: e.message }));
     }
     setClLoading(false);
   }
@@ -183,7 +175,7 @@ export default function DreamTeam({ onBack, onStartCareer }) {
         };
       } catch (e) {
         setClLoading(false);
-        alert('Erreur: ' + e.message);
+        alert(t('commun.erreur', { message: e.message }));
         return null;
       }
     } else {
@@ -199,7 +191,7 @@ export default function DreamTeam({ onBack, onStartCareer }) {
         };
       } catch (e) {
         setClLoading(false);
-        alert('Erreur: ' + e.message);
+        alert(t('commun.erreur', { message: e.message }));
         return null;
       }
     }
@@ -269,7 +261,7 @@ export default function DreamTeam({ onBack, onStartCareer }) {
   return (
     <div className="dreamteam-page">
       <div className="dreamteam-header">
-        <button className="dt-back-btn" onClick={onBack}>Retour</button>
+        <button className="dt-back-btn" onClick={onBack}>{t('dreamteam.retour')}</button>
         <h1>DreamTeam</h1>
         <div className="dt-overall-badge">
           {team.length > 0 && <span>OVR: <strong>{teamOverall}</strong></span>}
@@ -284,18 +276,18 @@ export default function DreamTeam({ onBack, onStartCareer }) {
           <div className="dt-filters">
             <input
               type="text"
-              placeholder="Rechercher un joueur..."
+              placeholder={t('dreamteam.rechercher')}
               value={search}
               onChange={e => setSearch(e.target.value)}
               className="dt-search"
             />
             <select value={filterLeague} onChange={e => setFilterLeague(e.target.value)}>
-              <option value="">Toutes les ligues</option>
+              <option value="">{t('dreamteam.toutesLigues')}</option>
               {LEAGUES.map(l => <option key={l} value={l}>{l}</option>)}
             </select>
             <select value={filterPosition} onChange={e => setFilterPosition(e.target.value)}>
-              <option value="">Tous les postes</option>
-              {POSITIONS.map(p => <option key={p} value={p}>{p} - {POSITION_LABELS[p]}</option>)}
+              <option value="">{t('dreamteam.tousPostes')}</option>
+              {POSITIONS.map(p => <option key={p} value={p}>{p} - {t(`dreamteam.postes.${p}`)}</option>)}
             </select>
           </div>
 
@@ -312,17 +304,17 @@ export default function DreamTeam({ onBack, onStartCareer }) {
                   <span className="dt-player-details">{player.position} | {player.club}</span>
                 </div>
                 <div className="dt-player-stats">
-                  <span>VIT {player.pace}</span>
-                  <span>TIR {player.shooting}</span>
-                  <span>PAS {player.passing}</span>
-                  <span>DRI {player.dribbling}</span>
-                  <span>DEF {player.defending}</span>
-                  <span>PHY {player.physical}</span>
+                  <span>{t('dreamteam.stats.vit')} {player.pace}</span>
+                  <span>{t('dreamteam.stats.tir')} {player.shooting}</span>
+                  <span>{t('dreamteam.stats.pas')} {player.passing}</span>
+                  <span>{t('dreamteam.stats.dri')} {player.dribbling}</span>
+                  <span>{t('dreamteam.stats.def')} {player.defending}</span>
+                  <span>{t('dreamteam.stats.phy')} {player.physical}</span>
                 </div>
               </div>
             ))}
             {filteredPlayers.length === 0 && (
-              <div className="dt-no-results">Aucun joueur trouve.</div>
+              <div className="dt-no-results">{t('dreamteam.aucunJoueur')}</div>
             )}
           </div>
         </div>
@@ -330,14 +322,14 @@ export default function DreamTeam({ onBack, onStartCareer }) {
         {/* RIGHT PANEL - team */}
         <div className="dt-right-panel">
           <div className="dt-formation-select">
-            <label>Formation:</label>
+            <label>{t('dreamteam.formation')}</label>
             <select value={formation} onChange={e => setFormation(e.target.value)}>
               {Object.keys(FORMATIONS).map(f => <option key={f} value={f}>{f}</option>)}
             </select>
           </div>
 
           <div className="dt-team-grid">
-            <h3>Titulaires</h3>
+            <h3>{t('dreamteam.titulaires')}</h3>
             <div className="dt-slots">
               {formationSlots.map((slot, idx) => {
                 const player = team[idx];
@@ -359,7 +351,7 @@ export default function DreamTeam({ onBack, onStartCareer }) {
           </div>
 
           <div className="dt-bench-grid">
-            <h3>Remplacants ({bench.length}/7)</h3>
+            <h3>{t('dreamteam.remplacants', { n: bench.length })}</h3>
             <div className="dt-bench-slots">
               {bench.map(player => (
                 <div key={player.id} className="dt-bench-player" onClick={() => removeFromTeam(player.id)}>
@@ -369,21 +361,21 @@ export default function DreamTeam({ onBack, onStartCareer }) {
                 </div>
               ))}
               {bench.length < 7 && (
-                <div className="dt-bench-empty">+ Ajouter</div>
+                <div className="dt-bench-empty">{t('dreamteam.ajouter')}</div>
               )}
             </div>
           </div>
 
           {team.length > 0 && (
             <div className="dt-team-stats">
-              <h3>Stats moyennes</h3>
+              <h3>{t('dreamteam.statsMoyennes')}</h3>
               <div className="dt-stats-row">
-                <span>VIT: {Math.round(team.reduce((s, p) => s + p.pace, 0) / team.length)}</span>
-                <span>TIR: {Math.round(team.reduce((s, p) => s + p.shooting, 0) / team.length)}</span>
-                <span>PAS: {Math.round(team.reduce((s, p) => s + p.passing, 0) / team.length)}</span>
-                <span>DRI: {Math.round(team.reduce((s, p) => s + p.dribbling, 0) / team.length)}</span>
-                <span>DEF: {Math.round(team.reduce((s, p) => s + p.defending, 0) / team.length)}</span>
-                <span>PHY: {Math.round(team.reduce((s, p) => s + p.physical, 0) / team.length)}</span>
+                <span>{t('dreamteam.stats.vit')}: {Math.round(team.reduce((s, p) => s + p.pace, 0) / team.length)}</span>
+                <span>{t('dreamteam.stats.tir')}: {Math.round(team.reduce((s, p) => s + p.shooting, 0) / team.length)}</span>
+                <span>{t('dreamteam.stats.pas')}: {Math.round(team.reduce((s, p) => s + p.passing, 0) / team.length)}</span>
+                <span>{t('dreamteam.stats.dri')}: {Math.round(team.reduce((s, p) => s + p.dribbling, 0) / team.length)}</span>
+                <span>{t('dreamteam.stats.def')}: {Math.round(team.reduce((s, p) => s + p.defending, 0) / team.length)}</span>
+                <span>{t('dreamteam.stats.phy')}: {Math.round(team.reduce((s, p) => s + p.physical, 0) / team.length)}</span>
               </div>
             </div>
           )}
@@ -391,16 +383,16 @@ export default function DreamTeam({ onBack, onStartCareer }) {
           {/* ==================== PLAY SECTION ==================== */}
           {canPlay && !playMode && (
             <div className="dt-play-section">
-              <h3>Jouer</h3>
+              <h3>{t('dreamteam.jouer')}</h3>
               <div className="dt-play-buttons">
                 <button className="dt-play-btn dt-play-career" onClick={() => onStartCareer && onStartCareer([...team, ...bench])}>
-                  Carriere R2
+                  {t('dreamteam.carriere')}
                 </button>
                 <button className="dt-play-btn dt-play-friendly" onClick={() => setPlayMode('friendly')}>
-                  Match amical
+                  {t('dreamteam.amical')}
                 </button>
                 <button className="dt-play-btn dt-play-cl" onClick={() => setPlayMode('cl')}>
-                  Champions League
+                  {t('dreamteam.championsLeague')}
                 </button>
               </div>
             </div>
@@ -409,21 +401,21 @@ export default function DreamTeam({ onBack, onStartCareer }) {
           {/* ==================== FRIENDLY MATCH ==================== */}
           {playMode === 'friendly' && (
             <div className="dt-play-section">
-              <h3>Match amical</h3>
+              <h3>{t('dreamteam.amical')}</h3>
               {!friendlyResult && !friendlyLoading && (
                 <div className="dt-friendly-picker">
-                  <p>Choisissez la difficulte de l'adversaire :</p>
+                  <p>{t('dreamteam.choisirDifficulte')}</p>
                   <div className="dt-difficulty-buttons">
-                    <button className="dt-diff-btn dt-diff-weak" onClick={() => playFriendly('weak')}>Faible (55)</button>
-                    <button className="dt-diff-btn dt-diff-medium" onClick={() => playFriendly('medium')}>Moyen (68)</button>
-                    <button className="dt-diff-btn dt-diff-strong" onClick={() => playFriendly('strong')}>Fort (78)</button>
-                    <button className="dt-diff-btn dt-diff-legend" onClick={() => playFriendly('legend')}>Legende (88)</button>
+                    <button className="dt-diff-btn dt-diff-weak" onClick={() => playFriendly('weak')}>{t('dreamteam.diffFaible')}</button>
+                    <button className="dt-diff-btn dt-diff-medium" onClick={() => playFriendly('medium')}>{t('dreamteam.diffMoyen')}</button>
+                    <button className="dt-diff-btn dt-diff-strong" onClick={() => playFriendly('strong')}>{t('dreamteam.diffFort')}</button>
+                    <button className="dt-diff-btn dt-diff-legend" onClick={() => playFriendly('legend')}>{t('dreamteam.diffLegende')}</button>
                   </div>
-                  <button className="dt-back-link" onClick={() => setPlayMode(null)}>Retour</button>
+                  <button className="dt-back-link" onClick={() => setPlayMode(null)}>{t('dreamteam.retour')}</button>
                 </div>
               )}
               {friendlyLoading && (
-                <div className="dt-loading">Simulation en cours...</div>
+                <div className="dt-loading">{t('dreamteam.simulation')}</div>
               )}
               {friendlyResult && !friendlyResult.error && (
                 <div className="dt-match-result">
@@ -433,8 +425,8 @@ export default function DreamTeam({ onBack, onStartCareer }) {
                     <span className="dt-result-team">{friendlyResult.opponentName}</span>
                   </div>
                   <div className="dt-result-verdict">
-                    {friendlyResult.homeGoals > friendlyResult.awayGoals ? 'Victoire !' :
-                     friendlyResult.homeGoals < friendlyResult.awayGoals ? 'Defaite...' : 'Match nul'}
+                    {friendlyResult.homeGoals > friendlyResult.awayGoals ? t('dreamteam.victoire') :
+                     friendlyResult.homeGoals < friendlyResult.awayGoals ? t('dreamteam.defaite') : t('dreamteam.nul')}
                   </div>
                   {friendlyResult.events && friendlyResult.events.length > 0 && (
                     <div className="dt-match-events">
@@ -448,13 +440,13 @@ export default function DreamTeam({ onBack, onStartCareer }) {
                       ))}
                     </div>
                   )}
-                  <button className="dt-play-btn" onClick={resetFriendly}>Retour</button>
+                  <button className="dt-play-btn" onClick={resetFriendly}>{t('dreamteam.retour')}</button>
                 </div>
               )}
               {friendlyResult && friendlyResult.error && (
                 <div className="dt-error">
-                  <p>Erreur: {friendlyResult.error}</p>
-                  <button className="dt-play-btn" onClick={resetFriendly}>Retour</button>
+                  <p>{t('commun.erreur', { message: friendlyResult.error })}</p>
+                  <button className="dt-play-btn" onClick={resetFriendly}>{t('dreamteam.retour')}</button>
                 </div>
               )}
             </div>
@@ -463,18 +455,18 @@ export default function DreamTeam({ onBack, onStartCareer }) {
           {/* ==================== CHAMPIONS LEAGUE ==================== */}
           {playMode === 'cl' && (
             <div className="dt-play-section dt-cl-section">
-              <h3>Champions League</h3>
+              <h3>{t('dreamteam.championsLeague')}</h3>
 
               {!clBracket && !clLoading && (
                 <div className="dt-cl-start">
-                  <p>Tournoi a 8 equipes : Quarts, Demis, Finale.</p>
-                  <button className="dt-play-btn dt-play-cl" onClick={startCL}>Lancer le tirage</button>
-                  <button className="dt-back-link" onClick={() => setPlayMode(null)}>Retour</button>
+                  <p>{t('dreamteam.clPresentation')}</p>
+                  <button className="dt-play-btn dt-play-cl" onClick={startCL}>{t('dreamteam.clTirage')}</button>
+                  <button className="dt-back-link" onClick={() => setPlayMode(null)}>{t('dreamteam.retour')}</button>
                 </div>
               )}
 
               {clLoading && (
-                <div className="dt-loading">Simulation en cours...</div>
+                <div className="dt-loading">{t('dreamteam.simulation')}</div>
               )}
 
               {clBracket && !clFinished && (
@@ -483,7 +475,7 @@ export default function DreamTeam({ onBack, onStartCareer }) {
                   <div className="dt-cl-rounds">
                     {/* Quarter-finals */}
                     <div className="dt-cl-round-col">
-                      <h4>Quarts de finale</h4>
+                      <h4>{t('dreamteam.clQuarts')}</h4>
                       {clBracket.quarter.map((p, i) => {
                         const played = clBracket.results.find(r => r.home.name === p.home.name && r.away.name === p.away.name);
                         return (
@@ -503,7 +495,7 @@ export default function DreamTeam({ onBack, onStartCareer }) {
                     {/* Semi-finals */}
                     {clBracket.semi.length > 0 && (
                       <div className="dt-cl-round-col">
-                        <h4>Demi-finales</h4>
+                        <h4>{t('dreamteam.clDemis')}</h4>
                         {clBracket.semi.map((p, i) => {
                           const played = clBracket.results.find(r => r.home.name === p.home.name && r.away.name === p.away.name);
                           return (
@@ -524,7 +516,7 @@ export default function DreamTeam({ onBack, onStartCareer }) {
                     {/* Final */}
                     {clBracket.final.length > 0 && (
                       <div className="dt-cl-round-col">
-                        <h4>Finale</h4>
+                        <h4>{t('dreamteam.clFinale')}</h4>
                         {clBracket.final.map((p, i) => {
                           const played = clBracket.results.find(r => r.home.name === p.home.name && r.away.name === p.away.name);
                           return (
@@ -557,7 +549,9 @@ export default function DreamTeam({ onBack, onStartCareer }) {
                   {/* Play round button */}
                   {clRound && !clLoading && (
                     <button className="dt-play-btn dt-play-cl" onClick={playCurrentRound}>
-                      Jouer {clRound === 'quarter' ? 'les quarts' : clRound === 'semi' ? 'les demis' : 'la finale'}
+                      {clRound === 'quarter' ? t('dreamteam.clJouerQuarts')
+                        : clRound === 'semi' ? t('dreamteam.clJouerDemis')
+                        : t('dreamteam.clJouerFinale')}
                     </button>
                   )}
                 </div>
@@ -566,16 +560,18 @@ export default function DreamTeam({ onBack, onStartCareer }) {
               {clFinished && clBracket && (
                 <div className="dt-cl-finished">
                   <div className="dt-cl-winner-banner">
+                    {/* Le nom « DreamTeam » est l'identifiant de l'équipe du
+                        joueur dans le tableau : il n'est pas traduit. */}
                     {clBracket.winner.name === 'DreamTeam'
-                      ? 'Felicitations ! Votre DreamTeam remporte la Champions League !'
-                      : `${clBracket.winner.name} remporte la Champions League.`}
+                      ? t('dreamteam.clVictoireJoueur')
+                      : t('dreamteam.clVictoireAutre', { equipe: clBracket.winner.name })}
                   </div>
 
                   {/* Show all results */}
                   <div className="dt-cl-all-results">
                     {clMatches.map((roundData, ri) => (
                       <div key={ri} className="dt-cl-round-results">
-                        <h4>{roundData.round === 'quarter' ? 'Quarts de finale' : roundData.round === 'semi' ? 'Demi-finales' : 'Finale'}</h4>
+                        <h4>{roundData.round === 'quarter' ? t('dreamteam.clQuarts') : roundData.round === 'semi' ? t('dreamteam.clDemis') : t('dreamteam.clFinale')}</h4>
                         {roundData.results.map((r, mi) => (
                           <div key={mi} className="dt-cl-result-line">
                             <span className={r.homeGoals > r.awayGoals ? 'winner' : ''}>{r.home.name}</span>
@@ -587,7 +583,7 @@ export default function DreamTeam({ onBack, onStartCareer }) {
                     ))}
                   </div>
 
-                  <button className="dt-play-btn" onClick={resetCL}>Retour</button>
+                  <button className="dt-play-btn" onClick={resetCL}>{t('dreamteam.retour')}</button>
                 </div>
               )}
             </div>

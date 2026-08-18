@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api/client';
+import { useI18n } from '../i18n';
 import './Match.css';
 
 export default function Match({ team, manager, onUpdate }) {
+  const { t } = useI18n();
   const [matchResult, setMatchResult] = useState(null);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -33,20 +35,20 @@ export default function Match({ team, manager, onUpdate }) {
   return (
     <div className="match-page">
       <div className="match-header">
-        <h2>Jouer un Match</h2>
+        <h2>{t('match.titre')}</h2>
         <div className="team-stats-bar">
-          <span>Saison {team.season}</span>
-          <span>J{team.wins + team.draws + team.losses}</span>
-          <span className="stat-win">{team.wins}V</span>
-          <span className="stat-draw">{team.draws}N</span>
-          <span className="stat-loss">{team.losses}D</span>
-          <span className="stat-pts">{team.points} pts</span>
+          <span>{t('match.saison', { n: team.season })}</span>
+          <span>{t('match.journee', { n: team.wins + team.draws + team.losses })}</span>
+          <span className="stat-win">{t('match.victoires', { n: team.wins })}</span>
+          <span className="stat-draw">{t('match.nuls', { n: team.draws })}</span>
+          <span className="stat-loss">{t('match.defaites', { n: team.losses })}</span>
+          <span className="stat-pts">{t('match.points', { n: team.points })}</span>
         </div>
       </div>
 
       <div className="match-actions">
         <button className="btn-primary play-btn" onClick={playMatch} disabled={loading}>
-          {loading ? '⏳ Simulation...' : '⚽ Jouer le prochain match'}
+          {loading ? t('match.simulation') : t('match.jouer')}
         </button>
       </div>
 
@@ -54,7 +56,7 @@ export default function Match({ team, manager, onUpdate }) {
         <div className="match-result card">
           {matchResult.match.isHome !== undefined && (
             <div className="result-venue">
-              {matchResult.match.isHome ? 'À domicile' : 'À l\'extérieur'}
+              {matchResult.match.isHome ? t('match.domicile') : t('match.exterieur')}
             </div>
           )}
           <div className="result-score">
@@ -74,9 +76,9 @@ export default function Match({ team, manager, onUpdate }) {
           </div>
 
           <div className="result-points">
-            {matchResult.match.pointsEarned === 3 && <span className="badge-win">Victoire ! +3 pts</span>}
-            {matchResult.match.pointsEarned === 1 && <span className="badge-draw">Match nul +1 pt</span>}
-            {matchResult.match.pointsEarned === 0 && <span className="badge-loss">Défaite</span>}
+            {matchResult.match.pointsEarned === 3 && <span className="badge-win">{t('match.victoire')}</span>}
+            {matchResult.match.pointsEarned === 1 && <span className="badge-draw">{t('match.nul')}</span>}
+            {matchResult.match.pointsEarned === 0 && <span className="badge-loss">{t('match.defaite')}</span>}
           </div>
 
           {matchResult.match.events.length > 0 && (
@@ -98,7 +100,7 @@ export default function Match({ team, manager, onUpdate }) {
 
       <div className="match-history">
         <h3 onClick={() => setShowHistory(!showHistory)} style={{cursor: 'pointer'}}>
-          📋 Historique {showHistory ? '▾' : '▸'}
+          {t('match.historique')} {showHistory ? '▾' : '▸'}
         </h3>
         {showHistory && (
           <div className="history-list">
@@ -110,7 +112,7 @@ export default function Match({ team, manager, onUpdate }) {
                 <span className="history-date">{match.played_at?.split('T')[0]}</span>
               </div>
             ))}
-            {history.length === 0 && <p className="no-data">Aucun match joué</p>}
+            {history.length === 0 && <p className="no-data">{t('match.aucunMatch')}</p>}
           </div>
         )}
       </div>

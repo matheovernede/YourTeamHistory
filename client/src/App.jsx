@@ -9,6 +9,8 @@ import Draft from './pages/Draft';
 import Season from './pages/Season';
 import DreamTeam from './pages/DreamTeam';
 import Players from './pages/Players';
+import LanguageSwitcher from './components/LanguageSwitcher';
+import { useI18n } from './i18n';
 
 function App() {
   const [manager, setManager] = useState(null);
@@ -17,6 +19,7 @@ function App() {
   const [seasonSummary, setSeasonSummary] = useState(null);
   const [showDreamTeam, setShowDreamTeam] = useState(false);
   const [showPlayers, setShowPlayers] = useState(false);
+  const { t } = useI18n();
 
   useEffect(() => {
     const saved = localStorage.getItem('footmanager_session');
@@ -78,9 +81,9 @@ function App() {
   }
 
   async function handleDreamTeamCareer(players) {
-    const username = prompt('Entrez votre pseudo pour la carriere:');
+    const username = prompt(t('dialogues.pseudoCarriere'));
     if (!username || username.trim().length < 2) return;
-    const teamName = prompt('Nom de votre equipe:');
+    const teamName = prompt(t('dialogues.nomEquipe'));
     if (!teamName || teamName.trim().length < 2) return;
     try {
       const result = await api.dreamTeamStartCareer(username.trim(), teamName.trim(), players);
@@ -90,12 +93,12 @@ function App() {
       setShowDreamTeam(false);
       save(result.manager, result.team, 'play');
     } catch (e) {
-      alert('Erreur: ' + (e.message || 'Impossible de lancer la carriere'));
+      alert(t('dialogues.erreur') + (e.message || t('dialogues.erreurCarriere')));
     }
   }
 
   async function handleNewCareer() {
-    if (!confirm('Commencer une nouvelle carrière ? Votre progression sera perdue.')) return;
+    if (!confirm(t('dialogues.confirmerNouvelleCarriere'))) return;
     if (manager) {
       try { await api.resetManager(manager.id); } catch {}
     }
@@ -115,7 +118,7 @@ function App() {
       setPhase('play');
       save(result.manager, result.team, 'play');
     } catch {
-      alert('Erreur lors du chargement de la sauvegarde');
+      alert(t('dialogues.erreurChargement'));
     }
   }
 
@@ -151,7 +154,7 @@ function App() {
         save(result.manager, result.team, 'play');
         window.location.reload();
       } catch {
-        alert('Fichier de sauvegarde invalide');
+        alert(t('dialogues.sauvegardeInvalide'));
       }
     };
     input.click();
@@ -177,15 +180,15 @@ function App() {
       <div className="app">
         <header className="top-bar">
           <div className="brand">
-            <div className="brand-crest">⚽</div>
+            <img className="brand-crest" src="/logo-192.png" alt="" width="40" height="40" />
             <div className="brand-text">
               <span className="brand-name">{team.name}</span>
-              <span className="brand-sub">{phase === 'draft' ? 'Draft initial' : 'Mercato'}</span>
+              <span className="brand-sub">{phase === 'draft' ? t('bilan.draftInitial') : t('bilan.mercato')}</span>
             </div>
           </div>
           <div className="top-metrics">
             <div className="metric metric-gold">
-              <span className="metric-label">Budget</span>
+              <span className="metric-label">{t('barre.budget')}</span>
               <span className="metric-value">{(manager.budget / 1000000).toFixed(1)}M€</span>
             </div>
           </div>
@@ -195,32 +198,38 @@ function App() {
               href={DISCORD_URL}
               target="_blank"
               rel="noopener noreferrer"
-              title="Rejoindre le serveur Discord du jeu"
+              title={t('barre.discordTitre')}
             >
-              💬 Discord
+              {t('barre.discord')}
             </a>
             <a
               className="btn-kofi-top"
               href={KOFI_URL}
               target="_blank"
               rel="noopener noreferrer"
-              title="Soutenir le développement du jeu sur Ko-fi"
+              title={t('barre.kofiTitre')}
             >
-              ☕ Soutenir
+              {t('barre.soutenir')}
             </a>
-            <button className="btn-new-career-top" onClick={handleNewCareer}>Nouvelle carrière</button>
+            <button className="btn-new-career-top" onClick={handleNewCareer}>{t('barre.nouvelleCarriere')}</button>
           </div>
         </header>
         {seasonSummary && (
           <div className={`season-summary-banner ${seasonSummary.promotion ? 'promo' : ''} ${seasonSummary.relegation ? 'releg' : ''}`}>
-            <h2>Bilan Saison {seasonSummary.season} — {seasonSummary.divisionName}</h2>
-            {seasonSummary.promotion && <div className="promo-tag">🎉 PROMOTION → {seasonSummary.newDivision}</div>}
-            {seasonSummary.relegation && <div className="releg-tag">📉 Relégation → {seasonSummary.newDivision}</div>}
+            <h2>{t('bilan.titre', { saison: seasonSummary.season, division: seasonSummary.divisionName })}</h2>
+            {seasonSummary.promotion && (
+              <div className="promo-tag">{t('bilan.promotion', { division: seasonSummary.newDivision })}</div>
+            )}
+            {seasonSummary.relegation && (
+              <div className="releg-tag">{t('bilan.relegation', { division: seasonSummary.newDivision })}</div>
+            )}
             <div className="summary-stats">
               <span>#{seasonSummary.rank}</span>
-              <span>{seasonSummary.points} pts</span>
-              <span>{seasonSummary.wins}V {seasonSummary.draws}N {seasonSummary.losses}D</span>
-              <span className="prize">Prime: +{(seasonSummary.prizePool / 1000000).toFixed(0)}M€</span>
+              <span>{t('bilan.points', { n: seasonSummary.points })}</span>
+              <span>{seasonSummary.wins}{t('commun.v')} {seasonSummary.draws}{t('commun.n')} {seasonSummary.losses}{t('commun.d')}</span>
+              <span className="prize">
+                {t('bilan.prime', { montant: (seasonSummary.prizePool / 1000000).toFixed(0) })}
+              </span>
             </div>
           </div>
         )}
@@ -232,46 +241,46 @@ function App() {
       <div className="app">
         <header className="top-bar">
           <div className="brand">
-            <div className="brand-crest">⚽</div>
+            <img className="brand-crest" src="/logo-192.png" alt="" width="40" height="40" />
             <div className="brand-text">
               <span className="brand-name">{team.name}</span>
-              <span className="brand-sub">Saison {team.season}</span>
+              <span className="brand-sub">{t('barre.saison')} {team.season}</span>
             </div>
           </div>
           <div className="top-metrics">
             <div className="metric metric-gold">
-              <span className="metric-label">Budget</span>
+              <span className="metric-label">{t('barre.budget')}</span>
               <span className="metric-value">{(manager.budget / 1000000).toFixed(1)}M€</span>
             </div>
             <div className="metric">
-              <span className="metric-label">Réputation</span>
+              <span className="metric-label">{t('barre.reputation')}</span>
               <span className="metric-value">{manager.reputation}</span>
             </div>
           </div>
           <div className="top-actions">
-            <button className="icon-btn" title="Exporter la sauvegarde" onClick={handleExportSave}>💾</button>
-            <button className="icon-btn" title="Importer une sauvegarde" onClick={handleImportSave}>📂</button>
-            <button className="btn-players-top" onClick={() => setShowPlayers(true)}>🏅 Managers</button>
-            <button className="btn-dreamteam-top" onClick={() => setShowDreamTeam(true)}>⭐ DreamTeam</button>
+            <button className="icon-btn" title={t('barre.exporter')} onClick={handleExportSave}>💾</button>
+            <button className="icon-btn" title={t('barre.importer')} onClick={handleImportSave}>📂</button>
+            <button className="btn-players-top" onClick={() => setShowPlayers(true)}>{t('barre.managers')}</button>
+            <button className="btn-dreamteam-top" onClick={() => setShowDreamTeam(true)}>{t('barre.dreamteam')}</button>
             <a
               className="btn-discord-top"
               href={DISCORD_URL}
               target="_blank"
               rel="noopener noreferrer"
-              title="Rejoindre le serveur Discord du jeu"
+              title={t('barre.discordTitre')}
             >
-              💬 Discord
+              {t('barre.discord')}
             </a>
             <a
               className="btn-kofi-top"
               href={KOFI_URL}
               target="_blank"
               rel="noopener noreferrer"
-              title="Soutenir le développement du jeu sur Ko-fi"
+              title={t('barre.kofiTitre')}
             >
-              ☕ Soutenir
+              {t('barre.soutenir')}
             </a>
-            <button className="btn-new-career-top" onClick={handleNewCareer}>Nouvelle carrière</button>
+            <button className="btn-new-career-top" onClick={handleNewCareer}>{t('barre.nouvelleCarriere')}</button>
           </div>
         </header>
         <Season
@@ -288,6 +297,15 @@ function App() {
   return (
     <>
       {content}
+      {/* Placé au niveau le plus haut : la mention suit tous les écrans,
+          accueil comme partie en cours. */}
+      <footer className="app-credits">
+        {t('credits.musique')}{' '}
+        <a href="https://arcod.xyz" target="_blank" rel="noopener noreferrer">
+          Arcod.xyz
+        </a>
+      </footer>
+      <LanguageSwitcher />
       <MusicPlayer />
     </>
   );

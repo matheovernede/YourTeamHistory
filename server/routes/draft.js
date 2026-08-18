@@ -3,6 +3,7 @@ const { v4: uuid } = require('uuid');
 const { getDb, queryOne, queryAll, run, saveDb } = require('../db/schema');
 const { DRAFT_POOL, calculateDraftPrice } = require('../data/draftPool');
 const { SQUAD_MAX } = require('../data/rules');
+const { langueDe, t } = require('../i18n');
 
 const router = express.Router();
 
@@ -99,22 +100,23 @@ router.get('/available', (req, res) => {
 });
 
 router.post('/buy', async (req, res) => {
+  const langue = langueDe(req);
   const { managerId, teamId, player } = req.body;
   if (!managerId || !teamId || !player) {
-    return res.status(400).json({ error: 'managerId, teamId et player requis' });
+    return res.status(400).json({ error: t('erreur.requis.managerTeamPlayer', langue) });
   }
 
   const db = await getDb();
   const manager = queryOne('SELECT * FROM managers WHERE id = ?', [managerId]);
-  if (!manager) return res.status(404).json({ error: 'Manager non trouvé' });
+  if (!manager) return res.status(404).json({ error: t('erreur.managerIntrouvable', langue) });
 
   if (manager.budget < player.value) {
-    return res.status(400).json({ error: 'Budget insuffisant' });
+    return res.status(400).json({ error: t('erreur.budgetInsuffisant', langue) });
   }
 
   const playerCount = queryOne('SELECT COUNT(*) as count FROM players WHERE team_id = ?', [teamId]);
   if (playerCount && playerCount.count >= SQUAD_MAX) {
-    return res.status(400).json({ error: `Effectif maximum atteint (${SQUAD_MAX} joueurs)` });
+    return res.status(400).json({ error: t('erreur.effectifMaximum', langue, { nombre: SQUAD_MAX }) });
   }
 
   db.run('UPDATE managers SET budget = budget - ? WHERE id = ?', [player.value, managerId]);
@@ -131,14 +133,15 @@ router.post('/buy', async (req, res) => {
 });
 
 router.post('/finish', async (req, res) => {
+  const langue = langueDe(req);
   const { managerId, teamId } = req.body;
   if (!managerId || !teamId) {
-    return res.status(400).json({ error: 'managerId et teamId requis' });
+    return res.status(400).json({ error: t('erreur.requis.managerTeam', langue) });
   }
 
   const playerCount = queryOne('SELECT COUNT(*) as count FROM players WHERE team_id = ?', [teamId]);
   if (!playerCount || playerCount.count < 11) {
-    return res.status(400).json({ error: `Il faut au minimum 11 joueurs (vous en avez ${playerCount ? playerCount.count : 0})` });
+    return res.status(400).json({ error: t('erreur.minimumOnzeJoueurs', langue, { nombre: playerCount ? playerCount.count : 0 }) });
   }
 
   // Leave lineup empty — player must organize their squad manually.

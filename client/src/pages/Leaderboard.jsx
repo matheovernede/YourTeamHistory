@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api/client';
+import { useI18n } from '../i18n';
 import './Leaderboard.css';
 
 export default function Leaderboard({ manager }) {
+  const { t } = useI18n();
   const [rankings, setRankings] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -19,26 +21,26 @@ export default function Leaderboard({ manager }) {
     }
   }
 
-  if (loading) return <div className="page-loading">Chargement...</div>;
+  if (loading) return <div className="page-loading">{t('commun.chargement')}</div>;
 
   return (
     <div className="leaderboard-page">
-      <h2>🏆 Classement Mondial</h2>
+      <h2>{t('classementMondial.titre')}</h2>
 
       {rankings.length === 0 ? (
         <div className="no-data card">
-          <p>Aucun joueur classé pour le moment.</p>
-          <p>Jouez des matchs pour apparaître ici !</p>
+          <p>{t('classementMondial.aucun')}</p>
+          <p>{t('classementMondial.invitation')}</p>
         </div>
       ) : (
         <div className="leaderboard-table">
           <div className="lb-header">
             <span className="lb-rank">#</span>
-            <span className="lb-name">Manager</span>
-            <span className="lb-team">Équipe</span>
-            <span className="lb-pts">Pts</span>
-            <span className="lb-wins">V</span>
-            <span className="lb-goals">Buts</span>
+            <span className="lb-name">{t('classementMondial.colManager')}</span>
+            <span className="lb-team">{t('classementMondial.colEquipe')}</span>
+            <span className="lb-pts">{t('classementMondial.colPoints')}</span>
+            <span className="lb-wins">{t('classementMondial.colVictoires')}</span>
+            <span className="lb-goals">{t('classementMondial.colButs')}</span>
           </div>
           {rankings.map((entry, index) => (
             <div

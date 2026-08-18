@@ -12,13 +12,32 @@ import {
   getFitLabel,
 } from '../data/formations';
 import { SQUAD_MAX, SQUAD_MIN_SELL, SQUAD_WARN } from '../data/rules';
+import { useI18n } from '../i18n';
 import './Season.css';
 
 /** Seuil réel du moteur : aucune perte de rendement au-dessus de 50. */
 const STAMINA_FRESH = 65;
 const STAMINA_TIRED = 50;
 
+/**
+ * Le serveur renvoie le résultat d'un match en français ('Victoire',
+ * 'Match nul', 'Défaite' — et 'Defaite' sans accent côté Champions League).
+ * Cette chaîne est un IDENTIFIANT TECHNIQUE : elle sert à construire la classe
+ * CSS `result-tag`. On la conserve telle quelle et on ne traduit QUE le libellé
+ * affiché, via cette table.
+ */
+const RESULT_KEYS = {
+  'Victoire': 'victoire',
+  'Match nul': 'matchNul',
+  'Défaite': 'defaite',
+  'Defaite': 'defaite',
+};
 
+/** Libellé traduit d'un resultText serveur, sans toucher à sa valeur brute. */
+function resultLabel(t, resultText) {
+  const cle = RESULT_KEYS[resultText];
+  return cle ? t(`saison.resultat.${cle}`) : resultText;
+}
 
 function staminaTone(stamina) {
   if (stamina >= STAMINA_FRESH) return 'ok';
@@ -36,9 +55,15 @@ function isSelectable(player) {
 }
 
 /** Motif d'indisponibilité, pour l'expliquer à l'écran. */
-function unavailableLabel(player) {
-  if ((player.suspended_matches || 0) > 0) return `suspendu ${player.suspended_matches} match${player.suspended_matches > 1 ? 's' : ''}`;
-  if ((player.injured_matches || 0) > 0) return `blessé ${player.injured_matches} match${player.injured_matches > 1 ? 's' : ''}`;
+function unavailableLabel(player, t) {
+  const suspendu = player.suspended_matches || 0;
+  if (suspendu > 0) {
+    return t(suspendu > 1 ? 'saison.indispo.suspenduPlusieurs' : 'saison.indispo.suspenduUn', { n: suspendu });
+  }
+  const blesse = player.injured_matches || 0;
+  if (blesse > 0) {
+    return t(blesse > 1 ? 'saison.indispo.blessePlusieurs' : 'saison.indispo.blesseUn', { n: blesse });
+  }
   return null;
 }
 
@@ -55,7 +80,7 @@ function posClass(pos) {
  * raisonne sur le poste occupé et on applique le malus d'adéquation, comme le
  * moteur de match. Sinon on retombe sur le poste déclaré.
  */
-function computeTeamStats(starters) {
+function computeTeamStats(starters, t) {
   if (!starters || starters.length === 0) return null;
 
   const roleOf = p => getPositionGroup(p.slotPos || p.position);
@@ -71,19 +96,21 @@ function computeTeamStats(starters) {
     : 0;
   const allAvg = (key) => Math.round(starters.reduce((s, p) => s + (p[key] || 0), 0) / starters.length);
 
+  // `cle` est l'identifiant technique (clé React) ; `label` est l'affichage.
   return [
-    { label: 'GEN', val: allAvg('overall'), color: 'var(--secondary)' },
-    { label: 'ATT', val: avgOf(attackers, 'shooting'), color: '#f87171' },
-    { label: 'MIL', val: avgOf(midfielders, 'passing'), color: '#5ee27f' },
-    { label: 'DEF', val: avgOf(defenders, 'defending'), color: '#48d1cc' },
-    { label: 'GAR', val: goalkeeper ? Math.round(goalkeeper.overall * fitOf(goalkeeper)) : 0, color: '#f0a92c' },
-    { label: 'VIT', val: allAvg('pace'), color: '#8fdcaa' },
-    { label: 'PHY', val: allAvg('physical'), color: '#f0c040' },
-    { label: 'FOR', val: allAvg('stamina'), color: 'var(--success)' },
+    { cle: 'gen', label: t('saison.notes.gen'), val: allAvg('overall'), color: 'var(--secondary)' },
+    { cle: 'att', label: t('saison.notes.att'), val: avgOf(attackers, 'shooting'), color: '#f87171' },
+    { cle: 'mil', label: t('saison.notes.mil'), val: avgOf(midfielders, 'passing'), color: '#5ee27f' },
+    { cle: 'def', label: t('saison.notes.def'), val: avgOf(defenders, 'defending'), color: '#48d1cc' },
+    { cle: 'gar', label: t('saison.notes.gar'), val: goalkeeper ? Math.round(goalkeeper.overall * fitOf(goalkeeper)) : 0, color: '#f0a92c' },
+    { cle: 'vit', label: t('saison.notes.vit'), val: allAvg('pace'), color: '#8fdcaa' },
+    { cle: 'phy', label: t('saison.notes.phy'), val: allAvg('physical'), color: '#f0c040' },
+    { cle: 'forme', label: t('saison.notes.forme'), val: allAvg('stamina'), color: 'var(--success)' },
   ];
 }
 
 export default function Season({ manager, team, onUpdate, onManagerUpdate, onSeasonEnd }) {
+  const { t } = useI18n();
   const [status, setStatus] = useState(null);
   const [lastMatch, setLastMatch] = useState(null);
   const [sponsors, setSponsors] = useState(null);
@@ -157,7 +184,10 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
     // et panneau d'échange. Le serveur refuserait la sauvegarde de toute façon.
     const cible = players.find(p => p.id === playerId);
     if (cible && !isSelectable(cible)) {
-      setMessage(`${cible.first_name} ${cible.last_name} est ${unavailableLabel(cible)} — il ne peut pas être aligné.`);
+      setMessage(t('saison.messages.nonAlignable', {
+        joueur: `${cible.first_name} ${cible.last_name}`,
+        motif: unavailableLabel(cible, t),
+      }));
       setTimeout(() => setMessage(''), 4000);
       return;
     }
@@ -243,10 +273,10 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
     const ecartes = players.length - dispo.length;
 
     if (dispo.length < slots.length) {
-      setMessage(
-        `Impossible de composer : seulement ${dispo.length} joueur${dispo.length > 1 ? 's' : ''} disponible${dispo.length > 1 ? 's' : ''} `
-        + `sur les ${slots.length} requis (${ecartes} suspendu${ecartes > 1 ? 's' : ''} ou blessé${ecartes > 1 ? 's' : ''}).`
-      );
+      setMessage(t(
+        dispo.length > 1 ? 'saison.messages.composeImpossiblePlusieurs' : 'saison.messages.composeImpossibleUn',
+        { n: dispo.length, requis: slots.length, ecartes }
+      ));
       setTimeout(() => setMessage(''), 5000);
       return;
     }
@@ -256,8 +286,8 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
     setSelectedBenchPlayer(null);
     setMessage(
       ecartes > 0
-        ? `Composition automatique appliquée — ${ecartes} joueur${ecartes > 1 ? 's' : ''} indisponible${ecartes > 1 ? 's' : ''} écarté${ecartes > 1 ? 's' : ''}. Pensez à sauvegarder.`
-        : 'Composition automatique appliquée — pensez à sauvegarder.'
+        ? t(ecartes > 1 ? 'saison.messages.autoCompoEcartesPlusieurs' : 'saison.messages.autoCompoEcartesUn', { n: ecartes })
+        : t('saison.messages.autoCompo')
     );
     setTimeout(() => setMessage(''), 4000);
   }
@@ -375,7 +405,7 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
     try {
       const data = await api.initCL(team.id);
       await loadCLStatus();
-      setMessage('Champions League initialisee !');
+      setMessage(t('saison.messages.clInitialisee'));
       setTimeout(() => setMessage(''), 3000);
     } catch (err) {
       setMessage(err.message);
@@ -393,7 +423,12 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
       await loadCLStatus();
       await loadPlayers();
       if (data.result) {
-        setMessage(`CL: ${data.result.resultText} ${data.result.playerGoals}-${data.result.opponentGoals} vs ${data.result.opponent}`);
+        setMessage(t('saison.messages.clResultat', {
+          resultat: resultLabel(t, data.result.resultText),
+          buts: data.result.playerGoals,
+          butsAdverse: data.result.opponentGoals,
+          adversaire: data.result.opponent,
+        }));
         setTimeout(() => setMessage(''), 4000);
       }
     } catch (err) {
@@ -406,7 +441,7 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
 
   async function handleSaveLineup() {
     if (starterIds.length !== 11) {
-      setMessage(`Il faut exactement 11 titulaires (actuellement ${starterIds.length})`);
+      setMessage(t('saison.messages.onzeExact', { n: starterIds.length }));
       setTimeout(() => setMessage(''), 3000);
       return;
     }
@@ -419,7 +454,7 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
       setPlayers(updated);
       setSlotAssignments(reconcileAssignments({}, updated));
       setLineupDirty(false);
-      setMessage('Composition sauvegardée !');
+      setMessage(t('saison.messages.compoSauvegardee'));
       setTimeout(() => setMessage(''), 2000);
     } catch (err) {
       setMessage(err.message);
@@ -449,22 +484,28 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
       await api.setFormation(team.id, nextFormation);
     } catch (err) {
       onUpdate({ ...team, formation: previous });
-      setMessage('Impossible de changer la formation : ' + (err.message || 'erreur réseau'));
+      setMessage(t('saison.messages.formationImpossible', {
+        message: err.message || t('saison.messages.erreurReseau'),
+      }));
       setTimeout(() => setMessage(''), 3000);
     }
   }
 
   async function handleSellPlayer(player) {
     if (players.length < SQUAD_MIN_SELL) {
-      setMessage(`Effectif minimum de ${SQUAD_MIN_SELL} joueurs requis pour vendre (vous en avez ${players.length})`);
+      setMessage(t('saison.messages.minimumVente', { min: SQUAD_MIN_SELL, n: players.length }));
       setTimeout(() => setMessage(''), 3000);
       return;
     }
-    if (!confirm(`Vendre ${player.first_name} ${player.last_name} pour ${formatMoney(Math.round((player.value || 0) * 0.8))} ?`)) return;
+    const nom = `${player.first_name} ${player.last_name}`;
+    if (!confirm(t('saison.messages.confirmerVente', {
+      joueur: nom,
+      prix: formatMoney(Math.round((player.value || 0) * 0.8)),
+    }))) return;
     try {
       const result = await api.sellPlayer(player.id, manager.id);
       if (onManagerUpdate) onManagerUpdate({ ...manager, budget: result.newBudget });
-      setMessage(`${player.first_name} ${player.last_name} vendu pour ${formatMoney(result.sellPrice)}`);
+      setMessage(t('saison.messages.vendu', { joueur: nom, prix: formatMoney(result.sellPrice) }));
       await loadPlayers();
       setTimeout(() => setMessage(''), 3000);
     } catch (err) {
@@ -536,7 +577,7 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
               setEventResult(null);
             }
             if (result.seasonOver) {
-              setMessage('Saison terminée ! Consultez le bilan.');
+              setMessage(t('saison.messages.saisonTerminee'));
             }
           }, 800 / matchSpeedRef.current);
         } else {
@@ -547,8 +588,10 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
       matchTimerRef.current = setTimeout(tick, baseInterval);
 
     } catch (err) {
+      // Le serveur répond toujours en français : la comparaison porte sur son
+      // message brut, seul l'affichage est traduit.
       if (err.message.includes('Saison terminée')) {
-        setMessage('Saison terminée ! Consultez le bilan.');
+        setMessage(t('saison.messages.saisonTerminee'));
       } else {
         setMessage(err.message);
       }
@@ -588,7 +631,11 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
     setLoading(true);
     try {
       const result = await api.buyManagement(team.id, actionId, manager.id);
-      setMessage(`${result.action.icon} ${result.action.name} appliqué ! (-${formatMoney(result.cost)})`);
+      setMessage(t('saison.messages.gestionAppliquee', {
+        icone: result.action.icon,
+        nom: result.action.name,
+        cout: formatMoney(result.cost),
+      }));
       onUpdate(result.team);
       if (result.manager && onManagerUpdate) onManagerUpdate(result.manager);
       await loadManagement();
@@ -683,14 +730,14 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
     } catch (err) {
       // Sans ce catch, un échec serveur ne produisait aucun retour : le bouton
       // semblait mort et le mercato ne s'ouvrait jamais.
-      setMessage(`Impossible de clôturer la saison : ${err.message}`);
+      setMessage(t('saison.messages.clotureImpossible', { message: err.message }));
       setTimeout(() => setMessage(''), 6000);
     } finally {
       setLoading(false);
     }
   }
 
-  if (!status) return <div className="page-loading">Chargement...</div>;
+  if (!status) return <div className="page-loading">{t('commun.chargement')}</div>;
 
   const seasonOver = status.played >= status.totalMatches;
   const difficulty = localStorage.getItem('footmanager_difficulty') || 'normal';
@@ -704,20 +751,21 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
     if (n >= SQUAD_MAX) {
       return {
         level: 'critical',
-        short: `Effectif plein (${n}/${SQUAD_MAX}) — vous ne pouvez plus recruter`,
-        title: 'Effectif au maximum',
-        body: `Vous avez atteint la limite de ${SQUAD_MAX} joueurs. Tout recrutement, draft ou recrue issue d'un événement sera refusé tant que vous n'aurez pas vendu.`,
+        short: t('saison.effectif.alertePleinCourt', { n, max: SQUAD_MAX }),
+        title: t('saison.effectif.alertePleinTitre'),
+        body: t('saison.effectif.alertePleinCorps', { max: SQUAD_MAX }),
       };
     }
     if (n >= SQUAD_WARN) {
-      const places = restant <= 5
-        ? `Il ne vous reste que ${restant} place${restant > 1 ? 's' : ''}.`
-        : `Il vous reste ${restant} places.`;
+      const cleplaces = restant > 5
+        ? 'saison.effectif.placesRestantes'
+        : restant > 1 ? 'saison.effectif.placesRestantesPeu' : 'saison.effectif.placeRestanteUne';
+      const places = t(cleplaces, { n: restant });
       return {
         level: restant <= 5 ? 'critical' : 'warn',
-        short: `${n}/${SQUAD_MAX} joueurs — pensez à vendre`,
-        title: 'Effectif pléthorique',
-        body: `Vous avez ${n} joueurs sur un maximum de ${SQUAD_MAX}. ${places} Vendez vos joueurs inutilisés pour renflouer le budget et garder de la marge au mercato.`,
+        short: t('saison.effectif.alerteLargeCourt', { n, max: SQUAD_MAX }),
+        title: t('saison.effectif.alerteLargeTitre'),
+        body: t('saison.effectif.alerteLargeCorps', { n, max: SQUAD_MAX, places }),
       };
     }
     return null;
@@ -727,40 +775,40 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
     <div className="season-page">
       <div className="season-header">
         <div className="season-info">
-          <h1>{status.division} — Saison {status.season}</h1>
+          <h1>{t('saison.entete.titre', { division: status.division, saison: status.season })}</h1>
           <div className="season-meta">
-            <span>Journée {status.played}/{status.totalMatches}</span>
+            <span>{t('saison.entete.journee', { n: status.played, total: status.totalMatches })}</span>
             <span className="rank-badge">#{status.rank}</span>
           </div>
         </div>
         <div className="season-nav">
-          <button className={view === 'season' ? 'active' : ''} onClick={() => setView('season')}>Saison</button>
-          <button className={view === 'standings' ? 'active' : ''} onClick={() => setView('standings')}>Classement</button>
-          <button className={view === 'lineup' ? 'active' : ''} onClick={() => setView('lineup')}>Compo</button>
+          <button className={view === 'season' ? 'active' : ''} onClick={() => setView('season')}>{t('saison.nav.saison')}</button>
+          <button className={view === 'standings' ? 'active' : ''} onClick={() => setView('standings')}>{t('saison.nav.classement')}</button>
+          <button className={view === 'lineup' ? 'active' : ''} onClick={() => setView('lineup')}>{t('saison.nav.compo')}</button>
           <button
             className={`${view === 'squad' ? 'active' : ''} nav-btn-effectif`}
             onClick={() => setView('squad')}
             title={squadAlert ? squadAlert.short : undefined}
           >
-            Effectif
+            {t('saison.nav.effectif')}
             {squadAlert && <span className={`nav-count-badge ${squadAlert.level}`}>{players.length}</span>}
           </button>
           <button className={`${view === 'management' ? 'active' : ''} nav-btn-gestion`} onClick={handleOpenManagement}>
-            Gestion
+            {t('saison.nav.gestion')}
             {hasConvNotification && <span className="nav-notif-badge" />}
           </button>
           <button
             className={`${view === 'cup' ? 'active' : ''} nav-btn-effectif`}
             onClick={() => { setView('cup'); loadCupStatus(); }}
           >
-            Coupe
+            {t('saison.nav.coupe')}
             {cupState && cupState.available && <span className="nav-notif-badge" />}
           </button>
           <button className={view === 'history' ? 'active' : ''} onClick={() => { setView('history'); loadHistory(); loadPlayerStats(); }}>
-            Palmarès
+            {t('saison.nav.palmares')}
           </button>
           {team.division >= 7 && (
-            <button className={`cl-tab ${view === 'cl' ? 'active' : ''}`} onClick={() => { setView('cl'); loadCLStatus(); }}>Champions League</button>
+            <button className={`cl-tab ${view === 'cl' ? 'active' : ''}`} onClick={() => { setView('cl'); loadCLStatus(); }}>{t('saison.nav.championsLeague')}</button>
           )}
         </div>
       </div>
@@ -772,8 +820,8 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
           <div className="mood-alert-head">
             <strong>
               {mood.unhappy.some(p => p.transferRequest)
-                ? 'Des joueurs demandent à partir'
-                : 'Tensions dans le vestiaire'}
+                ? t('saison.moral.titreDeparts')
+                : t('saison.moral.titreTensions')}
             </strong>
             <span className="mood-count">{mood.unhappy.length}</span>
           </div>
@@ -785,17 +833,17 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
                 <span className="mood-reasons">{p.reasons.join(', ')}</span>
                 <span className="mood-state">
                   {p.transferRequest
-                    ? `part dans ${p.matchesBeforeLeaving} journée${p.matchesBeforeLeaving > 1 ? 's' : ''}`
+                    ? t(p.matchesBeforeLeaving > 1 ? 'saison.moral.partPlusieurs' : 'saison.moral.partUn', { n: p.matchesBeforeLeaving })
                     : p.label}
                 </span>
               </li>
             ))}
           </ul>
           <p className="mood-hint">
-            Remontez leur moral (entraînement de cohésion, dialogues, temps de jeu) pour les apaiser.
+            {t('saison.moral.conseil')}
             {difficulty === 'easy'
-              ? " En difficulté facile, un joueur mécontent ne quitte jamais le club de lui-même — mais son moral pèse toujours sur ses performances."
-              : " Un joueur qui force son départ n'est vendu qu'à 60 % de sa valeur."}
+              ? t('saison.moral.conseilFacile')
+              : t('saison.moral.conseilNormal')}
           </p>
         </div>
       )}
@@ -828,8 +876,8 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
       {view === 'live' && liveMatch && (
         <div className="live-match">
           <div className="live-header">
-            <span className="live-badge">EN DIRECT</span>
-            <span className="live-matchday">Journée {liveMatch.match.matchday}</span>
+            <span className="live-badge">{t('saison.direct.badge')}</span>
+            <span className="live-matchday">{t('saison.direct.journee', { n: liveMatch.match.matchday })}</span>
             <button className="live-speed-btn" onClick={cycleSpeed}>x{matchSpeed}</button>
           </div>
           <div className="live-score-board">
@@ -864,22 +912,22 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
         <div className="season-main">
           <div className="season-stats card">
             <div className="stats-row">
-              <div className="stat-box"><span className="stat-val">{team.points}</span><span className="stat-label">Points</span></div>
-              <div className="stat-box win"><span className="stat-val">{team.wins}</span><span className="stat-label">Victoires</span></div>
-              <div className="stat-box draw"><span className="stat-val">{team.draws}</span><span className="stat-label">Nuls</span></div>
-              <div className="stat-box loss"><span className="stat-val">{team.losses}</span><span className="stat-label">Défaites</span></div>
-              <div className="stat-box"><span className="stat-val">{team.goals_for}-{team.goals_against}</span><span className="stat-label">Buts</span></div>
+              <div className="stat-box"><span className="stat-val">{team.points}</span><span className="stat-label">{t('saison.stats.points')}</span></div>
+              <div className="stat-box win"><span className="stat-val">{team.wins}</span><span className="stat-label">{t('saison.stats.victoires')}</span></div>
+              <div className="stat-box draw"><span className="stat-val">{team.draws}</span><span className="stat-label">{t('saison.stats.nuls')}</span></div>
+              <div className="stat-box loss"><span className="stat-val">{team.losses}</span><span className="stat-label">{t('saison.stats.defaites')}</span></div>
+              <div className="stat-box"><span className="stat-val">{team.goals_for}-{team.goals_against}</span><span className="stat-label">{t('saison.stats.buts')}</span></div>
             </div>
           </div>
 
           {!seasonOver && (
             <div className="season-actions">
               <button className="btn-primary action-btn" onClick={handlePlayMatch} disabled={loading}>
-                ⚽ Jouer la journée {status.played + 1}
+                {t('saison.actions.jouerJournee', { n: status.played + 1 })}
               </button>
               {!sponsorChosen && status.played >= 5 && (
                 <button className="btn-secondary action-btn" onClick={handleGetSponsors}>
-                  🤝 Offres de sponsors
+                  {t('saison.actions.sponsors')}
                 </button>
               )}
             </div>
@@ -887,10 +935,14 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
 
           {seasonOver && (
             <div className="season-end card">
-              <h2>🏁 Fin de saison !</h2>
-              <p>Vous terminez <strong>#{status.rank}</strong> du championnat avec <strong>{team.points} points</strong>.</p>
+              <h2>{t('saison.actions.finSaison')}</h2>
+              {/* La phrase porte deux mises en gras dont la place varie d'une
+                  langue à l'autre : c'est le texte traduit qui les positionne. */}
+              <p dangerouslySetInnerHTML={{
+                __html: t('saison.actions.finClassement', { rang: status.rank, points: team.points }),
+              }} />
               <button className="btn-primary action-btn" onClick={handleEndSeason} disabled={loading}>
-                Bilan & Mercato →
+                {t('saison.actions.bilanMercato')}
               </button>
             </div>
           )}
@@ -898,10 +950,10 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
           {lastMatch && (
             <div className="last-match card">
               <h3>
-                Dernier match (J{lastMatch.matchday})
+                {t('saison.dernierMatch.titre', { n: lastMatch.matchday })}
                 {lastMatch.isHome !== undefined && (
                   <span className="match-venue">
-                    {lastMatch.isHome ? ' — à domicile' : ' — à l\'extérieur'}
+                    {lastMatch.isHome ? t('saison.dernierMatch.domicile') : t('saison.dernierMatch.exterieur')}
                   </span>
                 )}
               </h3>
@@ -912,8 +964,11 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
                 </span>
                 <span className="team-name">{lastMatch.opponent}</span>
               </div>
+              {/* La classe CSS dérive du resultText BRUT du serveur : on ne
+                  traduit que le libellé affiché. */}
               <span className={`result-tag ${lastMatch.resultText.toLowerCase().replace(' ', '-')}`}>
-                {lastMatch.resultText} {lastMatch.pointsEarned > 0 ? `+${lastMatch.pointsEarned} pts` : ''}
+                {resultLabel(t, lastMatch.resultText)}{' '}
+                {lastMatch.pointsEarned > 0 ? t('saison.dernierMatch.points', { n: lastMatch.pointsEarned }) : ''}
               </span>
               {lastMatch.events.length > 0 && (
                 <div className="match-events-mini">
@@ -935,14 +990,14 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
             <thead>
               <tr>
                 <th>#</th>
-                <th>Équipe</th>
-                <th>Pts</th>
-                <th>V</th>
-                <th>N</th>
-                <th>D</th>
-                <th>BP</th>
-                <th>BC</th>
-                <th>Diff</th>
+                <th>{t('saison.classement.colEquipe')}</th>
+                <th>{t('saison.classement.colPoints')}</th>
+                <th>{t('saison.classement.colVictoires')}</th>
+                <th>{t('saison.classement.colNuls')}</th>
+                <th>{t('saison.classement.colDefaites')}</th>
+                <th>{t('saison.classement.colButsPour')}</th>
+                <th>{t('saison.classement.colButsContre')}</th>
+                <th>{t('saison.classement.colDiff')}</th>
               </tr>
             </thead>
             <tbody>
@@ -972,25 +1027,25 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
           </table>
 
           <div className="standings-legend">
-            <span><i className="lg-promo" />Promotion — 2 premiers</span>
-            <span><i className="lg-releg" />Relégation — 2 derniers</span>
+            <span><i className="lg-promo" />{t('saison.classement.legendePromo')}</span>
+            <span><i className="lg-releg" />{t('saison.classement.legendeReleg')}</span>
           </div>
 
           {viewingTeam && (
             <div className="viewing-team-panel card">
               <div className="vt-header">
                 <h3>{viewingTeam.name}</h3>
-                <button className="btn-small" onClick={() => setViewingTeam(null)}>Fermer</button>
+                <button className="btn-small" onClick={() => setViewingTeam(null)}>{t('commun.fermer')}</button>
               </div>
 
               {(() => {
                 const starters = viewingPlayers.filter(p => p.is_starter);
-                const stats = computeTeamStats(starters);
+                const stats = computeTeamStats(starters, t);
                 if (!stats) return null;
                 return (
                   <div className="vt-stats">
                     {stats.map(s => (
-                      <div key={s.label} className="vt-stat-bar">
+                      <div key={s.cle} className="vt-stat-bar">
                         <div className="vt-bar-header">
                           <span className="vt-bar-label">{s.label}</span>
                           <span className="vt-bar-val">{s.val}</span>
@@ -1006,7 +1061,7 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
 
               <div className="vt-players">
                 <div className="vt-section">
-                  <h4>Titulaires</h4>
+                  <h4>{t('saison.classement.titulaires')}</h4>
                   {viewingPlayers.filter(p => p.is_starter).map(p => (
                     <div key={p.id} className="vt-player">
                       <span className={`lp-pos ${posClass(p.position)}`}>{p.position}</span>
@@ -1016,7 +1071,7 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
                   ))}
                 </div>
                 <div className="vt-section">
-                  <h4>Remplaçants</h4>
+                  <h4>{t('saison.classement.remplacants')}</h4>
                   {viewingPlayers.filter(p => !p.is_starter).map(p => (
                     <div key={p.id} className="vt-player sub">
                       <span className={`lp-pos ${posClass(p.position)}`}>{p.position}</span>
@@ -1035,23 +1090,23 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
         <div className="lineup-view">
           <div className="lineup-header">
             <div className="lineup-formation">
-              <label>Formation :</label>
+              <label>{t('saison.compo.formation')}</label>
               <select value={formation} onChange={handleSetFormation}>
                 {FORMATION_NAMES.map(f => <option key={f} value={f}>{f}</option>)}
               </select>
             </div>
             <div className="lineup-actions">
-              <button className="btn-ghost btn-small" onClick={handleAutoLineup}>Meilleur XI</button>
-              <button className="btn-ghost btn-small" onClick={handleClearLineup} disabled={starterIds.length === 0}>Vider</button>
+              <button className="btn-ghost btn-small" onClick={handleAutoLineup}>{t('saison.compo.meilleurOnze')}</button>
+              <button className="btn-ghost btn-small" onClick={handleClearLineup} disabled={starterIds.length === 0}>{t('saison.compo.vider')}</button>
               <button className="btn-primary" onClick={handleSaveLineup} disabled={loading || starterIds.length !== 11}>
-                {lineupDirty ? 'Sauvegarder •' : 'Sauvegarder'} ({starterIds.length}/11)
+                {lineupDirty ? t('saison.compo.sauvegarderModifie') : t('saison.compo.sauvegarder')} ({starterIds.length}/11)
               </button>
             </div>
           </div>
 
           {lineupDirty && (
             <div className="lineup-dirty-banner">
-              Modifications non sauvegardées — elles seront perdues si vous quittez l'onglet.
+              {t('saison.compo.nonSauvegarde')}
             </div>
           )}
 
@@ -1062,7 +1117,7 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
               const p = id ? players.find(x => x.id === id) : null;
               return pos === 'GAR' && p && p.position === 'GAR';
             });
-            if (starterIds.length > 0 && !hasKeeper) issues.push('Aucun gardien de but dans les cages');
+            if (starterIds.length > 0 && !hasKeeper) issues.push(t('saison.compo.alerteGardien'));
 
             const misfits = slots.reduce((acc, pos, idx) => {
               const id = slotAssignments[idx];
@@ -1070,20 +1125,29 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
               if (p && getPositionFit(p.position, pos) < 1) acc++;
               return acc;
             }, 0);
-            if (misfits > 0) issues.push(`${misfits} joueur${misfits > 1 ? 's' : ''} hors de sa ligne`);
+            if (misfits > 0) {
+              issues.push(t(misfits > 1 ? 'saison.compo.alerteHorsLignePlusieurs' : 'saison.compo.alerteHorsLigneUn', { n: misfits }));
+            }
 
             const tired = starterIds
               .map(id => players.find(p => p.id === id))
               .filter(p => p && p.stamina < STAMINA_TIRED).length;
-            if (tired > 0) issues.push(`${tired} titulaire${tired > 1 ? 's' : ''} sous les 50% de forme`);
+            if (tired > 0) {
+              issues.push(t(tired > 1 ? 'saison.compo.alerteFatiguePlusieurs' : 'saison.compo.alerteFatigueUn', { n: tired }));
+            }
 
             // Un joueur indisponible bloque la validation côté serveur : il faut
             // le signaler ici, sinon la sauvegarde échoue sans raison apparente.
             const bloques = starterIds
               .map(id => players.find(p => p.id === id))
               .filter(p => p && ((p.suspended_matches || 0) > 0 || (p.injured_matches || 0) > 0))
-              .map(p => `${p.last_name} (${p.suspended_matches > 0 ? 'suspendu' : 'blessé'})`);
-            if (bloques.length) issues.push(`Indisponible${bloques.length > 1 ? 's' : ''} : ${bloques.join(', ')}`);
+              .map(p => `${p.last_name} (${p.suspended_matches > 0 ? t('saison.compo.suspendu') : t('saison.compo.blesse')})`);
+            if (bloques.length) {
+              issues.push(t(
+                bloques.length > 1 ? 'saison.compo.alerteIndispoPlusieurs' : 'saison.compo.alerteIndispoUn',
+                { liste: bloques.join(', ') }
+              ));
+            }
 
             if (issues.length === 0) return null;
             return (
@@ -1103,12 +1167,12 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
                 return p ? { ...p, slotPos, fit: getPositionFit(p.position, slotPos) } : null;
               })
               .filter(Boolean);
-            const stats = computeTeamStats(placed);
+            const stats = computeTeamStats(placed, t);
             if (!stats) return null;
             return (
               <div className="team-stats-overview">
                 {stats.map(s => (
-                  <div key={s.label} className="tso-stat-bar">
+                  <div key={s.cle} className="tso-stat-bar">
                     <div className="tso-bar-header">
                       <span className="tso-label">{s.label}</span>
                       <span className="tso-val">{s.val}</span>
@@ -1170,7 +1234,7 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
                     key={`empty-${idx}`}
                     role="button"
                     tabIndex={0}
-                    aria-label={`Emplacement ${slot.pos} vide`}
+                    aria-label={t('saison.compo.emplacementVide', { poste: slot.pos })}
                     className={`pitch-player-node empty ${slotHint} ${isDropTarget ? 'drop-target' : ''}`}
                     style={{ left: `${slot.x}%`, top: `${slot.y}%` }}
                     {...dropHandlers}
@@ -1204,7 +1268,16 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
                     role="button"
                     tabIndex={0}
                     draggable
-                    title={`${player.first_name} ${player.last_name} — ${player.position} au poste de ${slot.pos}\n${fitInfo.label} (${Math.round(fit * 100)}%)\nNote ${player.overall} · Forme ${player.stamina}% · Moral ${player.morale}%`}
+                    title={t('saison.compo.titreJoueur', {
+                      joueur: `${player.first_name} ${player.last_name}`,
+                      poste: player.position,
+                      emplacement: slot.pos,
+                      adequation: t(`saison.adequation.${fitInfo.tone}`),
+                      pct: Math.round(fit * 100),
+                      note: player.overall,
+                      forme: player.stamina,
+                      moral: player.morale,
+                    })}
                     className={`pitch-player-node ${isSelected ? 'selected' : ''} ${slotHint} ${isDropTarget ? 'drop-target' : ''} fit-${fitInfo.tone} ${draggedPlayerId === player.id ? 'dragging' : ''}`}
                     style={{ left: `${slot.x}%`, top: `${slot.y}%` }}
                     onDragStart={() => { setDraggedPlayerId(player.id); setSelectedPitchPlayer(null); setSelectedBenchPlayer(null); }}
@@ -1256,12 +1329,18 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
             return (
               <div className="pitch-swap-panel">
                 <div className="swap-panel-header">
-                  <span>
-                    Emplacement <strong>{slotPos}</strong> — occupé par{' '}
-                    <strong>{selectedPitchPlayer.first_name} {selectedPitchPlayer.last_name}</strong> ({selectedPitchPlayer.position}, {selectedPitchPlayer.overall})
-                  </span>
-                  <button className="btn-small btn-danger" onClick={() => { clearSlot(slotIdx); setSelectedPitchPlayer(null); }}>Retirer</button>
-                  <button className="btn-small" onClick={() => setSelectedPitchPlayer(null)}>Fermer</button>
+                  {/* Deux mises en gras dont la place change selon la langue :
+                      le texte traduit les positionne lui-même. */}
+                  <span dangerouslySetInnerHTML={{
+                    __html: t('saison.compo.emplacementOccupe', {
+                      emplacement: slotPos,
+                      joueur: `${selectedPitchPlayer.first_name} ${selectedPitchPlayer.last_name}`,
+                      poste: selectedPitchPlayer.position,
+                      note: selectedPitchPlayer.overall,
+                    }),
+                  }} />
+                  <button className="btn-small btn-danger" onClick={() => { clearSlot(slotIdx); setSelectedPitchPlayer(null); }}>{t('saison.compo.retirer')}</button>
+                  <button className="btn-small" onClick={() => setSelectedPitchPlayer(null)}>{t('commun.fermer')}</button>
                 </div>
                 <div className="swap-panel-list">
                   {candidates.map(({ p, fit }) => {
@@ -1276,21 +1355,25 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
                         aria-disabled={indispo}
                         className={`swap-candidate fit-${info.tone} ${isStarter ? 'is-starter' : ''} ${indispo ? 'swap-unavailable' : ''}`}
                         title={indispo
-                          ? `Indisponible — ${unavailableLabel(p)}`
-                          : `${info.label} au poste de ${slotPos} (${Math.round(fit * 100)}%)`}
+                          ? t('saison.compo.candidatIndispo', { motif: unavailableLabel(p, t) })
+                          : t('saison.compo.candidatFit', {
+                              adequation: t(`saison.adequation.${info.tone}`),
+                              emplacement: slotPos,
+                              pct: Math.round(fit * 100),
+                            })}
                         onKeyDown={(e) => { if (!indispo && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); handleSwapPlayers(p.id); } }}
                         onClick={() => { if (!indispo) handleSwapPlayers(p.id); }}
                       >
                         <span className={`lp-pos ${posClass(p.position)}`}>{p.position}</span>
                         <span className="swap-name">{p.first_name} {p.last_name}</span>
                         {indispo ? (
-                          <span className="swap-indispo">{unavailableLabel(p)}</span>
+                          <span className="swap-indispo">{unavailableLabel(p, t)}</span>
                         ) : (
                           <span className="swap-fit">{Math.round(fit * 100)}%</span>
                         )}
                         <span className="swap-ovr">{p.overall}</span>
                         <span className={`swap-stamina tone-${staminaTone(p.stamina)}`}>{p.stamina}%</span>
-                        {isStarter && <span className="swap-starter-tag">TIT</span>}
+                        {isStarter && <span className="swap-starter-tag">{t('saison.compo.tagTitulaire')}</span>}
                       </div>
                     );
                   })}
@@ -1302,14 +1385,14 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
           <div className="pitch-bench-section">
             <div className="bench-header">
               <h3>
-                Remplaçants ({benchPlayers.length})
-                {selectedBenchPlayer && <span className="bench-hint"> — Cliquez sur un emplacement du terrain</span>}
+                {t('saison.compo.remplacants', { n: benchPlayers.length })}
+                {selectedBenchPlayer && <span className="bench-hint">{t('saison.compo.indiceEmplacement')}</span>}
               </h3>
               <div className="bench-sort-btns">
-                <button className={`bench-sort-btn ${benchSort === 'overall' ? 'active' : ''}`} onClick={() => setBenchSort('overall')}>Note</button>
-                <button className={`bench-sort-btn ${benchSort === 'position' ? 'active' : ''}`} onClick={() => setBenchSort('position')}>Poste</button>
-                <button className={`bench-sort-btn ${benchSort === 'name' ? 'active' : ''}`} onClick={() => setBenchSort('name')}>Nom</button>
-                <button className={`bench-sort-btn ${benchSort === 'stamina' ? 'active' : ''}`} onClick={() => setBenchSort('stamina')}>Forme</button>
+                <button className={`bench-sort-btn ${benchSort === 'overall' ? 'active' : ''}`} onClick={() => setBenchSort('overall')}>{t('saison.compo.triNote')}</button>
+                <button className={`bench-sort-btn ${benchSort === 'position' ? 'active' : ''}`} onClick={() => setBenchSort('position')}>{t('saison.compo.triPoste')}</button>
+                <button className={`bench-sort-btn ${benchSort === 'name' ? 'active' : ''}`} onClick={() => setBenchSort('name')}>{t('saison.compo.triNom')}</button>
+                <button className={`bench-sort-btn ${benchSort === 'stamina' ? 'active' : ''}`} onClick={() => setBenchSort('stamina')}>{t('saison.compo.triForme')}</button>
               </div>
             </div>
             <div className="pitch-bench-row">
@@ -1335,10 +1418,16 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
                     role="button"
                     tabIndex={0}
                     draggable={!indispo}
-                    title={`${p.first_name} ${p.last_name} — ${p.position}\nNote ${p.overall} · Forme ${p.stamina}% · Moral ${p.morale}%`
-                      + (suspendu ? `\nSUSPENDU — ${p.suspended_matches} match(s)` : '')
-                      + (blesse ? `\nBLESSÉ — ${p.injured_matches} match(s)` : '')
-                      + (veutPartir ? '\nDEMANDE À PARTIR' : '')}
+                    title={t('saison.compo.titreBanc', {
+                        joueur: `${p.first_name} ${p.last_name}`,
+                        poste: p.position,
+                        note: p.overall,
+                        forme: p.stamina,
+                        moral: p.morale,
+                      })
+                      + (suspendu ? `\n${t('saison.compo.titreSuspendu', { n: p.suspended_matches })}` : '')
+                      + (blesse ? `\n${t('saison.compo.titreBlesse', { n: p.injured_matches })}` : '')
+                      + (veutPartir ? `\n${t('saison.compo.titreVeutPartir')}` : '')}
                     className={`bench-player-card ${isBenchSelected ? 'bench-selected' : ''} ${draggedPlayerId === p.id ? 'dragging' : ''} ${indispo ? 'unavailable' : ''} ${veutPartir ? 'wants-out' : ''}`}
                     onDragStart={() => { setDraggedPlayerId(p.id); setSelectedPitchPlayer(null); setSelectedBenchPlayer(null); }}
                     onDragEnd={() => { setDraggedPlayerId(null); setDragOverSlot(null); }}
@@ -1372,11 +1461,11 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
             </div>
 
             <div className="lineup-legend">
-              <span><i className="lg-fit-perfect" />Dans sa ligne — aucun malus</span>
-              <span><i className="lg-fit-good" />Ligne voisine — 78%</span>
-              <span><i className="lg-fit-warn" />Deux lignes d'écart — 64%</span>
-              <span><i className="lg-fit-bad" />Poste inadapté — 40 à 50%</span>
-              <span className="legend-sep">Forme : au-dessus de 50% aucun malus, en dessous le rendement chute</span>
+              <span><i className="lg-fit-perfect" />{t('saison.compo.legendeParfait')}</span>
+              <span><i className="lg-fit-good" />{t('saison.compo.legendeBon')}</span>
+              <span><i className="lg-fit-warn" />{t('saison.compo.legendeMoyen')}</span>
+              <span><i className="lg-fit-bad" />{t('saison.compo.legendeMauvais')}</span>
+              <span className="legend-sep">{t('saison.compo.legendeForme')}</span>
             </div>
           </div>
         </div>
@@ -1385,23 +1474,23 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
       {view === 'cup' && (
         <div className="cup-view">
           <div className="cup-banner">
-            <h2>🏆 Coupe nationale</h2>
+            <h2>{t('saison.coupe.titre')}</h2>
             <p className="cup-subtitle">
-              Élimination directe, ouverte à toutes les divisions — un tour à disputer entre deux journées de championnat.
+              {t('saison.coupe.sousTitre')}
             </p>
           </div>
 
           {!cupState ? (
-            <p className="no-data">Chargement…</p>
+            <p className="no-data">{t('commun.chargementPoints')}</p>
           ) : cupState.state.won ? (
             <div className="cup-status-card cup-won">
-              <strong>Vous avez remporté la coupe cette saison !</strong>
-              <p>Un titre de plus au palmarès du club.</p>
+              <strong>{t('saison.coupe.gagnee')}</strong>
+              <p>{t('saison.coupe.gagneeDetail')}</p>
             </div>
           ) : cupState.state.eliminated ? (
             <div className="cup-status-card cup-out">
               <strong>{cupState.resultLabel}</strong>
-              <p>Rendez-vous la saison prochaine.</p>
+              <p>{t('saison.coupe.elimineDetail')}</p>
             </div>
           ) : (
             <div className="cup-status-card">
@@ -1409,18 +1498,21 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
                 <span className="cup-round-name">{cupState.round ? cupState.round.name : '—'}</span>
                 {cupState.state.nextOpponent && (
                   <span className="cup-opponent">
-                    contre <strong>{cupState.state.nextOpponent.name}</strong>
-                    <em> (niveau {cupState.state.nextOpponent.overall})</em>
+                    {t('saison.coupe.contre')} <strong>{cupState.state.nextOpponent.name}</strong>
+                    <em> {t('saison.coupe.niveau', { n: cupState.state.nextOpponent.overall })}</em>
                   </span>
                 )}
               </div>
               {cupState.available ? (
                 <button className="btn-primary action-btn" onClick={handlePlayCup} disabled={loading}>
-                  Disputer le tour
+                  {t('saison.coupe.disputer')}
                 </button>
               ) : (
                 <p className="cup-locked">
-                  Disponible à partir de la journée {cupState.round ? cupState.round.minMatchday : '?'} — vous en êtes à la {cupState.matchday}.
+                  {t('saison.coupe.verrouille', {
+                    tour: cupState.round ? cupState.round.minMatchday : '?',
+                    actuelle: cupState.matchday,
+                  })}
                 </p>
               )}
             </div>
@@ -1429,28 +1521,40 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
           {cupResult && (
             <div className={`cup-result ${cupResult.won ? 'win' : 'loss'}`}>
               <div className="cup-result-head">
-                <strong>{cupResult.round}</strong> contre {cupResult.opponent}
+                <strong>{cupResult.round}</strong> {t('saison.coupe.contre')} {cupResult.opponent}
                 <span className="cup-score">{cupResult.score}</span>
               </div>
               <p>
-                {cupResult.cupWon ? 'Vous soulevez le trophée !'
-                  : cupResult.won ? 'Qualifié pour le tour suivant.'
-                  : 'Élimination.'}
-                {cupResult.prize > 0 && ` Dotation : ${formatMoney(cupResult.prize)}.`}
+                {cupResult.cupWon ? t('saison.coupe.trophee')
+                  : cupResult.won ? t('saison.coupe.qualifie')
+                  : t('saison.coupe.elimine')}
+                {cupResult.prize > 0 && t('saison.coupe.dotation', { montant: formatMoney(cupResult.prize) })}
               </p>
               {cupResult.injuries && cupResult.injuries.length > 0 && (
-                <p className="cup-warn">Blessure : {cupResult.injuries.map(i => `${i.player} (${i.matches} matchs)`).join(', ')}</p>
+                <p className="cup-warn">
+                  {t('saison.coupe.blessure', {
+                    liste: cupResult.injuries
+                      .map(i => t('saison.coupe.blessureJoueur', { joueur: i.player, n: i.matches }))
+                      .join(', '),
+                  })}
+                </p>
               )}
               {cupResult.suspensions && cupResult.suspensions.length > 0 && (
-                <p className="cup-warn">Suspension : {cupResult.suspensions.map(s => `${s.player} — ${s.reason}`).join(', ')}</p>
+                <p className="cup-warn">
+                  {t('saison.coupe.suspension', {
+                    liste: cupResult.suspensions
+                      .map(s => t('saison.coupe.suspensionJoueur', { joueur: s.player, motif: s.reason }))
+                      .join(', '),
+                  })}
+                </p>
               )}
-              <button className="btn-small" onClick={() => setCupResult(null)}>Fermer</button>
+              <button className="btn-small" onClick={() => setCupResult(null)}>{t('commun.fermer')}</button>
             </div>
           )}
 
           {cupState && cupState.state.history.length > 0 && (
             <div className="cup-path">
-              <h3>Parcours</h3>
+              <h3>{t('saison.coupe.parcours')}</h3>
               {cupState.state.history.map((h, i) => (
                 <div key={i} className={`cup-path-row ${h.won ? 'win' : 'loss'}`}>
                   <span className="cup-path-round">{h.roundName}</span>
@@ -1468,25 +1572,32 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
           <div className="palmares-row">
             <div className="palmares-card">
               <span className="palmares-val">{history ? history.titles : 0}</span>
-              <span className="palmares-label">Titres de champion</span>
+              <span className="palmares-label">{t('saison.palmares.titres')}</span>
             </div>
             <div className="palmares-card">
               <span className="palmares-val">{history ? history.cups : 0}</span>
-              <span className="palmares-label">Coupes nationales</span>
+              <span className="palmares-label">{t('saison.palmares.coupes')}</span>
             </div>
             <div className="palmares-card">
               <span className="palmares-val">{history ? history.history.length : 0}</span>
-              <span className="palmares-label">Saisons disputées</span>
+              <span className="palmares-label">{t('saison.palmares.saisons')}</span>
             </div>
           </div>
 
-          <h3 className="history-title">Meilleurs buteurs — saison en cours</h3>
+          <h3 className="history-title">{t('saison.palmares.buteurs')}</h3>
           {playerStats.filter(p => p.goals > 0).length === 0 ? (
-            <p className="no-data">Aucun but marqué pour l'instant cette saison.</p>
+            <p className="no-data">{t('saison.palmares.aucunBut')}</p>
           ) : (
             <table className="standings-table">
               <thead>
-                <tr><th>Joueur</th><th>Poste</th><th>Matchs</th><th>Buts</th><th>Cartons</th><th>Carrière</th></tr>
+                <tr>
+                  <th>{t('saison.palmares.colJoueur')}</th>
+                  <th>{t('saison.palmares.colPoste')}</th>
+                  <th>{t('saison.palmares.colMatchs')}</th>
+                  <th>{t('saison.palmares.colButs')}</th>
+                  <th>{t('saison.palmares.colCartons')}</th>
+                  <th>{t('saison.palmares.colCarriere')}</th>
+                </tr>
               </thead>
               <tbody>
                 {playerStats.filter(p => p.goals > 0).slice(0, 12).map(p => (
@@ -1496,20 +1607,28 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
                     <td>{p.appearances}</td>
                     <td className="pts">{p.goals}</td>
                     <td>{p.yellow_cards > 0 && `${p.yellow_cards}🟨 `}{p.red_cards > 0 && `${p.red_cards}🟥`}</td>
-                    <td>{p.career_goals} buts / {p.career_appearances} matchs</td>
+                    <td>{t('saison.palmares.carriereJoueur', { buts: p.career_goals, matchs: p.career_appearances })}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           )}
 
-          <h3 className="history-title">Historique des saisons</h3>
+          <h3 className="history-title">{t('saison.palmares.historique')}</h3>
           {!history || history.history.length === 0 ? (
-            <p className="no-data">Aucune saison terminée pour l'instant.</p>
+            <p className="no-data">{t('saison.palmares.aucuneSaison')}</p>
           ) : (
             <table className="standings-table">
               <thead>
-                <tr><th>Saison</th><th>Division</th><th>Rang</th><th>Pts</th><th>Bilan</th><th>Coupe</th><th>Meilleur buteur</th></tr>
+                <tr>
+                  <th>{t('saison.palmares.colSaison')}</th>
+                  <th>{t('saison.palmares.colDivision')}</th>
+                  <th>{t('saison.palmares.colRang')}</th>
+                  <th>{t('saison.palmares.colPoints')}</th>
+                  <th>{t('saison.palmares.colBilan')}</th>
+                  <th>{t('saison.palmares.colCoupe')}</th>
+                  <th>{t('saison.palmares.colButeur')}</th>
+                </tr>
               </thead>
               <tbody>
                 {history.history.map(h => (
@@ -1518,7 +1637,7 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
                     <td className="team-name-cell">{h.division_name}</td>
                     <td>{h.rank}{h.promoted ? ' ↑' : h.relegated ? ' ↓' : ''}</td>
                     <td className="pts">{h.points}</td>
-                    <td>{h.wins}V {h.draws}N {h.losses}D</td>
+                    <td>{t('saison.palmares.bilan', { victoires: h.wins, nuls: h.draws, defaites: h.losses })}</td>
                     <td>{h.cup_result || '—'}</td>
                     <td>{h.top_scorer ? `${h.top_scorer} (${h.top_scorer_goals})` : '—'}</td>
                   </tr>
@@ -1545,8 +1664,10 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
           )}
 
           <div className="squad-info">
-            <span>{players.length} joueurs</span>
-            <span>Valeur totale : {formatMoney(players.reduce((s, p) => s + (p.value || 0), 0))}</span>
+            <span>{t('saison.effectif.nombre', { n: players.length })}</span>
+            <span>{t('saison.effectif.valeurTotale', {
+              valeur: formatMoney(players.reduce((s, p) => s + (p.value || 0), 0)),
+            })}</span>
           </div>
           <div className="players-grid">
             {players.map(p => {
@@ -1562,9 +1683,9 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
                       className="btn-small btn-danger"
                       onClick={() => handleSellPlayer(p)}
                       disabled={!canSell}
-                      title={canSell ? undefined : `Effectif minimum de ${SQUAD_MIN_SELL} joueurs requis pour vendre`}
+                      title={canSell ? undefined : t('saison.effectif.minimumVente', { min: SQUAD_MIN_SELL })}
                     >
-                      Vendre ({formatMoney(Math.round((p.value || 0) * 0.8))})
+                      {t('saison.effectif.vendre', { prix: formatMoney(Math.round((p.value || 0) * 0.8)) })}
                     </button>
                   }
                 />
@@ -1576,8 +1697,8 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
 
       {view === 'sponsors' && sponsors && (
         <div className="sponsors-view">
-          <h2>🤝 Offres de Sponsors</h2>
-          <p className="sponsors-hint">Choisissez un sponsor pour la saison. Attention aux conséquences !</p>
+          <h2>{t('saison.sponsors.titre')}</h2>
+          <p className="sponsors-hint">{t('saison.sponsors.indice')}</p>
           <div className="sponsors-grid">
             {sponsors.map(sponsor => (
               <div key={sponsor.id} className={`sponsor-card card tier-${sponsor.tier}`}>
@@ -1591,12 +1712,12 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
                 </div>
                 <p className="sponsor-desc">{sponsor.description}</p>
                 <button className="btn-primary" onClick={() => handleChooseSponsor(sponsor.id)} disabled={loading}>
-                  Signer avec {sponsor.name}
+                  {t('saison.sponsors.signer', { nom: sponsor.name })}
                 </button>
               </div>
             ))}
           </div>
-          <button className="btn-back" onClick={() => setView('season')}>← Retour</button>
+          <button className="btn-back" onClick={() => setView('season')}>{t('commun.retour')}</button>
         </div>
       )}
 
@@ -1605,7 +1726,7 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
           <div className="sponsor-result-card card">
             <div className="sr-header">
               <span className="sr-logo">{sponsorResult.logo}</span>
-              <h2>Partenariat signé avec {sponsorResult.name}</h2>
+              <h2>{t('saison.sponsors.partenariat', { nom: sponsorResult.name })}</h2>
               <span className="sr-payment">+{(sponsorResult.payment / 1000000).toFixed(0)}M€</span>
             </div>
 
@@ -1613,23 +1734,23 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
 
             {(sponsorResult.bonus.morale > 0 || sponsorResult.bonus.reputation > 0 || sponsorResult.bonus.stamina_boost > 0) && (
               <div className="sr-section sr-bonus">
-                <h3>Bonus</h3>
+                <h3>{t('saison.sponsors.bonus')}</h3>
                 {sponsorResult.bonus.morale > 0 && (
                   <div className="sr-effect good">
-                    <span className="sr-effect-val">Moral +{sponsorResult.bonus.morale}</span>
-                    <span className="sr-effect-why">L'image du sponsor motive les joueurs</span>
+                    <span className="sr-effect-val">{t('saison.sponsors.moralPlus', { n: sponsorResult.bonus.morale })}</span>
+                    <span className="sr-effect-why">{t('saison.sponsors.moralPourquoi')}</span>
                   </div>
                 )}
                 {sponsorResult.bonus.reputation > 0 && (
                   <div className="sr-effect good">
-                    <span className="sr-effect-val">Réputation +{sponsorResult.bonus.reputation}</span>
-                    <span className="sr-effect-why">Un partenaire prestigieux attire les regards</span>
+                    <span className="sr-effect-val">{t('saison.sponsors.reputationPlus', { n: sponsorResult.bonus.reputation })}</span>
+                    <span className="sr-effect-why">{t('saison.sponsors.reputationPourquoi')}</span>
                   </div>
                 )}
                 {sponsorResult.bonus.stamina_boost > 0 && (
                   <div className="sr-effect good">
-                    <span className="sr-effect-val">Forme +{sponsorResult.bonus.stamina_boost}</span>
-                    <span className="sr-effect-why">Accès à de meilleures installations</span>
+                    <span className="sr-effect-val">{t('saison.sponsors.formePlus', { n: sponsorResult.bonus.stamina_boost })}</span>
+                    <span className="sr-effect-why">{t('saison.sponsors.formePourquoi')}</span>
                   </div>
                 )}
               </div>
@@ -1637,24 +1758,24 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
 
             {(sponsorResult.malus.morale || sponsorResult.malus.reputation) && (
               <div className="sr-section sr-malus">
-                <h3>Contreparties</h3>
+                <h3>{t('saison.sponsors.contreparties')}</h3>
                 {sponsorResult.malus.morale && (
                   <div className="sr-effect bad">
-                    <span className="sr-effect-val">Moral {sponsorResult.malus.morale}</span>
-                    <span className="sr-effect-why">Les joueurs n'apprécient pas cette association</span>
+                    <span className="sr-effect-val">{t('saison.sponsors.moralMoins', { n: sponsorResult.malus.morale })}</span>
+                    <span className="sr-effect-why">{t('saison.sponsors.moralMoinsPourquoi')}</span>
                   </div>
                 )}
                 {sponsorResult.malus.reputation && (
                   <div className="sr-effect bad">
-                    <span className="sr-effect-val">Réputation {sponsorResult.malus.reputation}</span>
-                    <span className="sr-effect-why">L'image du club en prend un coup auprès du public</span>
+                    <span className="sr-effect-val">{t('saison.sponsors.reputationMoins', { n: sponsorResult.malus.reputation })}</span>
+                    <span className="sr-effect-why">{t('saison.sponsors.reputationMoinsPourquoi')}</span>
                   </div>
                 )}
               </div>
             )}
 
             <button className="btn-primary sr-continue" onClick={() => { setSponsorResult(null); setView('season'); }}>
-              Continuer la saison
+              {t('saison.sponsors.continuer')}
             </button>
           </div>
         </div>
@@ -1662,14 +1783,16 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
 
       {view === 'management' && (
         <div className="management-view">
-          <h2>Gestion du club</h2>
+          <h2>{t('saison.gestion.titre')}</h2>
 
           {conversation && (
             <div className="conversation-section" style={{marginBottom: '20px'}}>
               <div className="conv-card card">
                 <div className="conv-header">
                   <span className="conv-player-badge">{conversation.player.position} {conversation.player.overall}</span>
-                  <h3>{conversation.player.first_name} {conversation.player.last_name} veut vous parler</h3>
+                  <h3>{t('saison.gestion.veutParler', {
+                    joueur: `${conversation.player.first_name} ${conversation.player.last_name}`,
+                  })}</h3>
                 </div>
                 <p className="conv-title">{conversation.title}</p>
                 <div className="conv-bubble">
@@ -1697,11 +1820,11 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
                       <p>"{convResponse.response}"</p>
                     </div>
                     <div className="conv-effects-result">
-                      {convResponse.effects.morale > 0 && <span className="effect-good">Moral +{convResponse.effects.morale}</span>}
-                      {convResponse.effects.morale < 0 && <span className="effect-bad">Moral {convResponse.effects.morale}</span>}
-                      {convResponse.effects.stamina > 0 && <span className="effect-good">Forme +{convResponse.effects.stamina}</span>}
-                      {convResponse.effects.stamina < 0 && <span className="effect-bad">Forme {convResponse.effects.stamina}</span>}
-                      {convResponse.effects.overall > 0 && <span className="effect-good">Overall +{convResponse.effects.overall}</span>}
+                      {convResponse.effects.morale > 0 && <span className="effect-good">{t('saison.gestion.moralPlus', { n: convResponse.effects.morale })}</span>}
+                      {convResponse.effects.morale < 0 && <span className="effect-bad">{t('saison.gestion.moralMoins', { n: convResponse.effects.morale })}</span>}
+                      {convResponse.effects.stamina > 0 && <span className="effect-good">{t('saison.gestion.formePlus', { n: convResponse.effects.stamina })}</span>}
+                      {convResponse.effects.stamina < 0 && <span className="effect-bad">{t('saison.gestion.formeMoins', { n: convResponse.effects.stamina })}</span>}
+                      {convResponse.effects.overall > 0 && <span className="effect-good">{t('saison.gestion.overallPlus', { n: convResponse.effects.overall })}</span>}
                       {convResponse.effects.budget > 0 && <span className="effect-good">+{formatMoney(convResponse.effects.budget)}</span>}
                       {convResponse.effects.budget < 0 && <span className="effect-bad">{formatMoney(convResponse.effects.budget)}</span>}
                     </div>
@@ -1713,10 +1836,10 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
           )}
 
           {!conversation && (
-            <p className="conv-no-problem">Aucun joueur n'a de problèmes pour l'instant.</p>
+            <p className="conv-no-problem">{t('saison.gestion.aucunProbleme')}</p>
           )}
 
-          <p className="management-hint">Investissez dans votre club pour améliorer vos performances. Les coûts dépendent de votre division.</p>
+          <p className="management-hint">{t('saison.gestion.indice')}</p>
           <div className="management-grid">
             {managementActions.map(action => (
               <div key={action.id} className={`management-card card ${!action.available ? 'cooldown' : ''}`}>
@@ -1730,73 +1853,79 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
                 </div>
                 <p className="management-desc">{action.description}</p>
                 {!action.available && (
-                  <span className="management-cooldown">Cooldown: {action.cooldownRemaining} journée(s)</span>
+                  <span className="management-cooldown">{t('saison.gestion.cooldown', { n: action.cooldownRemaining })}</span>
                 )}
                 <button
                   className="btn-primary"
                   onClick={() => handleBuyManagement(action.id)}
                   disabled={loading || !action.available || manager.budget < action.cost}
                 >
-                  {manager.budget < action.cost ? 'Budget insuffisant' : !action.available ? 'En cooldown' : `Acheter (${formatMoney(action.cost)})`}
+                  {manager.budget < action.cost
+                    ? t('saison.gestion.budgetInsuffisant')
+                    : !action.available
+                      ? t('saison.gestion.enCooldown')
+                      : t('saison.gestion.acheter', { cout: formatMoney(action.cost) })}
                 </button>
               </div>
             ))}
           </div>
-          <button className="btn-back" onClick={() => setView('season')}>← Retour</button>
+          <button className="btn-back" onClick={() => setView('season')}>{t('commun.retour')}</button>
         </div>
       )}
 
       {view === 'cl' && (
         <div className="cl-view">
           <div className="cl-header-banner">
-            <h2>Champions League</h2>
-            <p className="cl-subtitle">La plus prestigieuse competition europeenne</p>
+            <h2>{t('saison.cl.titre')}</h2>
+            <p className="cl-subtitle">{t('saison.cl.sousTitre')}</p>
           </div>
 
           {!clState || !clState.active ? (
             <div className="cl-init card">
-              <p>Votre equipe est qualifiee pour la Champions League !</p>
+              <p>{t('saison.cl.qualifie')}</p>
               <button className="btn-primary cl-btn" onClick={handleInitCL} disabled={loading}>
-                Lancer le tirage au sort
+                {t('saison.cl.tirage')}
               </button>
             </div>
           ) : (
             <>
               <div className="cl-status-bar">
                 <span className="cl-phase-badge">
-                  {clState.phase === 'group' && `Phase de groupes - Journee ${clState.currentMatchday}/6`}
-                  {clState.phase === 'quarter_final' && 'Quarts de finale'}
-                  {clState.phase === 'semi_final' && 'Demi-finales'}
-                  {clState.phase === 'final' && 'Finale'}
+                  {clState.phase === 'group' && t('saison.cl.phaseGroupes', { n: clState.currentMatchday })}
+                  {clState.phase === 'quarter_final' && t('saison.cl.phaseQuarts')}
+                  {clState.phase === 'semi_final' && t('saison.cl.phaseDemis')}
+                  {clState.phase === 'final' && t('saison.cl.phaseFinale')}
                 </span>
-                <span className="cl-earnings">Gains CL: {formatMoney(clState.totalEarnings)}</span>
+                <span className="cl-earnings">{t('saison.cl.gains', { montant: formatMoney(clState.totalEarnings) })}</span>
               </div>
 
               {clState.eliminated && (
                 <div className="cl-eliminated card">
-                  <h3>Elimine</h3>
-                  <p>Votre parcours en Champions League est termine cette saison.</p>
-                  <p>Gains totaux : <strong>{formatMoney(clState.totalEarnings)}</strong></p>
+                  <h3>{t('saison.cl.elimineTitre')}</h3>
+                  <p>{t('saison.cl.elimineCorps')}</p>
+                  <p>{t('saison.cl.gainsTotaux')} <strong>{formatMoney(clState.totalEarnings)}</strong></p>
                 </div>
               )}
 
               {clState.winner && (
                 <div className="cl-winner card">
-                  <h3>Vainqueur de la Champions League !</h3>
-                  <p>Felicitations ! Vous remportez la plus grande competition europeenne !</p>
-                  <p>Gains totaux : <strong>{formatMoney(clState.totalEarnings)}</strong></p>
+                  <h3>{t('saison.cl.vainqueurTitre')}</h3>
+                  <p>{t('saison.cl.vainqueurCorps')}</p>
+                  <p>{t('saison.cl.gainsTotaux')} <strong>{formatMoney(clState.totalEarnings)}</strong></p>
                 </div>
               )}
 
               {!clState.eliminated && !clState.winner && (
                 <div className="cl-actions">
                   <button className="btn-primary cl-btn" onClick={handlePlayCLMatch} disabled={loading}>
-                    Jouer le prochain match CL
+                    {t('saison.cl.jouerMatch')}
                   </button>
                   {clState.nextMatch && (
                     <span className="cl-next-info">
-                      Prochain: vs {clState.nextMatch.opponent || clState.nextMatch.away || clState.nextMatch.home}
-                      {clState.nextMatch.leg && ` (${clState.nextMatch.leg === 1 ? 'Aller' : 'Retour'})`}
+                      {t('saison.cl.prochain', {
+                        adversaire: clState.nextMatch.opponent || clState.nextMatch.away || clState.nextMatch.home,
+                      })}
+                      {clState.nextMatch.leg && ` (${clState.nextMatch.leg === 1 ? t('saison.cl.aller') : t('saison.cl.retourManche')})`}
                     </span>
                   )}
                 </div>
@@ -1804,7 +1933,7 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
 
               {clLastResult && clLastResult.result && (
                 <div className="cl-last-result card">
-                  <h3>Dernier resultat CL</h3>
+                  <h3>{t('saison.cl.dernierResultat')}</h3>
                   <div className="match-score">
                     <span className="team-name">{clLastResult.result.isHome ? team.name : clLastResult.result.opponent}</span>
                     <span className="score">
@@ -1814,20 +1943,25 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
                     </span>
                     <span className="team-name">{clLastResult.result.isHome ? clLastResult.result.opponent : team.name}</span>
                   </div>
+                  {/* Comme en championnat, la classe CSS vient du resultText
+                      BRUT : seule la lecture est traduite. */}
                   <span className={`result-tag ${clLastResult.result.resultText.toLowerCase().replace(' ', '-')}`}>
-                    {clLastResult.result.resultText}
+                    {resultLabel(t, clLastResult.result.resultText)}
                   </span>
                   {clLastResult.result.aggregate && (
-                    <p className="cl-aggregate">Score cumule: {clLastResult.result.aggregate.player} - {clLastResult.result.aggregate.opponent}</p>
+                    <p className="cl-aggregate">{t('saison.cl.cumule', {
+                      joueur: clLastResult.result.aggregate.player,
+                      adversaire: clLastResult.result.aggregate.opponent,
+                    })}</p>
                   )}
                   {clLastResult.result.penalties && (
-                    <p className="cl-penalties">{clLastResult.result.penaltyWin ? 'Victoire aux tirs au but !' : 'Defaite aux tirs au but'}</p>
+                    <p className="cl-penalties">{clLastResult.result.penaltyWin ? t('saison.cl.tabVictoire') : t('saison.cl.tabDefaite')}</p>
                   )}
                   {clLastResult.result.events && clLastResult.result.events.filter(e => e.type === 'goal').length > 0 && (
                     <div className="match-events-mini">
                       {clLastResult.result.events.filter(e => e.type === 'goal').map((e, i) => (
                         <div key={i} className="event-mini">
-                          {e.minute}' {e.player} ({e.team === 'home' ? 'Dom' : 'Ext'})
+                          {e.minute}' {e.player} ({e.team === 'home' ? t('saison.cl.domicileCourt') : t('saison.cl.exterieurCourt')})
                         </div>
                       ))}
                     </div>
@@ -1839,18 +1973,18 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
                 <div className="cl-groups">
                   {clState.groups.map(group => (
                     <div key={group.name} className="cl-group card">
-                      <h3>Groupe {group.name}</h3>
+                      <h3>{t('saison.cl.groupe', { nom: group.name })}</h3>
                       <table className="cl-group-table">
                         <thead>
                           <tr>
-                            <th>Equipe</th>
-                            <th>J</th>
-                            <th>V</th>
-                            <th>N</th>
-                            <th>D</th>
-                            <th>BP</th>
-                            <th>BC</th>
-                            <th>Pts</th>
+                            <th>{t('saison.cl.colEquipe')}</th>
+                            <th>{t('saison.cl.colJoues')}</th>
+                            <th>{t('saison.cl.colVictoires')}</th>
+                            <th>{t('saison.cl.colNuls')}</th>
+                            <th>{t('saison.cl.colDefaites')}</th>
+                            <th>{t('saison.cl.colButsPour')}</th>
+                            <th>{t('saison.cl.colButsContre')}</th>
+                            <th>{t('saison.cl.colPoints')}</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1875,11 +2009,15 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
 
               {clState.knockout && (clState.phase === 'quarter_final' || clState.phase === 'semi_final' || clState.phase === 'final') && (
                 <div className="cl-knockout card">
-                  <h3>Tableau {clState.phase === 'quarter_final' ? 'Quarts de finale' : clState.phase === 'semi_final' ? 'Demi-finales' : 'Finale'}</h3>
+                  <h3>{t('saison.cl.tableau', {
+                    phase: clState.phase === 'quarter_final' ? t('saison.cl.phaseQuarts')
+                      : clState.phase === 'semi_final' ? t('saison.cl.phaseDemis')
+                      : t('saison.cl.phaseFinale'),
+                  })}</h3>
                   {clState.knockout.nextMatch && (
                     <div className="cl-ko-matchup">
                       <span className="cl-ko-team">{team.name}</span>
-                      <span className="cl-ko-vs">VS</span>
+                      <span className="cl-ko-vs">{t('saison.cl.versus')}</span>
                       <span className="cl-ko-team">{clState.knockout.nextMatch.opponent}</span>
                     </div>
                   )}
@@ -1888,7 +2026,7 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
             </>
           )}
 
-          <button className="btn-back" onClick={() => setView('season')}>&#8592; Retour</button>
+          <button className="btn-back" onClick={() => setView('season')}>{t('commun.retour')}</button>
         </div>
       )}
     </div>

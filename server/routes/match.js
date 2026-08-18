@@ -2,20 +2,22 @@ const express = require('express');
 const { v4: uuid } = require('uuid');
 const { getDb, queryOne, queryAll, run, saveDb } = require('../db/schema');
 const { simulateMatch, applyMatchEffects } = require('../engine/match');
+const { langueDe, t } = require('../i18n');
 
 const router = express.Router();
 
 router.post('/play', async (req, res) => {
+  const langue = langueDe(req);
   const { teamId } = req.body;
-  if (!teamId) return res.status(400).json({ error: 'teamId requis' });
+  if (!teamId) return res.status(400).json({ error: t('erreur.requis.teamId', langue) });
 
   const db = await getDb();
   const team = queryOne('SELECT * FROM teams WHERE id = ?', [teamId]);
-  if (!team) return res.status(404).json({ error: 'Équipe non trouvée' });
+  if (!team) return res.status(404).json({ error: t('erreur.equipeIntrouvable', langue) });
 
   const division = team.division || 1;
   const aiTeams = queryAll("SELECT id FROM teams WHERE manager_id = 'AI' AND division = ?", [division]);
-  if (aiTeams.length === 0) return res.status(500).json({ error: "Pas d'adversaires disponibles" });
+  if (aiTeams.length === 0) return res.status(500).json({ error: t('erreur.pasDadversairesDisponibles', langue) });
 
   const opponent = aiTeams[Math.floor(Math.random() * aiTeams.length)];
   const opponentTeam = queryOne('SELECT * FROM teams WHERE id = ?', [opponent.id]);

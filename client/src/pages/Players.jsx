@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api/client';
+import { useI18n } from '../i18n';
 import './Players.css';
 
 /** Rafraîchissement : assez court pour voir les arrivées, assez long pour ne pas marteler l'API. */
@@ -11,18 +12,19 @@ function formatArgent(v) {
   return `${v}€`;
 }
 
-function derniereActivite(joueur) {
-  if (joueur.online) return 'en ligne';
+function derniereActivite(joueur, t) {
+  if (joueur.online) return t('managers.enLigne');
   const min = joueur.minutesSinceSeen;
-  if (min === null || min === undefined) return 'jamais vu';
-  if (min < 60) return `il y a ${min} min`;
+  if (min === null || min === undefined) return t('managers.jamaisVu');
+  if (min < 60) return t('managers.ilYAMinutes', { n: min });
   const heures = Math.floor(min / 60);
-  if (heures < 24) return `il y a ${heures} h`;
+  if (heures < 24) return t('managers.ilYAHeures', { n: heures });
   const jours = Math.floor(heures / 24);
-  return `il y a ${jours} j`;
+  return t('managers.ilYAJours', { n: jours });
 }
 
 export default function Players({ onBack, currentTeamId }) {
+  const { t } = useI18n();
   const [data, setData] = useState(null);
   const [erreur, setErreur] = useState(null);
   const [selection, setSelection] = useState(null);
@@ -36,14 +38,14 @@ export default function Players({ onBack, currentTeamId }) {
         const r = await api.getPlayersRanking();
         if (actif) { setData(r); setErreur(null); }
       } catch {
-        if (actif) setErreur('Classement indisponible');
+        if (actif) setErreur(t('managers.indisponible'));
       }
     }
 
     charger();
     const timer = setInterval(charger, RAFRAICHISSEMENT_MS);
     return () => { actif = false; clearInterval(timer); };
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if (!selection) { setProfil(null); return; }
@@ -57,24 +59,24 @@ export default function Players({ onBack, currentTeamId }) {
   return (
     <div className="players-page">
       <header className="players-header">
-        <button className="players-back" onClick={onBack}>← Retour</button>
+        <button className="players-back" onClick={onBack}>{t('managers.retour')}</button>
         <div className="players-title">
-          <h1>Classement des managers</h1>
+          <h1>{t('managers.titre')}</h1>
           {data && (
             <p className="players-sub">
-              <span className="players-dot-online" /> {data.onlineCount} en ligne
+              <span className="players-dot-online" /> {t('managers.compteEnLigne', { n: data.onlineCount })}
               <span className="players-sep">·</span>
-              {data.totalCount} manager{data.totalCount > 1 ? 's' : ''} au total
+              {t(data.totalCount > 1 ? 'managers.totalPlusieurs' : 'managers.totalUn', { n: data.totalCount })}
             </p>
           )}
         </div>
       </header>
 
       {erreur && <div className="players-empty">{erreur}</div>}
-      {!data && !erreur && <div className="players-empty">Chargement…</div>}
+      {!data && !erreur && <div className="players-empty">{t('commun.chargementPoints')}</div>}
 
       {data && data.players.length === 0 && (
-        <div className="players-empty">Aucun manager pour le moment.</div>
+        <div className="players-empty">{t('managers.aucun')}</div>
       )}
 
       {data && data.players.length > 0 && (
@@ -83,16 +85,16 @@ export default function Players({ onBack, currentTeamId }) {
             <thead>
               <tr>
                 <th className="col-rank">#</th>
-                <th className="col-team">Manager</th>
-                <th>Division</th>
-                <th className="num">Saison</th>
-                <th className="num">Place</th>
-                <th className="num">J</th>
-                <th className="num">Pts</th>
-                <th className="num">V-N-D</th>
-                <th className="num">Buts</th>
-                <th className="num">Titres</th>
-                <th className="col-seen">Activité</th>
+                <th className="col-team">{t('managers.colManager')}</th>
+                <th>{t('managers.colDivision')}</th>
+                <th className="num">{t('managers.colSaison')}</th>
+                <th className="num">{t('managers.colPlace')}</th>
+                <th className="num">{t('managers.colJoues')}</th>
+                <th className="num">{t('managers.colPoints')}</th>
+                <th className="num">{t('managers.colBilan')}</th>
+                <th className="num">{t('managers.colButs')}</th>
+                <th className="num">{t('managers.colTitres')}</th>
+                <th className="col-seen">{t('managers.colActivite')}</th>
               </tr>
             </thead>
             <tbody>
@@ -117,14 +119,14 @@ export default function Players({ onBack, currentTeamId }) {
                   <td className="num">{j.wins}-{j.draws}-{j.losses}</td>
                   <td className="num">{j.goalsFor}:{j.goalsAgainst}</td>
                   <td className="num">
-                    {j.titles > 0 && <span title="Championnats">🏆{j.titles}</span>}
-                    {j.cups > 0 && <span title="Coupes">🥇{j.cups}</span>}
+                    {j.titles > 0 && <span title={t('managers.titreChampionnats')}>🏆{j.titles}</span>}
+                    {j.cups > 0 && <span title={t('managers.titreCoupes')}>🥇{j.cups}</span>}
                     {j.titles === 0 && j.cups === 0 && '—'}
                   </td>
                   <td className="col-seen">
                     <span className={j.online ? 'seen-online' : 'seen-off'}>
                       {j.online && <span className="players-dot-online" />}
-                      {derniereActivite(j)}
+                      {derniereActivite(j, t)}
                     </span>
                   </td>
                 </tr>
@@ -136,26 +138,26 @@ export default function Players({ onBack, currentTeamId }) {
 
       {selection && (
         <div className="players-detail card">
-          {!profil && <p className="players-empty">Chargement de la fiche…</p>}
+          {!profil && <p className="players-empty">{t('managers.chargementFiche')}</p>}
           {profil && (
             <>
               <h2>{profil.team.name} <span className="players-user">{profil.team.username}</span></h2>
               <div className="players-detail-stats">
-                <div><span>Réputation</span><strong>{profil.team.reputation}</strong></div>
-                <div><span>Budget</span><strong>{formatArgent(profil.team.budget || 0)}</strong></div>
-                <div><span>Saisons</span><strong>{profil.history.length}</strong></div>
-                <div><span>Championnats</span><strong>{profil.team.titles || 0}</strong></div>
-                <div><span>Coupes</span><strong>{profil.team.cups || 0}</strong></div>
+                <div><span>{t('managers.reputation')}</span><strong>{profil.team.reputation}</strong></div>
+                <div><span>{t('managers.budget')}</span><strong>{formatArgent(profil.team.budget || 0)}</strong></div>
+                <div><span>{t('managers.saisons')}</span><strong>{profil.history.length}</strong></div>
+                <div><span>{t('managers.championnats')}</span><strong>{profil.team.titles || 0}</strong></div>
+                <div><span>{t('managers.coupes')}</span><strong>{profil.team.cups || 0}</strong></div>
               </div>
 
               {profil.history.length > 0 && (
                 <>
-                  <h3>Carrière</h3>
+                  <h3>{t('managers.carriere')}</h3>
                   <table className="players-history">
                     <thead>
                       <tr>
-                        <th>Saison</th><th>Division</th><th className="num">Place</th>
-                        <th className="num">Pts</th><th>Coupe</th><th>Bilan</th>
+                        <th>{t('managers.colSaison')}</th><th>{t('managers.colDivision')}</th><th className="num">{t('managers.colPlace')}</th>
+                        <th className="num">{t('managers.colPoints')}</th><th>{t('managers.colCoupe')}</th><th>{t('managers.colResultat')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -167,8 +169,8 @@ export default function Players({ onBack, currentTeamId }) {
                           <td className="num">{h.points}</td>
                           <td>{h.cup_result || '—'}</td>
                           <td>
-                            {h.promoted ? <span className="tag-promo">Promu</span> : null}
-                            {h.relegated ? <span className="tag-releg">Relégué</span> : null}
+                            {h.promoted ? <span className="tag-promo">{t('managers.promu')}</span> : null}
+                            {h.relegated ? <span className="tag-releg">{t('managers.relegue')}</span> : null}
                             {!h.promoted && !h.relegated ? '—' : null}
                           </td>
                         </tr>
@@ -180,7 +182,7 @@ export default function Players({ onBack, currentTeamId }) {
 
               {profil.topPlayers.length > 0 && (
                 <>
-                  <h3>Cadres de l'effectif</h3>
+                  <h3>{t('managers.cadres')}</h3>
                   <ul className="players-squad">
                     {profil.topPlayers.map((p, i) => (
                       <li key={i}>
@@ -188,7 +190,10 @@ export default function Players({ onBack, currentTeamId }) {
                         <span className="squad-name">{p.first_name} {p.last_name}</span>
                         <span className="squad-ovr">{p.overall}</span>
                         <span className="squad-stats">
-                          {p.career_goals || 0} buts en {p.career_appearances || 0} matchs
+                          {t('managers.butsEnMatchs', {
+                            buts: p.career_goals || 0,
+                            matchs: p.career_appearances || 0,
+                          })}
                         </span>
                       </li>
                     ))}

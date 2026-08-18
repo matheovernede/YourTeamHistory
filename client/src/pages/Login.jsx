@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { api } from '../api/client';
 import { KOFI_URL, DISCORD_URL } from '../config';
+import { useI18n } from '../i18n';
 import './Login.css';
 
 export default function Login({ onLogin, onLoadSave, onDreamTeam, onPlayers }) {
+  const { t } = useI18n();
   const [username, setUsername] = useState('');
   const [teamName, setTeamName] = useState('');
   const [difficulty, setDifficulty] = useState('normal');
@@ -62,41 +64,44 @@ export default function Login({ onLogin, onLoadSave, onDreamTeam, onPlayers }) {
     <div className="login-page">
       <div className="login-shell">
         <aside className="login-brand">
-          <div className="login-badge">⚽</div>
+          <img className="login-badge" src="/logo-512.png" alt="" width="72" height="72" />
           <h1 className="login-title">YourTeamHistory</h1>
-          <p className="login-tagline">
-            Recrutez votre équipe, disputez des matchs, grimpez au classement.
-          </p>
+          <p className="login-tagline">{t('accueil.slogan')}</p>
           <ul className="login-features">
-            <li><span className="lf-icon">🏆</span><span><strong>7 divisions</strong> à gravir, de Régional 2 à la Ligue 1</span></li>
-            <li><span className="lf-icon">🔁</span><span><strong>Mercato</strong> entre chaque saison, 26 journées par exercice</span></li>
-            <li><span className="lf-icon">🤝</span><span><strong>Sponsors &amp; événements</strong> aux conséquences cachées</span></li>
-            <li><span className="lf-icon">⭐</span><span><strong>DreamTeam</strong> : 200 joueurs réels en mode bac à sable</span></li>
+            {['divisions', 'mercato', 'evenements', 'dreamteam'].map((cle, i) => (
+              <li key={cle}>
+                <span className="lf-icon">{['🏆', '🔁', '🤝', '⭐'][i]}</span>
+                {/* Les atouts contiennent une mise en gras : le texte traduit
+                    décide où elle tombe, la place du terme changeant d'une
+                    langue à l'autre. */}
+                <span dangerouslySetInnerHTML={{ __html: t(`accueil.atouts.${cle}`) }} />
+              </li>
+            ))}
           </ul>
         </aside>
 
       <div className="login-card">
         <div className="login-header">
-          <h2>{step === 'team' ? 'Créez votre club' : 'Prenez les commandes'}</h2>
-          <p>{step === 'team' ? 'Choisissez un nom et votre niveau de défi.' : 'Connectez-vous ou reprenez une sauvegarde.'}</p>
+          <h2>{step === 'team' ? t('accueil.titreEquipe') : t('accueil.titreConnexion')}</h2>
+          <p>{step === 'team' ? t('accueil.sousTitreEquipe') : t('accueil.sousTitreConnexion')}</p>
         </div>
 
         {step === 'login' && (
           <>
             <form onSubmit={handleLogin}>
-              <label>Votre pseudo</label>
+              <label>{t('accueil.pseudo')}</label>
               <input
                 type="text"
                 value={username}
                 onChange={e => setUsername(e.target.value)}
-                placeholder="Entrez votre pseudo..."
+                placeholder={t('accueil.pseudoExemple')}
                 autoFocus
               />
               <button type="submit" className="btn-primary" disabled={loading}>
-                {loading ? 'Connexion...' : 'Jouer'}
+                {loading ? t('accueil.connexion') : t('accueil.jouer')}
               </button>
             </form>
-            <div className="login-separator"><span>ou</span></div>
+            <div className="login-separator"><span>{t('accueil.ou')}</span></div>
             <button className="btn-load-save" onClick={() => {
               const input = document.createElement('input');
               input.type = 'file';
@@ -109,19 +114,19 @@ export default function Login({ onLogin, onLoadSave, onDreamTeam, onPlayers }) {
                   const saveData = JSON.parse(text);
                   if (onLoadSave) onLoadSave(saveData);
                 } catch {
-                  setError('Fichier de sauvegarde invalide');
+                  setError(t('accueil.sauvegardeInvalide'));
                 }
               };
               input.click();
             }}>
-              📂 Charger une sauvegarde
+              {t('accueil.chargerSauvegarde')}
             </button>
-            <div className="login-separator"><span>ou</span></div>
+            <div className="login-separator"><span>{t('accueil.ou')}</span></div>
             <button className="btn-dreamteam" onClick={onDreamTeam}>
-              DreamTeam
+              {t('accueil.dreamteam')}
             </button>
             <button className="btn-players" onClick={onPlayers}>
-              🏅 Classement des managers
+              {t('accueil.classementManagers')}
             </button>
 
             <a
@@ -130,7 +135,7 @@ export default function Login({ onLogin, onLoadSave, onDreamTeam, onPlayers }) {
               target="_blank"
               rel="noopener noreferrer"
             >
-              💬 Rejoindre le Discord
+              {t('accueil.discord')}
             </a>
 
             <a
@@ -139,43 +144,46 @@ export default function Login({ onLogin, onLoadSave, onDreamTeam, onPlayers }) {
               target="_blank"
               rel="noopener noreferrer"
             >
-              ☕ Ce jeu vous plaît ? Soutenez son développement
+              {t('accueil.kofi')}
             </a>
           </>
         )}
 
         {step === 'team' && (
           <form onSubmit={handleCreateTeam}>
-            <label>Bienvenue {manager.username} ! Nommez votre équipe :</label>
+            <label>{t('accueil.bienvenue', { nom: manager.username })}</label>
             <input
               type="text"
               value={teamName}
               onChange={e => setTeamName(e.target.value)}
-              placeholder="Ex: FC Tempête..."
+              placeholder={t('accueil.nomEquipeExemple')}
               autoFocus
             />
             <div className="difficulty-select">
-              <label>Difficulté :</label>
+              <label>{t('accueil.difficulte')}</label>
               <div className="difficulty-options">
-                <button type="button" className={`diff-btn ${difficulty === 'easy' ? 'active easy' : ''}`} onClick={() => setDifficulty('easy')}>
-                  <span className="diff-icon">🟢</span>
-                  <span className="diff-name">Facile</span>
-                  <span className="diff-desc">IA affaiblie, budget +50%</span>
-                </button>
-                <button type="button" className={`diff-btn ${difficulty === 'normal' ? 'active normal' : ''}`} onClick={() => setDifficulty('normal')}>
-                  <span className="diff-icon">🟡</span>
-                  <span className="diff-name">Normal</span>
-                  <span className="diff-desc">Expérience équilibrée</span>
-                </button>
-                <button type="button" className={`diff-btn ${difficulty === 'hard' ? 'active hard' : ''}`} onClick={() => setDifficulty('hard')}>
-                  <span className="diff-icon">🔴</span>
-                  <span className="diff-name">Difficile</span>
-                  <span className="diff-desc">IA boostée, budget -30%</span>
-                </button>
+                {/* La valeur ('easy'/'normal'/'hard') est un identifiant envoyé
+                    au serveur : seul le libellé est traduit. */}
+                {[
+                  { valeur: 'easy', icone: '🟢', nom: 'facile' },
+                  { valeur: 'normal', icone: '🟡', nom: 'normal' },
+                  { valeur: 'hard', icone: '🔴', nom: 'difficile' },
+                ].map((d) => (
+                  <button
+                    key={d.valeur}
+                    type="button"
+                    className={`diff-btn ${difficulty === d.valeur ? `active ${d.valeur}` : ''}`}
+                    onClick={() => setDifficulty(d.valeur)}
+                  >
+                    <span className="diff-icon">{d.icone}</span>
+                    <span className="diff-name">{t(`accueil.${d.nom}`)}</span>
+                    <span className="diff-desc">{t(`accueil.${d.nom}Desc`)}</span>
+                  </button>
+                ))}
               </div>
             </div>
             <button type="submit" className="btn-primary" disabled={loading || !teamName.trim()}>
-              {loading ? 'Création...' : 'Commencer le mercato'}
+              {loading ? t('accueil.creation') : t('accueil.commencerMercato')}
             </button>
           </form>
         )}

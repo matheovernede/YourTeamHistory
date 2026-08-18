@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import TRACKS from 'virtual:music-tracks';
+import { useI18n } from '../i18n';
 import './MusicPlayer.css';
 
 // TRACKS est généré automatiquement depuis client/public/music/ par
@@ -23,6 +24,7 @@ function readSavedIndex() {
 }
 
 export default function MusicPlayer() {
+  const { t } = useI18n();
   const [playing, setPlaying] = useState(() => localStorage.getItem('fm_music_playing') !== 'false');
   const [volume, setVolume] = useState(() => parseFloat(localStorage.getItem('fm_music_volume') || '0.3'));
   const [currentTrack, setCurrentTrack] = useState(readSavedIndex);
@@ -111,20 +113,20 @@ export default function MusicPlayer() {
 
   return (
     <div className={`music-player ${expanded ? 'expanded' : ''}`}>
-      <button className="mp-btn" onClick={togglePlay} title={playing ? 'Pause' : 'Lecture'}>
+      <button className="mp-btn" onClick={togglePlay} title={playing ? t('musique.pause') : t('musique.lecture')}>
         {playing ? '⏸' : '▶'}
       </button>
-      <button className="mp-btn" onClick={() => goToTrack(currentTrack - 1)} title="Piste précédente">
+      <button className="mp-btn" onClick={() => goToTrack(currentTrack - 1)} title={t('musique.precedente')}>
         ⏮
       </button>
-      <button className="mp-btn" onClick={() => goToTrack(currentTrack + 1)} title="Piste suivante">
+      <button className="mp-btn" onClick={() => goToTrack(currentTrack + 1)} title={t('musique.suivante')}>
         ⏭
       </button>
 
       <button
         className="mp-title"
         onClick={() => setExpanded(v => !v)}
-        title={`${track.title}\nPiste ${currentTrack + 1} sur ${TRACKS.length} — cliquer pour choisir`}
+        title={`${track.title}\n${t('musique.piste', { n: currentTrack + 1, total: TRACKS.length })}`}
       >
         <span className="mp-title-text">{track.title}</span>
         <span className="mp-count">{currentTrack + 1}/{TRACKS.length}</span>
@@ -138,19 +140,19 @@ export default function MusicPlayer() {
         step="0.05"
         value={volume}
         onChange={e => changeVolume(parseFloat(e.target.value))}
-        title={`Volume ${Math.round(volume * 100)}%`}
+        title={t('musique.volume', { n: Math.round(volume * 100) })}
       />
 
       {expanded && (
         <ul className="mp-playlist">
-          {TRACKS.map((t, i) => (
-            <li key={t.url}>
+          {TRACKS.map((piste, i) => (
+            <li key={piste.url}>
               <button
                 className={i === currentTrack ? 'active' : ''}
                 onClick={() => { goToTrack(i); setExpanded(false); }}
               >
                 <span className="mp-pl-num">{i + 1}</span>
-                <span className="mp-pl-title">{t.title}</span>
+                <span className="mp-pl-title">{piste.title}</span>
               </button>
             </li>
           ))}

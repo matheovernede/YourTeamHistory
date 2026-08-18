@@ -3,6 +3,7 @@ const { v4: uuid } = require('uuid');
 const { getDb, queryOne, queryAll, run, saveDb } = require('../db/schema');
 const { simulateMatch } = require('../engine/match');
 const DREAM_TEAM_PLAYERS = require('../data/dreamTeamPlayers');
+const { langueDe, t } = require('../i18n');
 
 const router = express.Router();
 
@@ -175,10 +176,11 @@ router.post('/save', (req, res) => {
  * Difficulty determines AI overall: weak=55, medium=68, strong=78, legend=88
  */
 router.post('/friendly', (req, res) => {
+  const langue = langueDe(req);
   const { homePlayers, difficulty } = req.body;
 
   if (!homePlayers || homePlayers.length < 11) {
-    return res.status(400).json({ error: 'Au moins 11 joueurs requis' });
+    return res.status(400).json({ error: t('erreur.joueursMinimumRequis', langue) });
   }
 
   const difficultyOveralls = { weak: 55, medium: 68, strong: 78, legend: 88 };
@@ -236,13 +238,14 @@ router.post('/cl-draw', (req, res) => {
  * Body: { homePlayers, awayPlayers }
  */
 router.post('/cl-match', (req, res) => {
+  const langue = langueDe(req);
   const { homePlayers, awayPlayers } = req.body;
 
   if (!homePlayers || homePlayers.length < 11) {
-    return res.status(400).json({ error: 'Au moins 11 joueurs requis pour votre equipe' });
+    return res.status(400).json({ error: t('erreur.joueursMinimumRequisEquipe', langue) });
   }
   if (!awayPlayers || awayPlayers.length < 11) {
-    return res.status(400).json({ error: 'Equipe adverse invalide' });
+    return res.status(400).json({ error: t('erreur.equipeAdverseInvalide', langue) });
   }
 
   const homeSquad = homePlayers.slice(0, 11).map(p => ({
@@ -275,10 +278,11 @@ router.post('/cl-match', (req, res) => {
  * Body: { username, teamName, players }
  */
 router.post('/start-career', async (req, res) => {
+  const langue = langueDe(req);
   const { username, teamName, players } = req.body;
 
   if (!username || !teamName || !players || players.length < 11) {
-    return res.status(400).json({ error: 'username, teamName et au moins 11 joueurs requis' });
+    return res.status(400).json({ error: t('erreur.requis.dreamteamCarriere', langue) });
   }
 
   const db = await getDb();

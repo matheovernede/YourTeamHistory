@@ -2,6 +2,7 @@ const express = require('express');
 const { v4: uuid } = require('uuid');
 const { getDb, queryOne, queryAll, run, saveDb } = require('../db/schema');
 const { SQUAD_MAX, SQUAD_MIN_TO_SELL } = require('../data/rules');
+const { langueDe, t } = require('../i18n');
 
 const router = express.Router();
 
@@ -18,25 +19,26 @@ router.get('/market', (req, res) => {
 });
 
 router.post('/buy', async (req, res) => {
+  const langue = langueDe(req);
   const { playerId, teamId, managerId } = req.body;
   if (!playerId || !teamId || !managerId) {
-    return res.status(400).json({ error: 'playerId, teamId et managerId requis' });
+    return res.status(400).json({ error: t('erreur.requis.playerTeamManager', langue) });
   }
 
   const db = await getDb();
   const player = queryOne('SELECT * FROM players WHERE id = ?', [playerId]);
-  if (!player) return res.status(404).json({ error: 'Joueur non trouvé' });
+  if (!player) return res.status(404).json({ error: t('erreur.joueurIntrouvable', langue) });
 
   const manager = queryOne('SELECT * FROM managers WHERE id = ?', [managerId]);
-  if (!manager) return res.status(404).json({ error: 'Manager non trouvé' });
+  if (!manager) return res.status(404).json({ error: t('erreur.managerIntrouvable', langue) });
 
   if (manager.budget < player.value) {
-    return res.status(400).json({ error: 'Budget insuffisant', needed: player.value, available: manager.budget });
+    return res.status(400).json({ error: t('erreur.budgetInsuffisant', langue), needed: player.value, available: manager.budget });
   }
 
   const myPlayers = queryOne('SELECT COUNT(*) as count FROM players WHERE team_id = ?', [teamId]);
   if (myPlayers.count >= SQUAD_MAX) {
-    return res.status(400).json({ error: `Effectif maximum atteint (${SQUAD_MAX} joueurs)` });
+    return res.status(400).json({ error: t('erreur.effectifMaximum', langue, { nombre: SQUAD_MAX }) });
   }
 
   db.run('UPDATE managers SET budget = budget - ? WHERE id = ?', [player.value, managerId]);
@@ -50,21 +52,22 @@ router.post('/buy', async (req, res) => {
 });
 
 router.post('/sell', async (req, res) => {
+  const langue = langueDe(req);
   const { playerId, managerId } = req.body;
   if (!playerId || !managerId) {
-    return res.status(400).json({ error: 'playerId et managerId requis' });
+    return res.status(400).json({ error: t('erreur.requis.playerManager', langue) });
   }
 
   const db = await getDb();
   const player = queryOne('SELECT * FROM players WHERE id = ?', [playerId]);
-  if (!player) return res.status(404).json({ error: 'Joueur non trouvé' });
+  if (!player) return res.status(404).json({ error: t('erreur.joueurIntrouvable', langue) });
 
   const team = queryOne('SELECT * FROM teams WHERE id = ? AND manager_id = ?', [player.team_id, managerId]);
-  if (!team) return res.status(403).json({ error: 'Ce joueur ne vous appartient pas' });
+  if (!team) return res.status(403).json({ error: t('erreur.joueurPasAVous', langue) });
 
   const playerCount = queryOne('SELECT COUNT(*) as count FROM players WHERE team_id = ?', [player.team_id]);
   if (playerCount.count <= SQUAD_MIN_TO_SELL) {
-    return res.status(400).json({ error: `Effectif minimum requis (${SQUAD_MIN_TO_SELL} joueurs)` });
+    return res.status(400).json({ error: t('erreur.effectifMinimum', langue, { nombre: SQUAD_MIN_TO_SELL }) });
   }
 
   const sellPrice = Math.round(player.value * 0.8);

@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react';
 import { api } from '../api/client';
 import PlayerCard from '../components/PlayerCard';
 import { SQUAD_MAX, SQUAD_MIN_SELL, countByLine, RECOMMENDED } from '../data/rules';
+import { useI18n } from '../i18n';
 import './Draft.css';
 
 const formatMoney = (v) => v >= 1000000 ? `${(v / 1000000).toFixed(1)}M€` : `${Math.round(v / 1000)}k€`;
 
 export default function Draft({ manager, team, onFinish, isInitialDraft }) {
+  const { t } = useI18n();
   const [available, setAvailable] = useState([]);
   // Effectif RÉEL en base : en mercato il contient déjà les joueurs de la
   // saison précédente, pas seulement les recrues de la session.
@@ -32,7 +34,7 @@ export default function Draft({ manager, team, onFinish, isInitialDraft }) {
     } catch (err) {
       // Un marché indisponible doit être signalé, pas afficher une page vide.
       setAvailable([]);
-      setMessage(`Marché indisponible : ${err.message}`);
+      setMessage(t('mercato.marcheIndisponible', { message: err.message }));
     } finally {
       setLoading(false);
     }
@@ -48,12 +50,12 @@ export default function Draft({ manager, team, onFinish, isInitialDraft }) {
 
   async function handleBuy(player) {
     if (budget < player.value) {
-      setMessage('Budget insuffisant !');
+      setMessage(t('mercato.budgetInsuffisant'));
       setTimeout(() => setMessage(''), 2000);
       return;
     }
     if (squad.length >= SQUAD_MAX) {
-      setMessage(`Effectif maximum atteint (${SQUAD_MAX} joueurs). Vendez avant de recruter.`);
+      setMessage(t('mercato.effectifMaxAtteint', { max: SQUAD_MAX }));
       setTimeout(() => setMessage(''), 3000);
       return;
     }
@@ -66,38 +68,39 @@ export default function Draft({ manager, team, onFinish, isInitialDraft }) {
       // On recharge depuis le serveur : les identifiants du marché ne sont pas
       // ceux créés en base, et il en faut de valides pour pouvoir revendre.
       await loadSquad();
-      setMessage(`${player.first_name} ${player.last_name} recruté !`);
+      setMessage(t('mercato.recrute', { joueur: `${player.first_name} ${player.last_name}` }));
       setTimeout(() => setMessage(''), 2000);
     } catch (err) {
-      setMessage(`Erreur: ${err.message}`);
+      setMessage(t('commun.erreur', { message: err.message }));
       setTimeout(() => setMessage(''), 3000);
     }
   }
 
   async function handleSell(player) {
     if (squad.length < SQUAD_MIN_SELL) {
-      setMessage(`Effectif minimum de ${SQUAD_MIN_SELL} joueurs requis pour vendre (vous en avez ${squad.length})`);
+      setMessage(t('mercato.minimumVente', { min: SQUAD_MIN_SELL, n: squad.length }));
       setTimeout(() => setMessage(''), 3000);
       return;
     }
     const prix = Math.round((player.value || 0) * 0.8);
-    if (!confirm(`Vendre ${player.first_name} ${player.last_name} pour ${formatMoney(prix)} ?`)) return;
+    const nom = `${player.first_name} ${player.last_name}`;
+    if (!confirm(t('mercato.confirmerVente', { joueur: nom, prix: formatMoney(prix) }))) return;
 
     try {
       const result = await api.sellPlayer(player.id, manager.id);
       setBudget(result.newBudget);
       await loadSquad();
-      setMessage(`${player.first_name} ${player.last_name} vendu pour ${formatMoney(result.sellPrice)}`);
+      setMessage(t('mercato.vendu', { joueur: nom, prix: formatMoney(result.sellPrice) }));
       setTimeout(() => setMessage(''), 3000);
     } catch (err) {
-      setMessage(`Erreur: ${err.message}`);
+      setMessage(t('commun.erreur', { message: err.message }));
       setTimeout(() => setMessage(''), 3000);
     }
   }
 
   async function handleFinish() {
     if (isInitialDraft && squad.length < 11) {
-      setMessage(`Il vous faut au minimum 11 joueurs ! (${squad.length}/11)`);
+      setMessage(t('mercato.minimumOnze', { n: squad.length }));
       setTimeout(() => setMessage(''), 3000);
       return;
     }
@@ -106,7 +109,7 @@ export default function Draft({ manager, team, onFinish, isInitialDraft }) {
       const result = await api.draftFinish(manager.id, team.id);
       onFinish({ ...manager, budget }, result.team);
     } catch (err) {
-      setMessage(`Erreur: ${err.message}`);
+      setMessage(t('commun.erreur', { message: err.message }));
       setTimeout(() => setMessage(''), 3000);
     }
   }
@@ -139,14 +142,14 @@ export default function Draft({ manager, team, onFinish, isInitialDraft }) {
   const squadValue = squad.reduce((s, p) => s + (p.value || 0), 0);
   const squadFull = squad.length >= SQUAD_MAX;
 
-  if (loading) return <div className="page-loading">Chargement du mercato...</div>;
+  if (loading) return <div className="page-loading">{t('mercato.chargement')}</div>;
 
   return (
     <div className="draft-page">
       <div className="draft-header">
         <div className="draft-title">
-          <h1>{isInitialDraft ? 'Mercato Initial' : 'Mercato'}</h1>
-          <p>{isInitialDraft ? 'Recrutez au minimum 11 joueurs pour former votre équipe' : 'Renforcez votre effectif pour la prochaine saison'}</p>
+          <h1>{isInitialDraft ? t('mercato.titreInitial') : t('mercato.titre')}</h1>
+          <p>{isInitialDraft ? t('mercato.sousTitreInitial') : t('mercato.sousTitre')}</p>
         </div>
         <div className="draft-status">
           <div className="draft-budget">{(budget / 1000000).toFixed(1)}M€</div>
@@ -154,12 +157,12 @@ export default function Draft({ manager, team, onFinish, isInitialDraft }) {
             <span className={squad.length >= 11 ? 'count-ok' : 'count-need'}>
               {squad.length}{isInitialDraft ? '/11' : `/${SQUAD_MAX}`}
             </span>
-            joueurs
+            {t('mercato.joueurs')}
           </div>
           {!isInitialDraft && recruits > 0 && (
             <div className="draft-count">
               <span className="count-ok">+{recruits}</span>
-              recrue{recruits > 1 ? 's' : ''}
+              {recruits > 1 ? t('mercato.recrues') : t('mercato.recrue')}
             </div>
           )}
         </div>
@@ -169,7 +172,7 @@ export default function Draft({ manager, team, onFinish, isInitialDraft }) {
 
       {squadFull && (
         <div className="draft-alert">
-          Effectif au maximum ({squad.length}/{SQUAD_MAX}) — vendez un joueur avant de pouvoir recruter.
+          {t('mercato.alerteEffectifPlein', { n: squad.length, max: SQUAD_MAX })}
         </div>
       )}
 
@@ -181,28 +184,28 @@ export default function Draft({ manager, team, onFinish, isInitialDraft }) {
               key={line}
               className={`pos-badge ${manque ? 'pos-badge-low' : 'pos-badge-ok'}`}
               title={manque
-                ? `${posCount[line]} ${line} — il en est conseillé ${RECOMMENDED[line]} pour tenir une saison`
-                : `${posCount[line]} ${line} — effectif suffisant`}
+                ? t('mercato.ligneManque', { n: posCount[line], ligne: line, conseille: RECOMMENDED[line] })
+                : t('mercato.ligneOk', { n: posCount[line], ligne: line })}
             >
               {line}: {posCount[line]}
               <i className="pos-badge-goal">/{RECOMMENDED[line]}</i>
             </span>
           );
         })}
-        <button className="btn-refresh" onClick={refreshMarket}>🔄 Rafraîchir le marché</button>
+        <button className="btn-refresh" onClick={refreshMarket}>{t('mercato.rafraichir')}</button>
         {(isInitialDraft ? squad.length >= 11 : true) && (
           <button className="btn-primary btn-finish" onClick={handleFinish}>
-            {isInitialDraft ? '✅ Valider mon effectif' : '✅ Terminer le mercato'}
+            {isInitialDraft ? t('mercato.validerEffectif') : t('mercato.terminerMercato')}
           </button>
         )}
       </div>
 
       <div className="draft-tabs">
         <button className={`draft-tab ${tab === 'market' ? 'active' : ''}`} onClick={() => setTab('market')}>
-          Marché <span className="draft-tab-count">{available.length}</span>
+          {t('mercato.ongletMarche')} <span className="draft-tab-count">{available.length}</span>
         </button>
         <button className={`draft-tab ${tab === 'squad' ? 'active' : ''}`} onClick={() => setTab('squad')}>
-          Mon effectif <span className="draft-tab-count">{squad.length}</span>
+          {t('mercato.ongletEffectif')} <span className="draft-tab-count">{squad.length}</span>
         </button>
       </div>
 
@@ -210,11 +213,11 @@ export default function Draft({ manager, team, onFinish, isInitialDraft }) {
         <>
           <div className="draft-filters">
             {[
-              { id: 'all', label: 'Tous' },
-              { id: 'gk', label: 'Gardiens' },
-              { id: 'def', label: 'Défenseurs' },
-              { id: 'mid', label: 'Milieux' },
-              { id: 'att', label: 'Attaquants' },
+              { id: 'all', label: t('mercato.filtreTous') },
+              { id: 'gk', label: t('mercato.filtreGardiens') },
+              { id: 'def', label: t('mercato.filtreDefenseurs') },
+              { id: 'mid', label: t('mercato.filtreMilieux') },
+              { id: 'att', label: t('mercato.filtreAttaquants') },
             ].map(f => (
               <button
                 key={f.id}
@@ -234,21 +237,21 @@ export default function Draft({ manager, team, onFinish, isInitialDraft }) {
                   actions={
                     <>
                       <span className={`draft-price ${player.tier === 'legend' ? 'legend-price' : ''}`}>{(player.value / 1000000).toFixed(1)}M€</span>
-                      <span className={`draft-tier ${player.tier === 'legend' ? 'tier-legend' : ''}`}>{player.tier === 'legend' ? '⭐ Légende' : player.tier}</span>
+                      <span className={`draft-tier ${player.tier === 'legend' ? 'tier-legend' : ''}`}>{player.tier === 'legend' ? t('mercato.legende') : player.tier}</span>
                       <button
                         className={`btn-small ${player.tier === 'legend' ? 'btn-secondary' : 'btn-primary'}`}
                         onClick={() => handleBuy(player)}
                         disabled={budget < player.value || squadFull}
-                        title={squadFull ? `Effectif plein (${SQUAD_MAX} joueurs)` : undefined}
+                        title={squadFull ? t('mercato.effectifPlein', { max: SQUAD_MAX }) : undefined}
                       >
-                        Recruter
+                        {t('mercato.recruter')}
                       </button>
                     </>
                   }
                 />
               </div>
             ))}
-            {filtered.length === 0 && <p className="no-data">Aucun joueur disponible dans cette catégorie</p>}
+            {filtered.length === 0 && <p className="no-data">{t('mercato.aucunJoueur')}</p>}
           </div>
         </>
       )}
@@ -257,15 +260,18 @@ export default function Draft({ manager, team, onFinish, isInitialDraft }) {
         <>
           <div className="squad-toolbar">
             <span className="squad-toolbar-info">
-              {squad.length} joueur{squad.length > 1 ? 's' : ''} · valeur totale {formatMoney(squadValue)}
+              {t(squad.length > 1 ? 'mercato.resumePlusieurs' : 'mercato.resumeUn', {
+                n: squad.length,
+                valeur: formatMoney(squadValue),
+              })}
             </span>
             <div className="squad-sort">
               {[
-                { id: 'position', label: 'Poste' },
-                { id: 'overall', label: 'Note' },
-                { id: 'value', label: 'Valeur' },
-                { id: 'age', label: 'Âge' },
-                { id: 'name', label: 'Nom' },
+                { id: 'position', label: t('mercato.triPoste') },
+                { id: 'overall', label: t('mercato.triNote') },
+                { id: 'value', label: t('mercato.triValeur') },
+                { id: 'age', label: t('mercato.triAge') },
+                { id: 'name', label: t('mercato.triNom') },
               ].map(s => (
                 <button
                   key={s.id}
@@ -292,16 +298,16 @@ export default function Draft({ manager, team, onFinish, isInitialDraft }) {
                         className="btn-small btn-danger"
                         onClick={() => handleSell(player)}
                         disabled={!canSell}
-                        title={canSell ? undefined : `Effectif minimum de ${SQUAD_MIN_SELL} joueurs requis pour vendre`}
+                        title={canSell ? undefined : t('mercato.minimumVenteCourt', { min: SQUAD_MIN_SELL })}
                       >
-                        Vendre ({formatMoney(Math.round((player.value || 0) * 0.8))})
+                        {t('mercato.vendre', { prix: formatMoney(Math.round((player.value || 0) * 0.8)) })}
                       </button>
                     </>
                   }
                 />
               );
             })}
-            {squad.length === 0 && <p className="no-data">Votre effectif est vide — recrutez dans l'onglet Marché.</p>}
+            {squad.length === 0 && <p className="no-data">{t('mercato.effectifVide')}</p>}
           </div>
         </>
       )}

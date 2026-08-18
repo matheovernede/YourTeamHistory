@@ -28,7 +28,16 @@ const {
   REQUEST_THRESHOLD,
   DEPARTURE_THRESHOLD,
 } = require('../engine/morale');
-const { describeResult: describeCupResult } = require('../data/cup');
+const { describeResult: describeCupResult, ROUNDS: CUP_ROUNDS, getRound: getCupRound } = require('../data/cup');
+const {
+  langueDe,
+  t,
+  localiserDonnee,
+  localiserEvenement,
+  localiserDialogue,
+  localiserConsequence,
+  localiserReponse,
+} = require('../i18n');
 
 const router = express.Router();
 
@@ -46,9 +55,71 @@ function getDivisionInfo(level) {
   return DIVISIONS.find(d => d.level === level) || DIVISIONS[0];
 }
 
+/**
+ * Nom de division destiné à l'affichage.
+ *
+ * À n'utiliser QUE dans une réponse HTTP : le nom français reste l'identifiant
+ * écrit en base (season_history.division_name), sans quoi deux sauvegardes
+ * menées dans deux langues ne seraient plus comparables.
+ */
+function nomDivision(info, langue) {
+  return localiserDonnee('divisions', info.name, langue);
+}
+
+/**
+ * Motifs de mécontentement traduits.
+ *
+ * server/engine/morale.js produit un petit nombre de motifs figés, en français.
+ * On les traduit à la sortie via cette table : le moteur reste inchangé, et un
+ * motif qu'on n'aurait pas prévu passe tel quel plutôt que de disparaître.
+ */
+const MOTIFS_MORAL = {
+  'moral au plus bas': 'moral.griefs.moralBas',
+  'manque de temps de jeu': 'moral.griefs.tempsDeJeu',
+  'ambition sportive': 'moral.griefs.ambition',
+  'insatisfaction persistante': 'moral.griefs.insatisfaction',
+};
+
+function traduireMotifs(motifs, langue) {
+  if (!Array.isArray(motifs)) return motifs;
+  return motifs.map(motif => (MOTIFS_MORAL[motif] ? t(MOTIFS_MORAL[motif], langue) : motif));
+}
+
+/**
+ * Bilan de coupe affiché en fin de saison.
+ *
+ * `describeResult` assemble son texte en français (« Éliminé en » + nom du tour
+ * en minuscules) : il n'est donc pas traduisible tel quel, on le reconstruit.
+ * La valeur ÉCRITE EN BASE reste celle de describeResult, en français.
+ */
+function libelleCoupe(state, langue) {
+  if (!state) return t('coupe.resultat.nonDisputee', langue);
+  if (state.won) return t('coupe.resultat.vainqueur', langue);
+
+  const nomTour = (round, minuscule) => {
+    const cle = `coupe.${minuscule ? 'toursMinuscule' : 'tours'}.${round.id}`;
+    const texte = t(cle, langue);
+    return texte === cle ? round.name : texte;
+  };
+
+  if (!state.eliminated) {
+    const round = getCupRound(state);
+    return round
+      ? t('coupe.resultat.enLiceTour', langue, { tour: nomTour(round, false) })
+      : t('coupe.resultat.enLice', langue);
+  }
+
+  const dernier = (state.history || [])[(state.history || []).length - 1];
+  if (!dernier) return t('coupe.resultat.elimine', langue);
+  const tour = CUP_ROUNDS.find(r => r.id === dernier.round);
+  const nom = tour ? nomTour(tour, true) : String(dernier.roundName || '').toLowerCase();
+  return t('coupe.resultat.elimineTour', langue, { tour: nom });
+}
+
 router.get('/:teamId/status', (req, res) => {
+  const langue = langueDe(req);
   const team = queryOne('SELECT * FROM teams WHERE id = ?', [req.params.teamId]);
-  if (!team) return res.status(404).json({ error: 'Équipe non trouvée' });
+  if (!team) return res.status(404).json({ error: t('erreur.equipeIntrouvable', langue) });
 
   // Le client interroge cette route en permanence : c'est le meilleur signal
   // de présence dont on dispose sans ouvrir de connexion permanente.
@@ -74,24 +145,25 @@ router.get('/:teamId/status', (req, res) => {
     rank,
     standings,
     team,
-    division: divisionInfo.name,
+    division: nomDivision(divisionInfo, langue),
     divisionLevel: division,
   });
 });
 
 router.post('/:teamId/play-matchday', async (req, res) => {
+  const langue = langueDe(req);
   const db = await getDb();
   const team = queryOne('SELECT * FROM teams WHERE id = ?', [req.params.teamId]);
-  if (!team) return res.status(404).json({ error: 'Équipe non trouvée' });
+  if (!team) return res.status(404).json({ error: t('erreur.equipeIntrouvable', langue) });
 
   const played = team.wins + team.draws + team.losses;
   if (played >= 26) {
-    return res.status(400).json({ error: 'Saison terminée ! Allez au mercato.', seasonOver: true });
+    return res.status(400).json({ error: t('erreur.saisonTerminee', langue), seasonOver: true });
   }
 
   const starterCount = queryOne('SELECT COUNT(*) as count FROM players WHERE team_id = ? AND is_starter = 1', [team.id]);
   if (!starterCount || starterCount.count < 11) {
-    return res.status(400).json({ error: 'Composez votre équipe (11 titulaires) dans l\'onglet Compo avant de jouer !' });
+    return res.status(400).json({ error: t('erreur.composeEquipe', langue) });
   }
 
   const division = getTeamDivision(team);
@@ -103,7 +175,7 @@ router.post('/:teamId/play-matchday', async (req, res) => {
     const diff = req.body.difficulty || 'normal';
     await seedDivision(division, diff);
     aiTeams = queryAll("SELECT * FROM teams WHERE manager_id = 'AI' AND division = ?", [division]);
-    if (aiTeams.length === 0) return res.status(500).json({ error: "Pas d'adversaires dans cette division" });
+    if (aiTeams.length === 0) return res.status(500).json({ error: t('erreur.pasDadversairesDivision', langue) });
   }
   const week = played + 1;
 
@@ -123,7 +195,7 @@ router.post('/:teamId/play-matchday', async (req, res) => {
     : aiTeams[week % aiTeams.length].id;
   const isHome = fixture ? fixture.isHome : true;
   const opponent = queryOne('SELECT * FROM teams WHERE id = ?', [opponentId]);
-  if (!opponent) return res.status(500).json({ error: "Pas d'adversaires dans cette division" });
+  if (!opponent) return res.status(500).json({ error: t('erreur.pasDadversairesDivision', langue) });
 
   const myPlayers = queryAll('SELECT * FROM players WHERE team_id = ?', [team.id]);
   const oppPlayers = queryAll('SELECT * FROM players WHERE team_id = ?', [opponent.id]);
@@ -175,6 +247,17 @@ router.post('/:teamId/play-matchday', async (req, res) => {
   } else {
     resultText = 'Défaite';
   }
+
+  // `resultText` GARDE sa valeur française : le client en dérive un nom de
+  // classe CSS (.result-tag.victoire / .match-nul / .défaite, voir
+  // client/src/pages/Season.css). Le traduire casserait la mise en forme, et
+  // ferait de ce champ une donnée d'affichage alors qu'il sert d'identifiant.
+  // Le libellé lisible voyage donc à part, dans `resultLabel`.
+  const resultLabel = t(
+    goalDiff > 0 ? 'match.victoire' : goalDiff === 0 ? 'match.nul' : 'match.defaite',
+    langue
+  );
+
   recordResult(db, team.id, myGoals, oppGoals);
 
   // Apply stamina/morale effects to player's team
@@ -256,34 +339,38 @@ router.post('/:teamId/play-matchday', async (req, res) => {
       events: result.events,
       pointsEarned,
       resultText,
+      resultLabel,
       matchBonus,
       matchday: week,
       suspensions: consequences.suspensions,
       injuries: consequences.injuries,
-      transferRequests: mood.requests,
-      moraleWarnings: mood.warnings,
+      // Les motifs viennent du moteur de moral, en français : ils sont traduits
+      // ici, à la frontière HTTP, sans toucher au moteur.
+      transferRequests: mood.requests.map(r => ({ ...r, reasons: traduireMotifs(r.reasons, langue) })),
+      moraleWarnings: mood.warnings.map(w => ({ ...w, reasons: traduireMotifs(w.reasons, langue) })),
     },
     team: updatedTeam,
     seasonOver,
-    event: event || null,
+    event: localiserEvenement(event, langue) || null,
   });
 });
 
 router.post('/:teamId/resolve-event', async (req, res) => {
+  const langue = langueDe(req);
   const { eventId, choiceId, managerId } = req.body;
   if (!eventId || !choiceId || !managerId) {
-    return res.status(400).json({ error: 'eventId, choiceId et managerId requis' });
+    return res.status(400).json({ error: t('erreur.requis.eventChoiceManager', langue) });
   }
 
   const db = await getDb();
   const team = queryOne('SELECT * FROM teams WHERE id = ?', [req.params.teamId]);
-  if (!team) return res.status(404).json({ error: 'Équipe non trouvée' });
+  if (!team) return res.status(404).json({ error: t('erreur.equipeIntrouvable', langue) });
 
   const event = EVENTS.find(e => e.id === eventId);
-  if (!event) return res.status(404).json({ error: 'Événement non trouvé' });
+  if (!event) return res.status(404).json({ error: t('erreur.evenementIntrouvable', langue) });
 
   const choice = event.choices.find(c => c.id === choiceId);
-  if (!choice) return res.status(400).json({ error: 'Choix invalide' });
+  if (!choice) return res.status(400).json({ error: t('erreur.choixInvalide', langue) });
 
   const effects = choice.effects || {};
   const division = getTeamDivision(team);
@@ -298,7 +385,7 @@ router.post('/:teamId/resolve-event', async (req, res) => {
     const updatedManager = queryOne('SELECT * FROM managers WHERE id = ?', [managerId]);
     return res.json({
       success: false,
-      consequence: 'Le pari a échoué... Les conséquences sont lourdes.',
+      consequence: t('evenement.pariEchoue', langue),
       manager: updatedManager,
       team,
     });
@@ -318,7 +405,7 @@ router.post('/:teamId/resolve-event', async (req, res) => {
       const mgr = queryOne('SELECT * FROM managers WHERE id = ?', [managerId]);
       return res.json({
         success: false,
-        consequence: `Impossible : avec seulement ${squad.length} joueurs, vous ne pouvez pas vous séparer de qui que ce soit. L'opération est annulée.`,
+        consequence: t('evenement.effectifTropCourt', langue, { nombre: squad.length }),
         manager: mgr,
         team,
       });
@@ -381,15 +468,25 @@ router.post('/:teamId/resolve-event', async (req, res) => {
   const updatedTeam = queryOne('SELECT * FROM teams WHERE id = ?', [req.params.teamId]);
 
   // On enrichit la conséquence pour que le joueur voie concrètement l'effet.
-  let consequence = choice.consequence;
+  // Le texte de base vient de server/data/events.js, en français : il passe par
+  // localiserConsequence, qui va chercher sa traduction par (eventId, choiceId).
+  let consequence = localiserConsequence(eventId, choiceId, choice.consequence, langue);
   if (arrival) {
-    consequence += ` ${arrival.first_name} ${arrival.last_name} (${arrival.position}, ${arrival.overall}, ${arrival.age} ans) rejoint l'effectif.`;
+    consequence += ' ' + t('evenement.arrivee', langue, {
+      prenom: arrival.first_name, nom: arrival.last_name,
+      poste: arrival.position, niveau: arrival.overall, age: arrival.age,
+    });
   }
   if (departure) {
-    consequence += ` ${departure.first_name} ${departure.last_name} (${departure.position}, ${departure.overall}) quitte le club.`;
+    consequence += ' ' + t('evenement.depart', langue, {
+      prenom: departure.first_name, nom: departure.last_name,
+      poste: departure.position, niveau: departure.overall,
+    });
   }
   if (drained) {
-    consequence += ` ${drained.first_name} ${drained.last_name} est diminué physiquement.`;
+    consequence += ' ' + t('evenement.diminue', langue, {
+      prenom: drained.first_name, nom: drained.last_name,
+    });
   }
 
   res.json({
@@ -457,52 +554,37 @@ function getManagementCosts(divisionLevel) {
   };
 }
 
+/**
+ * Actions de gestion.
+ *
+ * Seules les données de jeu restent ici (identifiant, icône, cooldown) : les
+ * textes vivent dans les dictionnaires et sont rattachés par `id`. Les garder
+ * en dur aurait obligé à dupliquer la liste par langue, donc à maintenir les
+ * cooldowns en double.
+ */
 const MANAGEMENT_ACTIONS = [
-  {
-    id: 'training',
-    name: 'Entrainement intensif',
-    description: 'Booste le overall de tous les titulaires de +1. Limité à 1 fois par 3 journées.',
-    icon: '🏋️',
-    effect: '+1 OVR titulaires',
-    cooldown: 3,
-  },
-  {
-    id: 'cohesion',
-    name: 'Stage de cohésion',
-    description: "Renforce l'esprit d'équipe. +10 moral pour tout l'effectif.",
-    icon: '🤝',
-    effect: '+10 moral (tous)',
-    cooldown: 0,
-  },
-  {
-    id: 'fitness',
-    name: 'Préparateur physique',
-    description: 'Restaure 30 points de stamina pour tous les joueurs.',
-    icon: '⚡',
-    effect: '+30 stamina (tous)',
-    cooldown: 0,
-  },
-  {
-    id: 'scout',
-    name: 'Recruteur',
-    description: 'Améliore votre réseau. +3 réputation permanente.',
-    icon: '🔍',
-    effect: '+3 réputation',
-    cooldown: 0,
-  },
-  {
-    id: 'medical',
-    name: 'Centre médical',
-    description: 'Remet en forme les joueurs fatigués (stamina < 50). Stamina rétablie à 100.',
-    icon: '🏥',
-    effect: '100 stamina (joueurs < 50)',
-    cooldown: 0,
-  },
+  { id: 'training', icon: '🏋️', cooldown: 3 },
+  { id: 'cohesion', icon: '🤝', cooldown: 0 },
+  { id: 'fitness', icon: '⚡', cooldown: 0 },
+  { id: 'scout', icon: '🔍', cooldown: 0 },
+  { id: 'medical', icon: '🏥', cooldown: 0 },
 ];
 
+/** Action de gestion enrichie de ses textes, dans la langue demandée. */
+function actionLocalisee(action, langue) {
+  if (!action) return action;
+  return {
+    ...action,
+    name: t(`gestion.${action.id}.nom`, langue),
+    description: t(`gestion.${action.id}.description`, langue),
+    effect: t(`gestion.${action.id}.effet`, langue),
+  };
+}
+
 router.get('/:teamId/conversations', (req, res) => {
+  const langue = langueDe(req);
   const team = queryOne('SELECT * FROM teams WHERE id = ?', [req.params.teamId]);
-  if (!team) return res.status(404).json({ error: 'Équipe non trouvée' });
+  if (!team) return res.status(404).json({ error: t('erreur.equipeIntrouvable', langue) });
 
   // Conversations happen roughly once every 3 matchdays (~35% chance)
   if (Math.random() > 0.35) {
@@ -538,24 +620,29 @@ router.get('/:teamId/conversations', (req, res) => {
   const conversation = getRandomConversation(player, context);
   if (!conversation) return res.json({ conversation: null });
 
+  // Traduction avant l'ajout du joueur : localiserDialogue ne connaît que les
+  // champs du dialogue et recopierait tel quel ce qu'on aurait greffé dessus.
+  const dialogue = localiserDialogue(conversation, langue);
+
   res.json({
-    conversation: { ...conversation, player: { id: player.id, first_name: player.first_name, last_name: player.last_name, position: player.position, overall: player.overall, morale: player.morale, stamina: player.stamina, age: player.age } },
+    conversation: { ...dialogue, player: { id: player.id, first_name: player.first_name, last_name: player.last_name, position: player.position, overall: player.overall, morale: player.morale, stamina: player.stamina, age: player.age } },
   });
 });
 
 router.post('/:teamId/resolve-conversation', async (req, res) => {
+  const langue = langueDe(req);
   const { conversationId, choiceId, playerId, managerId } = req.body;
   if (!conversationId || !choiceId || !playerId) {
-    return res.status(400).json({ error: 'conversationId, choiceId et playerId requis' });
+    return res.status(400).json({ error: t('erreur.requis.conversationChoicePlayer', langue) });
   }
 
   const db = await getDb();
   const { CONVERSATIONS } = require('../data/conversations');
   const conv = CONVERSATIONS.find(c => c.id === conversationId);
-  if (!conv) return res.status(404).json({ error: 'Conversation non trouvée' });
+  if (!conv) return res.status(404).json({ error: t('erreur.conversationIntrouvable', langue) });
 
   const choice = conv.choices.find(c => c.id === choiceId);
-  if (!choice) return res.status(400).json({ error: 'Choix invalide' });
+  if (!choice) return res.status(400).json({ error: t('erreur.choixInvalide', langue) });
 
   const effects = choice.effects || {};
   const team = queryOne('SELECT * FROM teams WHERE id = ?', [req.params.teamId]);
@@ -598,7 +685,9 @@ router.post('/:teamId/resolve-conversation', async (req, res) => {
   const updatedManager = managerId ? queryOne('SELECT * FROM managers WHERE id = ?', [managerId]) : null;
 
   res.json({
-    response: choice.response,
+    // Réplique du joueur : retrouvée par (conversationId, choiceId) dans la
+    // traduction, la source française restant server/data/conversations.js.
+    response: localiserReponse(conversationId, choiceId, choice.response, langue),
     effects,
     player: updatedPlayer,
     manager: updatedManager,
@@ -607,8 +696,9 @@ router.post('/:teamId/resolve-conversation', async (req, res) => {
 });
 
 router.get('/:teamId/management', (req, res) => {
+  const langue = langueDe(req);
   const team = queryOne('SELECT * FROM teams WHERE id = ?', [req.params.teamId]);
-  if (!team) return res.status(404).json({ error: 'Équipe non trouvée' });
+  if (!team) return res.status(404).json({ error: t('erreur.equipeIntrouvable', langue) });
 
   const division = getTeamDivision(team);
   const costs = getManagementCosts(division);
@@ -619,7 +709,7 @@ router.get('/:teamId/management', (req, res) => {
   const trainingAvailable = (played - lastTraining) >= 3;
 
   const actions = MANAGEMENT_ACTIONS.map(action => ({
-    ...action,
+    ...actionLocalisee(action, langue),
     cost: costs[action.id],
     available: action.id === 'training' ? trainingAvailable : true,
     cooldownRemaining: action.id === 'training' && !trainingAvailable ? 3 - (played - lastTraining) : 0,
@@ -629,23 +719,24 @@ router.get('/:teamId/management', (req, res) => {
 });
 
 router.post('/:teamId/manage', async (req, res) => {
+  const langue = langueDe(req);
   const { actionId, managerId } = req.body;
-  if (!actionId || !managerId) return res.status(400).json({ error: 'actionId et managerId requis' });
+  if (!actionId || !managerId) return res.status(400).json({ error: t('erreur.requis.actionManager', langue) });
 
   const db = await getDb();
   const team = queryOne('SELECT * FROM teams WHERE id = ?', [req.params.teamId]);
-  if (!team) return res.status(404).json({ error: 'Équipe non trouvée' });
+  if (!team) return res.status(404).json({ error: t('erreur.equipeIntrouvable', langue) });
 
   const manager = queryOne('SELECT * FROM managers WHERE id = ?', [managerId]);
-  if (!manager) return res.status(404).json({ error: 'Manager non trouvé' });
+  if (!manager) return res.status(404).json({ error: t('erreur.managerIntrouvable', langue) });
 
   const division = getTeamDivision(team);
   const costs = getManagementCosts(division);
   const cost = costs[actionId];
-  if (!cost) return res.status(400).json({ error: 'Action invalide' });
+  if (!cost) return res.status(400).json({ error: t('erreur.actionInvalide', langue) });
 
   if (manager.budget < cost) {
-    return res.status(400).json({ error: 'Budget insuffisant' });
+    return res.status(400).json({ error: t('erreur.budgetInsuffisant', langue) });
   }
 
   const played = team.wins + team.draws + team.losses;
@@ -654,7 +745,7 @@ router.post('/:teamId/manage', async (req, res) => {
   if (actionId === 'training') {
     const lastTraining = team.last_training_matchday || 0;
     if ((played - lastTraining) < 3) {
-      return res.status(400).json({ error: 'Entrainement intensif en cooldown (attendre 3 journées)' });
+      return res.status(400).json({ error: t('erreur.entrainementCooldown', langue) });
     }
   }
 
@@ -692,7 +783,7 @@ router.post('/:teamId/manage', async (req, res) => {
       db.run('UPDATE players SET stamina = 100 WHERE team_id = ? AND stamina < 50', [req.params.teamId]);
       break;
     default:
-      return res.status(400).json({ error: 'Action inconnue' });
+      return res.status(400).json({ error: t('erreur.actionInconnue', langue) });
   }
 
   // Une action qui remonte le moral (cohésion) doit apaiser immédiatement.
@@ -705,7 +796,7 @@ router.post('/:teamId/manage', async (req, res) => {
 
   res.json({
     success: true,
-    action: MANAGEMENT_ACTIONS.find(a => a.id === actionId),
+    action: actionLocalisee(MANAGEMENT_ACTIONS.find(a => a.id === actionId), langue),
     cost,
     manager: updatedManager,
     team: updatedTeam,
@@ -713,23 +804,40 @@ router.post('/:teamId/manage', async (req, res) => {
   });
 });
 
+/**
+ * Copie d'un sponsor dont le nom et la description sont traduits.
+ *
+ * `id`, `payment`, `bonus` et `malus` sont inchangés : c'est l'`id` que le
+ * client renvoie pour signer, et lui seul est utilisé côté serveur.
+ */
+function sponsorLocalise(sponsor, langue) {
+  if (!sponsor) return sponsor;
+  return {
+    ...sponsor,
+    name: localiserDonnee('sponsors', sponsor.name, langue),
+    description: localiserDonnee('sponsorDescriptions', sponsor.description, langue),
+  };
+}
+
 router.get('/:teamId/sponsors', (req, res) => {
+  const langue = langueDe(req);
   const team = queryOne('SELECT * FROM teams WHERE id = ?', [req.params.teamId]);
-  if (!team) return res.status(404).json({ error: 'Équipe non trouvée' });
+  if (!team) return res.status(404).json({ error: t('erreur.equipeIntrouvable', langue) });
   const division = getTeamDivision(team);
   const sponsors = getRandomSponsors(division, 4);
-  res.json(sponsors);
+  res.json(sponsors.map(s => sponsorLocalise(s, langue)));
 });
 
 router.post('/:teamId/choose-sponsor', async (req, res) => {
+  const langue = langueDe(req);
   const { sponsorId, managerId } = req.body;
-  if (!sponsorId || !managerId) return res.status(400).json({ error: 'sponsorId et managerId requis' });
+  if (!sponsorId || !managerId) return res.status(400).json({ error: t('erreur.requis.sponsorManager', langue) });
 
   const db = await getDb();
   const { SPONSORS_BY_TIER } = require('../data/sponsors');
   const allSponsors = Object.values(SPONSORS_BY_TIER).flat();
   const sponsor = allSponsors.find(s => s.id === sponsorId);
-  if (!sponsor) return res.status(404).json({ error: 'Sponsor non trouvé' });
+  if (!sponsor) return res.status(404).json({ error: t('erreur.sponsorIntrouvable', langue) });
 
   const team = queryOne('SELECT * FROM teams WHERE id = ?', [req.params.teamId]);
   const manager = queryOne('SELECT * FROM managers WHERE id = ?', [managerId]);
@@ -752,14 +860,15 @@ router.post('/:teamId/choose-sponsor', async (req, res) => {
   saveDb();
 
   const updatedManager = queryOne('SELECT * FROM managers WHERE id = ?', [managerId]);
-  res.json({ sponsor, newBudget: updatedManager.budget, newReputation: updatedManager.reputation });
+  res.json({ sponsor: sponsorLocalise(sponsor, langue), newBudget: updatedManager.budget, newReputation: updatedManager.reputation });
 });
 
 router.post('/:teamId/end-season', async (req, res) => {
+  const langue = langueDe(req);
   const { managerId } = req.body;
   const db = await getDb();
   const team = queryOne('SELECT * FROM teams WHERE id = ?', [req.params.teamId]);
-  if (!team) return res.status(404).json({ error: 'Équipe non trouvée' });
+  if (!team) return res.status(404).json({ error: t('erreur.equipeIntrouvable', langue) });
 
   const division = getTeamDivision(team);
   const divisionInfo = getDivisionInfo(division);
@@ -919,18 +1028,21 @@ router.post('/:teamId/end-season', async (req, res) => {
       draws: team.draws,
       losses: team.losses,
       prizePool,
-      divisionName: divisionInfo.name,
-      cupResult,
+      // Les noms de division et le bilan de coupe sont traduits ICI seulement :
+      // les mêmes valeurs, en français, viennent d'être écrites dans
+      // season_history (division_name, cup_result) et y restent la référence.
+      divisionName: nomDivision(divisionInfo, langue),
+      cupResult: libelleCoupe(cupState, langue),
       topScorer: topScorer ? `${topScorer.first_name} ${topScorer.last_name}` : null,
       topScorerGoals: topScorer ? topScorer.goals : 0,
       scorers,
       progression: progression.slice(0, 8),
       retirements,
-      departures,
+      departures: departures.map(d => ({ ...d, reasons: traduireMotifs(d.reasons, langue) })),
     },
     promotion,
     relegation,
-    newDivision: newDivisionInfo.name,
+    newDivision: nomDivision(newDivisionInfo, langue),
     newDivisionLevel: newDivision,
     manager: updatedManager,
     team: updatedTeam,
@@ -960,8 +1072,9 @@ router.get('/:teamId/stats', (req, res) => {
 
 /** Joueurs mécontents, pour que le manager puisse réagir avant les départs. */
 router.get('/:teamId/mood', (req, res) => {
+  const langue = langueDe(req);
   const team = queryOne('SELECT * FROM teams WHERE id = ?', [req.params.teamId]);
-  if (!team) return res.status(404).json({ error: 'Équipe non trouvée' });
+  if (!team) return res.status(404).json({ error: t('erreur.equipeIntrouvable', langue) });
 
   const matchday = team.wins + team.draws + team.losses;
   const division = getTeamDivision(team);
@@ -985,9 +1098,13 @@ router.get('/:teamId/mood', (req, res) => {
         transferRequest: !!p.transfer_request,
         // Un joueur peut avoir un compteur en cours alors que son grief vient de
         // se résorber : on affiche alors un motif générique plutôt que rien.
-        reasons: reasons.length ? reasons : ['insatisfaction persistante'],
+        reasons: traduireMotifs(reasons.length ? reasons : ['insatisfaction persistante'], langue),
         matchesBeforeLeaving: Math.max(0, DEPARTURE_THRESHOLD - (p.unhappy_streak || 0)),
         ...mood,
+        // `mood.level` reste l'identifiant technique ('leaving', 'unhappy',
+        // 'low') dont le client dérive sa mise en forme ; seul `label` est
+        // traduit, et il doit l'être APRÈS l'étalement de `mood`.
+        label: t(`moral.etat.${mood.level}`, langue),
       };
     })
     .filter(Boolean)
