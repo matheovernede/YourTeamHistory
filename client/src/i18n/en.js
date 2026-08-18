@@ -476,7 +476,24 @@ export default {
     derby: {
       etiquette: ' — DERBY',
       annonce: '🔥 Derby against {adversaire}: twice the morale at stake, and a bigger bonus if you win.',
-    },    classement: {
+    },
+
+    /** Opponent report, available before kick-off. */
+    scouting: {
+      recoit: 'You host',
+      deplacement: 'You travel to',
+      rang: '{rang}th in the table',
+      points: 'Points',
+      buts: 'Goals',
+      niveau: 'Average rating',
+      effectif: 'Squad',
+      forme: 'Form',
+      dangers: 'Players to watch',
+      butsJoueur: '{n} goals',
+      voirEffectif: 'View the full squad',
+    },
+
+    classement: {
       rival: 'Your rivals',
       colEquipe: 'Team',
       colPoints: 'Pts',

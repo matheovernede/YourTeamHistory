@@ -940,11 +940,80 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
 
           {!seasonOver && (
             <div className="season-actions">
-              {/* Le calendrier connaît l'adversaire d'avance : on annonce le
-                  derby avant le coup d'envoi, sinon il passerait inaperçu. */}
-              {status.nextOpponent && status.nextOpponent.isDerby && (
-                <div className="derby-announce">
-                  {t('saison.derby.annonce', { adversaire: status.nextOpponent.name })}
+              {/* Fiche d'avant-match. Le calendrier connaît l'adversaire à
+                  l'avance : autant permettre de le jauger plutôt que de
+                  découvrir son nom au coup d'envoi. */}
+              {status.nextOpponent && (
+                <div className={`scouting ${status.nextOpponent.isDerby ? 'is-derby' : ''}`}>
+                  <div className="scouting-tete">
+                    <div>
+                      <span className="scouting-label">
+                        {status.nextOpponent.isHome
+                          ? t('saison.scouting.recoit')
+                          : t('saison.scouting.deplacement')}
+                      </span>
+                      <h4>
+                        {status.nextOpponent.name}
+                        {status.nextOpponent.isDerby && (
+                          <span className="derby-tag">{t('saison.derby.etiquette')}</span>
+                        )}
+                      </h4>
+                    </div>
+                    {status.nextOpponent.rank && (
+                      <span className="scouting-rang">
+                        {t('saison.scouting.rang', { rang: status.nextOpponent.rank })}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="scouting-chiffres">
+                    <div>
+                      <span>{t('saison.scouting.points')}</span>
+                      <strong>{status.nextOpponent.points ?? '—'}</strong>
+                    </div>
+                    <div>
+                      <span>{t('saison.scouting.buts')}</span>
+                      <strong>{status.nextOpponent.goalsFor}:{status.nextOpponent.goalsAgainst}</strong>
+                    </div>
+                    <div>
+                      <span>{t('saison.scouting.niveau')}</span>
+                      <strong>{status.nextOpponent.squadAverage ?? '—'}</strong>
+                    </div>
+                    <div>
+                      <span>{t('saison.scouting.effectif')}</span>
+                      <strong>{status.nextOpponent.squadSize}</strong>
+                    </div>
+                  </div>
+
+                  {status.nextOpponent.form && status.nextOpponent.form.length > 0 && (
+                    <div className="scouting-forme">
+                      <span>{t('saison.scouting.forme')}</span>
+                      {status.nextOpponent.form.map((r, i) => (
+                        <i key={i} className={`forme-pastille forme-${r}`}>{r}</i>
+                      ))}
+                    </div>
+                  )}
+
+                  {status.nextOpponent.topPlayers && status.nextOpponent.topPlayers.length > 0 && (
+                    <div className="scouting-cadres">
+                      <span className="scouting-cadres-titre">{t('saison.scouting.dangers')}</span>
+                      {status.nextOpponent.topPlayers.map((p, i) => (
+                        <span key={i} className="scouting-joueur">
+                          <i className="sc-pos">{p.position}</i>
+                          {p.first_name} {p.last_name}
+                          <i className="sc-ovr">{p.overall}</i>
+                          {p.goals > 0 && <i className="sc-buts">{t('saison.scouting.butsJoueur', { n: p.goals })}</i>}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  <button
+                    className="scouting-voir"
+                    onClick={() => handleViewTeam({ id: status.nextOpponent.id, name: status.nextOpponent.name })}
+                  >
+                    {t('saison.scouting.voirEffectif')}
+                  </button>
                 </div>
               )}
               <button className="btn-primary action-btn" onClick={handlePlayMatch} disabled={loading}>

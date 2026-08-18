@@ -161,8 +161,14 @@ router.get('/:teamId/status', async (req, res) => {
   const equipeAJour = queryOne('SELECT * FROM teams WHERE id = ?', [req.params.teamId]);
   const rival = infosRival(equipeAJour);
 
+  // Classement propre à cette sauvegarde : recalculé depuis son calendrier et
+  // ses résultats, jamais lu dans les colonnes partagées des équipes IA.
+  const standings = computeStandings(req.params.teamId);
+  const rank = standings.findIndex(t => t.id === req.params.teamId) + 1;
+
   // Adversaire de la prochaine journée : le calendrier le connaît d'avance, ce
-  // qui permet d'annoncer le derby avant le coup d'envoi.
+  // qui permet de le présenter avant le coup d'envoi. Calculé APRÈS le
+  // classement, dont il reprend la place et la forme.
   let prochainAdversaire = null;
   if (played < totalMatches) {
     const aiIds = queryAll("SELECT id FROM teams WHERE manager_id = 'AI' AND division = ?", [division]).map(t => t.id);
@@ -170,20 +176,35 @@ router.get('/:teamId/status', async (req, res) => {
     if (fixture) {
       const adv = queryOne('SELECT id, name FROM teams WHERE id = ?', [fixture.opponentId]);
       if (adv) {
+        // Fiche d'avant-match : ce qu'un entraîneur regarde avant d'affronter
+        // quelqu'un — sa place, sa forme, et ses hommes forts.
+        const ligne = standings.find((l) => l.id === adv.id);
+        const effectifAdverse = queryAll(
+          'SELECT first_name, last_name, position, overall, age, goals, appearances FROM players WHERE team_id = ? ORDER BY overall DESC',
+          [adv.id]
+        );
+        const moyenne = effectifAdverse.length
+          ? Math.round(effectifAdverse.reduce((s, p) => s + p.overall, 0) / effectifAdverse.length)
+          : null;
+
         prochainAdversaire = {
           id: adv.id,
           name: adv.name,
           isHome: fixture.isHome,
           isDerby: estDerby(equipeAJour, adv.id),
+          rank: ligne ? ligne.rank : null,
+          points: ligne ? ligne.points : null,
+          played: ligne ? ligne.played : null,
+          form: ligne ? ligne.form : [],
+          goalsFor: ligne ? ligne.goals_for : null,
+          goalsAgainst: ligne ? ligne.goals_against : null,
+          squadSize: effectifAdverse.length,
+          squadAverage: moyenne,
+          topPlayers: effectifAdverse.slice(0, 3),
         };
       }
     }
   }
-
-  // Classement propre à cette sauvegarde : recalculé depuis son calendrier et
-  // ses résultats, jamais lu dans les colonnes partagées des équipes IA.
-  const standings = computeStandings(req.params.teamId);
-  const rank = standings.findIndex(t => t.id === req.params.teamId) + 1;
 
   res.json({
     season: team.season,

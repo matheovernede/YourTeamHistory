@@ -38,17 +38,27 @@ function strengthOf(teamId, cache) {
   return valeur;
 }
 
+/** Nombre de résultats conservés pour juger de la forme d'une équipe. */
+const FORME_LONGUEUR = 5;
+
 function ligneVide(id, name, isPlayer) {
-  return { id, name, isPlayer, points: 0, wins: 0, draws: 0, losses: 0, goals_for: 0, goals_against: 0 };
+  return { id, name, isPlayer, points: 0, wins: 0, draws: 0, losses: 0, goals_for: 0, goals_against: 0, form: [] };
 }
 
 function enregistrer(ligne, marques, encaisses) {
   if (!ligne) return;
   ligne.goals_for += marques;
   ligne.goals_against += encaisses;
-  if (marques > encaisses) { ligne.wins++; ligne.points += 3; }
-  else if (marques === encaisses) { ligne.draws++; ligne.points += 1; }
-  else { ligne.losses++; }
+
+  let issue;
+  if (marques > encaisses) { ligne.wins++; ligne.points += 3; issue = 'V'; }
+  else if (marques === encaisses) { ligne.draws++; ligne.points += 1; issue = 'N'; }
+  else { ligne.losses++; issue = 'D'; }
+
+  // Forme récente : la dernière journée en tête. Sert à jauger un adversaire
+  // avant de l'affronter, ce que le classement seul ne dit pas.
+  ligne.form.unshift(issue);
+  if (ligne.form.length > FORME_LONGUEUR) ligne.form.pop();
 }
 
 /**

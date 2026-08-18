@@ -2797,3 +2797,166 @@
   font-weight: 600;
   line-height: 1.5;
 }
+
+/* Fiche d'avant-match : elle doit se lire d'un coup d'oeil, sans concurrencer
+   le bouton qui lance la journee. */
+.scouting {
+  margin-bottom: 14px;
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.scouting.is-derby {
+  border-color: rgba(232, 88, 63, 0.45);
+  background: linear-gradient(135deg, rgba(232, 88, 63, 0.1) 0%, rgba(232, 88, 63, 0.03) 100%);
+}
+
+.scouting-tete {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  margin-bottom: 12px;
+}
+
+.scouting-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
+  margin-bottom: 3px;
+}
+
+.scouting-tete h4 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.scouting-rang {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.scouting-chiffres {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.scouting-chiffres > div {
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-1);
+  text-align: center;
+}
+
+.scouting-chiffres span {
+  display: block;
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
+.scouting-chiffres strong { font-size: 15px; }
+
+.scouting-forme {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 12px;
+}
+
+.scouting-forme > span {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin-right: 3px;
+}
+
+/* La forme se lit par la couleur ET par la lettre : le vert seul ne suffit pas. */
+.forme-pastille {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 800;
+  font-style: normal;
+}
+
+.forme-V { background: rgba(46, 178, 87, 0.22); color: #7fe0a3; }
+.forme-N { background: rgba(212, 175, 55, 0.2); color: #e6c964; }
+.forme-D { background: rgba(224, 78, 74, 0.2); color: #ff9c98; }
+
+.scouting-cadres {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 12px;
+}
+
+.scouting-cadres-titre {
+  width: 100%;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+}
+
+.scouting-joueur {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 9px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-1);
+  font-size: 11.5px;
+}
+
+.sc-pos {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--surface-3);
+  font-size: 9.5px;
+  font-weight: 700;
+  font-style: normal;
+}
+
+.sc-ovr { font-weight: 800; font-style: normal; }
+.sc-buts { color: var(--text-muted); font-size: 10.5px; font-style: normal; }
+
+.scouting-voir {
+  padding: 7px 13px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+.scouting-voir:hover {
+  background: var(--surface-3);
+  border-color: var(--accent, #2eb257);
+}
+
+@media (max-width: 620px) {
+  .scouting-chiffres { grid-template-columns: repeat(2, 1fr); }
+}

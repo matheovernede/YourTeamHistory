@@ -474,7 +474,24 @@ export default {
     derby: {
       etiquette: ' — DERBY',
       annonce: '🔥 Derby contre {adversaire} : deux fois plus de moral en jeu, et une prime majorée en cas de victoire.',
-    },    classement: {
+    },
+
+    /** Fiche de l'adversaire, consultable avant le coup d'envoi. */
+    scouting: {
+      recoit: 'Vous recevez',
+      deplacement: 'Vous vous déplacez chez',
+      rang: '{rang}e au classement',
+      points: 'Points',
+      buts: 'Buts',
+      niveau: 'Niveau moyen',
+      effectif: 'Effectif',
+      forme: 'Forme',
+      dangers: 'Joueurs à surveiller',
+      butsJoueur: '{n} buts',
+      voirEffectif: "Voir l'effectif complet",
+    },
+
+    classement: {
       rival: 'Votre rival',
       colEquipe: 'Équipe',
       colPoints: 'Pts',
