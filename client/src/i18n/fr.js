@@ -85,6 +85,30 @@ export default {
 
   // ---------------------------------------------------------------- commun
 
+  /** Guide des premiers pas, affiché tant que la première saison n'est pas lancée. */
+  guide: {
+    titre: 'Premiers pas',
+    masquer: 'Ne plus afficher',
+    recruter: {
+      texte: "Votre effectif est incomplet. Passez par le mercato pour recruter au moins onze joueurs — le bouton « Composer mon équipe » le fait en un clic.",
+    },
+    composer: {
+      texte: "Avant de jouer, choisissez vos onze titulaires. Sans composition, la journée ne peut pas se disputer.",
+      bouton: 'Aller à la compo',
+    },
+    jouer: {
+      texte: "Votre équipe est prête. Lancez votre première journée de championnat : vingt-six vous attendent cette saison.",
+    },
+    apresMatch: {
+      texte: "Vos titulaires ont perdu de la forme, vos remplaçants en ont repris. Faites tourner votre effectif pour éviter les blessures.",
+      bouton: 'Voir mon effectif',
+    },
+    gestion: {
+      texte: "Pensez à l'onglet Gestion : entraînements, sponsors et discussions avec vos joueurs y font la différence sur une saison.",
+      bouton: 'Ouvrir la gestion',
+    },
+  },
+
   commun: {
     chargement: 'Chargement...',
     chargementPoints: 'Chargement.',

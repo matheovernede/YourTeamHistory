@@ -17,6 +17,7 @@ const { evolveSquad, retireOldPlayers, runAiTransferWindow } = require('../engin
 const { findFixture, seedFor } = require('../engine/calendar');
 const { computeStandings } = require('../engine/standings');
 const { ensureRival, infosRival, estDerby, INTENSITE_MORAL, PRIME_DERBY } = require('../engine/rival');
+const { marquer, entonnoir } = require('../engine/funnel');
 const { touchManager } = require('./leaderboard');
 const {
   updateDiscontent,
@@ -321,6 +322,9 @@ router.post('/:teamId/play-matchday', async (req, res) => {
   const drew = goalDiff === 0;
   // Un derby marque le vestiaire deux fois plus qu'une rencontre ordinaire.
   applyMatchEffects(db, team.id, won, drew, derby ? INTENSITE_MORAL : 1);
+
+  // Le joueur a disputé un match : l'étape qui compte vraiment.
+  if (played === 0) marquer(db, team.manager_id, 'premier_match');
 
   // Discipline, blessures et statistiques individuelles.
   // L'ordre compte : on applique d'abord les suites du match, puis on décompte
@@ -1028,6 +1032,9 @@ router.post('/:teamId/end-season', async (req, res) => {
   if (rank === 1) {
     db.run('UPDATE teams SET titles = COALESCE(titles, 0) + 1 WHERE id = ?', [req.params.teamId]);
   }
+
+  // Une saison menée à son terme : le meilleur signe qu'un joueur est resté.
+  marquer(db, team.manager_id, 'saison_finie');
 
   // ---- Historique : sans lui, la carrière n'a aucune mémoire ----
   db.run(

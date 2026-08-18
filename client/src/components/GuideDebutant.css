@@ -1,0 +1,73 @@
+/* Le guide se remarque sans occuper l'écran : il accompagne, il ne bloque pas.
+   Aucun fond semi-opaque par-dessus le jeu, aucune fenêtre à fermer pour
+   continuer — le joueur peut l'ignorer et jouer quand même. */
+.guide-debutant {
+  margin-bottom: var(--sp-4);
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(46, 178, 87, 0.45);
+  background: linear-gradient(135deg, rgba(46, 178, 87, 0.13) 0%, rgba(46, 178, 87, 0.05) 100%);
+  box-shadow: 0 4px 18px rgba(46, 178, 87, 0.12);
+}
+
+.guide-tete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  margin-bottom: 8px;
+}
+
+.guide-pastille {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #7fe0a3;
+}
+
+.guide-fermer {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 19px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 3px;
+  transition: color var(--transition-normal);
+}
+
+.guide-fermer:hover {
+  color: var(--text);
+}
+
+.guide-texte {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text);
+}
+
+.guide-action {
+  margin-top: 11px;
+  padding: 8px 15px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--grad-primary);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+.guide-action:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 16px var(--primary-glow);
+}
+
+.guide-action:focus-visible {
+  outline: 2px solid #7fe0a3;
+  outline-offset: 2px;
+}

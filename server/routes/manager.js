@@ -2,6 +2,7 @@ const express = require('express');
 const { v4: uuid } = require('uuid');
 const { queryOne, queryAll, run } = require('../db/schema');
 const { langueDe, t } = require('../i18n');
+const { marquer } = require('../engine/funnel');
 
 const router = express.Router();
 
@@ -19,6 +20,7 @@ router.post('/register', (req, res) => {
 
   const id = uuid();
   run('INSERT INTO managers (id, username, budget, reputation) VALUES (?, ?, 20000000, 50)', [id, username.trim()]);
+  marquer({ run }, id, 'inscription');
   const created = queryOne('SELECT * FROM managers WHERE id = ?', [id]);
   res.json({ ...created, existing: false });
 });

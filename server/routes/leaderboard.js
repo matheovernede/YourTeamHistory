@@ -1,6 +1,7 @@
 const express = require('express');
 const { queryAll, queryOne } = require('../db/schema');
 const { computeStandings } = require('../engine/standings');
+const { entonnoir } = require('../engine/funnel');
 const { DIVISIONS } = require('../data/divisions');
 const { langueDe, t, localiserDonnee } = require('../i18n');
 
@@ -154,6 +155,26 @@ router.get('/players/:teamId', (req, res) => {
   );
 
   res.json({ team, history, topPlayers: meilleurs });
+});
+
+/**
+ * Où les joueurs s'arrêtent.
+ *
+ * On mesurait jusqu'ici en interrogeant la base à la main. Ces chiffres disent
+ * lesquelles des étapes font perdre du monde, et si une correction a servi.
+ */
+router.get('/funnel', (req, res) => {
+  const jours = req.query.days ? parseInt(req.query.days, 10) : null;
+  const etapes = entonnoir(jours);
+
+  res.json({
+    days: jours,
+    steps: etapes,
+    // Repère le plus parlant : l'étape qui fait perdre le plus de monde.
+    biggestDrop: etapes
+      .slice(1)
+      .reduce((pire, e) => (pire === null || e.shareOfPrevious < pire.shareOfPrevious ? e : pire), null),
+  });
 });
 
 // Anciennes routes conservées : du code client pourrait encore les appeler.

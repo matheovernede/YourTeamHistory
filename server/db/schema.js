@@ -203,6 +203,21 @@ function initTables() {
 
 
 
+  // Étapes franchies par les joueurs, pour savoir où ils décrochent.
+  //
+  // Une ligne par étape et par manager, jamais deux fois la même : on mesure
+  // une progression, pas une fréquentation. Sans ces repères, toute décision
+  // sur l'accueil des nouveaux venus se prend au jugé.
+  db.run(`
+    CREATE TABLE IF NOT EXISTS funnel_events (
+      id TEXT PRIMARY KEY,
+      manager_id TEXT NOT NULL,
+      step TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now')),
+      UNIQUE (manager_id, step)
+    )
+  `);
+
   // Historique des saisons : sans lui, la carrière n'a aucune mémoire.
   db.run(`
     CREATE TABLE IF NOT EXISTS season_history (

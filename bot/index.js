@@ -175,6 +175,51 @@ const commande = new SlashCommandBuilder()
   .setName('version')
   .setDescription('Compare la version déployée sur le serveur et celle de GitHub');
 
+const commandeStats = new SlashCommandBuilder()
+  .setName('stats')
+  .setDescription("Où les joueurs s'arrêtent : de l'inscription au premier match");
+
+const LIBELLES = {
+  inscription: 'Inscrits',
+  club_cree: 'Club créé',
+  effectif_pret: 'Effectif constitué',
+  premier_match: 'Premier match joué',
+  saison_finie: 'Saison terminée',
+};
+
+async function rapportEntonnoir() {
+  const r = await fetch(`${API_LOCALE}/api/leaderboard/funnel`, { signal: AbortSignal.timeout(10000) });
+  if (!r.ok) {
+    return new EmbedBuilder().setColor(ROUGE).setTitle('🔴 Statistiques indisponibles')
+      .setDescription(`Le serveur a répondu ${r.status}.`);
+  }
+
+  const d = await r.json();
+  const depart = d.steps[0] ? d.steps[0].count : 0;
+
+  const lignes = d.steps.map((e) => {
+    // Une barre vaut mieux qu'un pourcentage seul pour voir où ça décroche.
+    const pleines = Math.round((e.shareOfStart / 100) * 12);
+    const barre = '█'.repeat(pleines) + '░'.repeat(12 - pleines);
+    return `\`${barre}\` **${e.count}** · ${e.shareOfStart}%  ${LIBELLES[e.step] || e.step}`;
+  });
+
+  const embed = new EmbedBuilder()
+    .setColor(depart > 0 ? VERT : ORANGE)
+    .setTitle('Parcours des joueurs')
+    .setDescription(lignes.join('\n'))
+    .setTimestamp();
+
+  if (d.biggestDrop && depart > 0) {
+    embed.addFields({
+      name: 'Plus grosse perte',
+      value: `${LIBELLES[d.biggestDrop.step] || d.biggestDrop.step} — seuls ${d.biggestDrop.shareOfPrevious}% de l'étape précédente y arrivent.`,
+    });
+  }
+
+  return embed;
+}
+
 client.once('clientReady', async () => {
   console.log(`Bot connecté : ${client.user.tag}`);
 
@@ -183,7 +228,8 @@ client.once('clientReady', async () => {
   for (const guilde of client.guilds.cache.values()) {
     try {
       await guilde.commands.create(commande.toJSON());
-      console.log(`Commande /version disponible sur « ${guilde.name} »`);
+      await guilde.commands.create(commandeStats.toJSON());
+      console.log(`Commandes /version et /stats disponibles sur « ${guilde.name} »`);
     } catch (e) {
       console.error(`Enregistrement impossible sur « ${guilde.name} » :`, e.message);
     }
@@ -191,13 +237,17 @@ client.once('clientReady', async () => {
 });
 
 client.on('interactionCreate', async (interaction) => {
-  if (!interaction.isChatInputCommand() || interaction.commandName !== 'version') return;
+  if (!interaction.isChatInputCommand()) return;
+  if (!['version', 'stats'].includes(interaction.commandName)) return;
 
-  // La comparaison interroge deux services distants : on accuse réception tout
+  // Les rapports interrogent des services distants : on accuse réception tout
   // de suite, sans quoi Discord considère la commande en échec au bout de 3 s.
   await interaction.deferReply();
   try {
-    await interaction.editReply({ embeds: [await construireRapport()] });
+    const embed = interaction.commandName === 'stats'
+      ? await rapportEntonnoir()
+      : await construireRapport();
+    await interaction.editReply({ embeds: [embed] });
   } catch (e) {
     console.error('Réponse impossible :', e);
     await interaction.editReply(`Erreur pendant la vérification : ${e.message}`).catch(() => {});

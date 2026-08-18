@@ -4,6 +4,7 @@ const { getDb, queryOne, queryAll, run, saveDb } = require('../db/schema');
 const { DRAFT_POOL, calculateDraftPrice } = require('../data/draftPool');
 const { SQUAD_MAX, RECOMMENDED, LINE_POSITIONS, countByLine } = require('../data/rules');
 const { langueDe, t } = require('../i18n');
+const { marquer } = require('../engine/funnel');
 
 const router = express.Router();
 
@@ -354,6 +355,10 @@ router.post('/finish', async (req, res) => {
   if (!playerCount || playerCount.count < 11) {
     return res.status(400).json({ error: t('erreur.minimumOnzeJoueurs', langue, { nombre: playerCount ? playerCount.count : 0 }) });
   }
+
+  // L'effectif est constitué : c'est ici que quatre visiteurs sur cinq
+  // s'arrêtaient, d'où la mesure à cet endroit précis.
+  marquer({ run }, managerId, 'effectif_pret');
 
   if (window === 'winter') {
     // On marque la fenêtre comme utilisée pour la saison en cours, et on

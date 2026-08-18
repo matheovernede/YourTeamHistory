@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { api } from '../api/client';
 import PlayerCard from '../components/PlayerCard';
+import GuideDebutant, { guideMasque, CLE_MASQUE } from '../components/GuideDebutant';
 import {
   FORMATION_POSITIONS,
   FORMATION_NAMES,
@@ -112,6 +113,7 @@ function computeTeamStats(starters, t) {
 export default function Season({ manager, team, onUpdate, onManagerUpdate, onSeasonEnd, onWinterWindow }) {
   const { t } = useI18n();
   const [status, setStatus] = useState(null);
+  const [guideFerme, setGuideFerme] = useState(guideMasque);
   const [lastMatch, setLastMatch] = useState(null);
   const [sponsors, setSponsors] = useState(null);
   const [sponsorChosen, setSponsorChosen] = useState(false);
@@ -786,6 +788,17 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
             <span className="rank-badge">#{status.rank}</span>
           </div>
         </div>
+        {!guideFerme && (
+          <GuideDebutant
+            players={players}
+            status={status}
+            onAller={(vue) => setView(vue)}
+            onMasquer={() => {
+              try { localStorage.setItem(CLE_MASQUE, '1'); } catch {}
+              setGuideFerme(true);
+            }}
+          />
+        )}
         <div className="season-nav">
           <button className={view === 'season' ? 'active' : ''} onClick={() => setView('season')}>{t('saison.nav.saison')}</button>
           <button className={view === 'standings' ? 'active' : ''} onClick={() => setView('standings')}>{t('saison.nav.classement')}</button>

@@ -4,6 +4,7 @@ const { getDb, queryOne, queryAll, run, saveDb } = require('../db/schema');
 const { isValidFormation, getFormationSlots, getPositionGroup } = require('../data/formations');
 const { isAvailable, unavailabilityReason } = require('../engine/discipline');
 const { langueDe, t } = require('../i18n');
+const { marquer } = require('../engine/funnel');
 
 const router = express.Router();
 
@@ -47,6 +48,7 @@ router.post('/create', async (req, res) => {
 
   const teamId = uuid();
   db.run('INSERT INTO teams (id, manager_id, name, division) VALUES (?, ?, ?, 1)', [teamId, managerId, teamName.trim()]);
+  marquer(db, managerId, 'club_cree');
   saveDb();
 
   const team = queryOne('SELECT * FROM teams WHERE id = ?', [teamId]);

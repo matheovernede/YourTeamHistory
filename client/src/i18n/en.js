@@ -85,6 +85,30 @@ export default {
     musique: 'soundtrack by FufuNoir:',
   },
 
+  /** First steps, shown until the first season is under way. */
+  guide: {
+    titre: 'First steps',
+    masquer: 'Do not show again',
+    recruter: {
+      texte: 'Your squad is short of players. Head to the transfer market and sign at least eleven — the "Build my squad" button does it in one click.',
+    },
+    composer: {
+      texte: 'Before kick-off, pick your eleven starters. Without a lineup the matchday cannot be played.',
+      bouton: 'Go to the lineup',
+    },
+    jouer: {
+      texte: 'Your side is ready. Play your first matchday: twenty-six await you this season.',
+    },
+    apresMatch: {
+      texte: 'Your starters lost condition while the substitutes recovered. Rotate your squad to keep injuries away.',
+      bouton: 'View my squad',
+    },
+    gestion: {
+      texte: 'Keep an eye on the Management tab: training, sponsors and talks with your players decide a season.',
+      bouton: 'Open management',
+    },
+  },
+
   // ---------------------------------------------------------------- shared
 
   commun: {
