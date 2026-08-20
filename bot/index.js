@@ -29,8 +29,9 @@ const CERTIFICAT = process.env.CERT_PATH || '/etc/nginx/certs/api.yourteamhistor
 const SALON_ANNONCES = process.env.ANNOUNCE_CHANNEL_ID || '';
 /** Salon des mises à jour. Vide : les annonces de version sont désactivées. */
 const SALON_MISES_A_JOUR = process.env.UPDATE_CHANNEL_ID || '';
-/** Journal des versions, lu depuis le code déployé. */
+/** Journaux des versions, lus depuis le code déployé. */
 const JOURNAL = process.env.CHANGELOG_PATH || path.join(__dirname, '..', 'CHANGELOG.md');
+const JOURNAL_EN = process.env.CHANGELOG_EN_PATH || path.join(__dirname, '..', 'CHANGELOG.en.md');
 /** Où l'on retient l'état des joueurs entre deux passages, pour survivre à un redémarrage. */
 const FICHIER_ETAT = process.env.BOT_STATE || '/var/lib/yourteamhistory/.bot-etat.json';
 
@@ -275,31 +276,46 @@ async function rapportClassement() {
  * une correction technique part en production sans encombrer le salon, et
  * seules les nouveautés qui intéressent les joueurs sont annoncées.
  */
-function derniereVersion() {
+/** Découpe un journal en entrées, la plus récente d'abord. */
+function lireJournal(chemin) {
   let texte;
   try {
-    texte = fs.readFileSync(JOURNAL, 'utf8');
+    texte = fs.readFileSync(chemin, 'utf8');
   } catch {
-    return null;
+    return [];
   }
 
-  // On saute l'en-tête explicatif : la première entrée réelle est celle qui
-  // suit le séparateur.
+  // On saute l'en-tête explicatif : les entrées réelles suivent le séparateur.
   const corps = texte.includes('\n---\n') ? texte.split('\n---\n').slice(1).join('\n---\n') : texte;
-  const entrees = corps.split(/^## /m).filter((b) => b.trim());
-  if (entrees.length === 0) return null;
 
-  const premiere = entrees[0];
-  const saut = premiere.indexOf('\n');
-  const entete = (saut === -1 ? premiere : premiere.slice(0, saut)).trim();
-  const contenu = saut === -1 ? '' : premiere.slice(saut + 1).trim();
+  return corps.split(/^## /m).filter((b) => b.trim()).map((bloc) => {
+    const saut = bloc.indexOf('\n');
+    const entete = (saut === -1 ? bloc : bloc.slice(0, saut)).trim();
+    const contenu = saut === -1 ? '' : bloc.slice(saut + 1).trim();
 
-  // « 1.3.0 — Le derby et l'infirmerie »
-  const separateur = entete.match(/\s+[—-]\s+/);
-  const version = separateur ? entete.slice(0, separateur.index).trim() : entete;
-  const titre = separateur ? entete.slice(separateur.index + separateur[0].length).trim() : '';
+    // « 1.3.0 — Le derby et l'infirmerie »
+    const separateur = entete.match(/\s+[—-]\s+/);
+    return {
+      version: separateur ? entete.slice(0, separateur.index).trim() : entete,
+      titre: separateur ? entete.slice(separateur.index + separateur[0].length).trim() : '',
+      contenu,
+    };
+  });
+}
 
-  return { version, titre, contenu };
+/**
+ * Dernière version, dans les deux langues.
+ *
+ * Le français fait foi : c'est lui qui déclenche l'annonce. L'anglais est
+ * apparié par numéro de version, et son absence n'empêche pas la publication —
+ * mieux vaut une annonce en une langue que pas d'annonce du tout.
+ */
+function derniereVersion() {
+  const fr = lireJournal(JOURNAL)[0];
+  if (!fr) return null;
+
+  const en = lireJournal(JOURNAL_EN).find((e) => e.version === fr.version) || null;
+  return { ...fr, en };
 }
 
 async function annoncerVersion(client, etat) {
@@ -318,15 +334,34 @@ async function annoncerVersion(client, etat) {
 
   try {
     const salon = await client.channels.fetch(SALON_MISES_A_JOUR);
-    const embed = new EmbedBuilder()
-      .setColor(VERT)
-      .setTitle(`🎉 ${v.titre || 'Mise à jour'}`)
-      .setDescription(v.contenu.slice(0, 3800))
-      .setFooter({ text: `Version ${v.version}` })
-      .setTimestamp();
 
-    await salon.send({ content: '**Le jeu vient d\'être mis à jour !**', embeds: [embed] });
-    console.log(`Mise à jour ${v.version} annoncée.`);
+    // Un message, deux encarts : chacun lit dans sa langue sans que l'autre
+    // version ne lui coupe la lecture au milieu.
+    const encarts = [
+      new EmbedBuilder()
+        .setColor(VERT)
+        .setTitle(`🇫🇷 ${v.titre || 'Mise à jour'}`)
+        .setDescription(v.contenu.slice(0, 3800))
+        .setFooter({ text: `Version ${v.version}` }),
+    ];
+
+    if (v.en) {
+      encarts.push(
+        new EmbedBuilder()
+          .setColor(VERT)
+          .setTitle(`🇬🇧 ${v.en.titre || 'Update'}`)
+          .setDescription(v.en.contenu.slice(0, 3800))
+          .setFooter({ text: `Version ${v.version}` })
+      );
+    } else {
+      console.warn(`Pas d'entrée anglaise pour ${v.version} : annonce en français seul.`);
+    }
+
+    await salon.send({
+      content: "🎉 **Le jeu vient d'être mis à jour !**\n🎉 **The game has just been updated!**",
+      embeds: encarts,
+    });
+    console.log(`Mise à jour ${v.version} annoncée${v.en ? ' (fr + en)' : ' (fr seul)'}.`);
     return { ...etat, versionAnnoncee: v.version };
   } catch (e) {
     console.error('Annonce de version impossible :', e.message);

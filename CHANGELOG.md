@@ -7,6 +7,10 @@ Une entrée est annoncée quand son numéro de version change. Les corrections q
 n'intéressent pas les joueurs n'ont donc pas à figurer ici : elles partent en
 production sans faire de bruit.
 
+**La version anglaise vit dans `CHANGELOG.en.md`.** Les deux fichiers doivent
+porter les mêmes numéros de version : le bot les apparie pour publier un message
+bilingue. Si l'entrée anglaise manque, seul le français est publié.
+
 Format attendu par le bot, à respecter :
 
 ```
@@ -18,6 +22,15 @@ Une phrase d'introduction, facultative.
 ```
 
 ---
+
+## 1.3.1 — Lisible dans les deux langues
+
+- Les postes s'affichent enfin en anglais : **GK, CB, CAM, ST** au lieu des
+  abréviations françaises, illisibles pour qui ne parle pas la langue.
+- Dans le classement des managers, les joueurs **connectés remontent en tête**
+  de liste, sans que leur rang au classement en soit modifié.
+- Les buteurs sont distingués d'un coup d'œil : les vôtres à gauche, ceux de
+  l'adversaire à droite, pendant le match comme dans le bilan.
 
 ## 1.3.0 — Le derby et l'infirmerie
 
