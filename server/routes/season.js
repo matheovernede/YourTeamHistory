@@ -657,6 +657,40 @@ const MANAGEMENT_ACTIONS = [
   { id: 'medical', icon: '🏥', cooldown: 0 },
 ];
 
+/** Journées à attendre entre deux entraînements intensifs. */
+const COOLDOWN_ENTRAINEMENT = 3;
+
+/**
+ * Disponibilité de l'entraînement intensif.
+ *
+ * La colonne retient la journée de l'entraînement DÉCALÉE DE UN : zéro signifie
+ * donc « jamais entraîné », sans ambiguïté avec un entraînement effectué avant
+ * la première journée. C'est cette confusion qui bloquait toute équipe neuve
+ * pendant trois journées.
+ *
+ * Une valeur supérieure au nombre de journées jouées vient forcément d'une
+ * saison précédente : le compteur repart de zéro chaque année, mais la colonne
+ * n'était pas remise à zéro. Un entraînement à la 20e journée verrouillait
+ * alors l'action pendant 23 journées de la saison suivante.
+ *
+ * Rassemblé ici parce que la règle vivait en double, dans la route qui affiche
+ * et dans celle qui exécute — d'où sa dérive.
+ */
+function etatEntrainement(team) {
+  const joues = (team.wins || 0) + (team.draws || 0) + (team.losses || 0);
+  const marque = team.last_training_matchday || 0;
+
+  if (marque <= 0) return { disponible: true, restant: 0 };
+
+  const journeeEntrainement = marque - 1;
+  if (journeeEntrainement > joues) return { disponible: true, restant: 0 }; // vestige d'une saison passée
+
+  const ecoulees = joues - journeeEntrainement;
+  return ecoulees >= COOLDOWN_ENTRAINEMENT
+    ? { disponible: true, restant: 0 }
+    : { disponible: false, restant: COOLDOWN_ENTRAINEMENT - ecoulees };
+}
+
 /**
  * Coût d'un retour anticipé de blessure.
  *
@@ -812,15 +846,13 @@ router.get('/:teamId/management', (req, res) => {
   const costs = getManagementCosts(division);
   const played = team.wins + team.draws + team.losses;
 
-  // Check if training is on cooldown (stored in teams.last_training_matchday)
-  const lastTraining = team.last_training_matchday || 0;
-  const trainingAvailable = (played - lastTraining) >= 3;
+  const entrainement = etatEntrainement(team);
 
   const actions = MANAGEMENT_ACTIONS.map(action => ({
     ...actionLocalisee(action, langue),
     cost: costs[action.id],
-    available: action.id === 'training' ? trainingAvailable : true,
-    cooldownRemaining: action.id === 'training' && !trainingAvailable ? 3 - (played - lastTraining) : 0,
+    available: action.id === 'training' ? entrainement.disponible : true,
+    cooldownRemaining: action.id === 'training' ? entrainement.restant : 0,
   }));
 
   // Blessés soignables, avec leur devis. Renvoyés ici plutôt que calculés côté
@@ -903,12 +935,9 @@ router.post('/:teamId/manage', async (req, res) => {
 
   const played = team.wins + team.draws + team.losses;
 
-  // Training cooldown check
-  if (actionId === 'training') {
-    const lastTraining = team.last_training_matchday || 0;
-    if ((played - lastTraining) < 3) {
-      return res.status(400).json({ error: t('erreur.entrainementCooldown', langue) });
-    }
+  // Même règle que celle affichée : une seule fonction pour les deux.
+  if (actionId === 'training' && !etatEntrainement(team).disponible) {
+    return res.status(400).json({ error: t('erreur.entrainementCooldown', langue) });
   }
 
   // Deduct cost
@@ -918,19 +947,10 @@ router.post('/:teamId/manage', async (req, res) => {
   switch (actionId) {
     case 'training':
       db.run('UPDATE players SET overall = MIN(99, overall + 1) WHERE team_id = ? AND is_starter = 1', [req.params.teamId]);
-      // Store last training matchday - use a column if available, otherwise we add it
-      try {
-        db.run('UPDATE teams SET last_training_matchday = ? WHERE id = ?', [played, req.params.teamId]);
-      } catch (e) {
-        // Column might not exist yet, try to add it
-        try {
-          db.run('ALTER TABLE teams ADD COLUMN last_training_matchday INTEGER DEFAULT 0');
-          db.run('UPDATE teams SET last_training_matchday = ? WHERE id = ?', [played, req.params.teamId]);
-        } catch (e2) {
-          // Already exists, just update
-          db.run('UPDATE teams SET last_training_matchday = ? WHERE id = ?', [played, req.params.teamId]);
-        }
-      }
+      // Journée décalée de un : zéro reste réservé à « jamais entraîné ».
+      // La colonne est créée par la migration au démarrage, plus besoin de la
+      // rattraper ici.
+      db.run('UPDATE teams SET last_training_matchday = ? WHERE id = ?', [played + 1, req.params.teamId]);
       break;
     case 'cohesion':
       db.run('UPDATE players SET morale = MIN(100, morale + 10) WHERE team_id = ?', [req.params.teamId]);
@@ -1078,7 +1098,12 @@ router.post('/:teamId/end-season', async (req, res) => {
   const newSeason = team.season + 1;
 
   // Update player team: new season, new division, reset stats
-  db.run('UPDATE teams SET season = ?, division = ?, points = 0, wins = 0, draws = 0, losses = 0, goals_for = 0, goals_against = 0 WHERE id = ?',
+  //
+  // `last_training_matchday` repart à zéro comme le reste : la valeur compte
+  // des journées, or le compteur recommence chaque saison. Sans cette remise à
+  // zéro, un entraînement tardif verrouillait l'action une bonne partie de
+  // l'exercice suivant.
+  db.run('UPDATE teams SET season = ?, division = ?, points = 0, wins = 0, draws = 0, losses = 0, goals_for = 0, goals_against = 0, last_training_matchday = 0 WHERE id = ?',
     [newSeason, newDivision, req.params.teamId]);
 
   // Les équipes IA ne changent plus de division en fin de saison.
