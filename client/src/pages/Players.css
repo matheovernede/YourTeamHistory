@@ -279,3 +279,24 @@
   .players-table th,
   .players-table td { padding: 9px 8px; }
 }
+
+/* Les connectes sont remontes en tete de liste. Leur rang reste celui du
+   merite : etre devant parce qu'on est la ne vaut pas etre mieux classe. */
+.players-table tbody tr.is-online {
+  background: rgba(46, 178, 87, 0.045);
+}
+
+.players-table tbody tr.is-online:hover {
+  background: rgba(46, 178, 87, 0.1);
+}
+
+/* Trait de separation entre les connectes et les autres : sans lui, l'ordre
+   de la suite paraitrait arbitraire. */
+.players-table tbody tr.debut-hors-ligne td {
+  border-top: 2px solid var(--border);
+}
+
+/* Le rang reste lisible meme quand la ligne est remontee. */
+.players-table tbody tr.is-online .col-rank {
+  opacity: 0.9;
+}

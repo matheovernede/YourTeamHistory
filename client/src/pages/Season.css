@@ -3101,3 +3101,10 @@
   text-align: right;
   border-right: 3px solid rgba(224, 78, 74, 0.75);
 }
+
+/* Le fil du direct defile tout seul : on lui donne un peu plus de hauteur
+   pour garder trois ou quatre actions visibles a la fois. */
+.live-events-feed {
+  max-height: 260px;
+  scroll-padding-bottom: 8px;
+}

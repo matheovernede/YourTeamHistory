@@ -116,17 +116,31 @@ router.get('/players', (req, res) => {
     };
   });
 
-  joueurs.sort((a, b) =>
+  /**
+   * Classement au mérite : la division d'abord, car monter d'un échelon vaut
+   * mieux que dominer le sien, puis le palmarès, puis la saison en cours.
+   */
+  const parMerite = (a, b) =>
     b.division - a.division ||
     b.titles - a.titles ||
     b.cups - a.cups ||
     b.points - a.points ||
     (b.goalsFor - b.goalsAgainst) - (a.goalsFor - a.goalsAgainst) ||
-    a.teamName.localeCompare(b.teamName)
-  );
+    a.teamName.localeCompare(b.teamName);
+
+  // Le rang est attribué AVANT de remonter les joueurs connectés : être devant
+  // parce qu'on est en ligne ne doit pas faire croire qu'on est mieux classé.
+  // Un manager gardera donc son numéro même affiché en tête de liste.
+  joueurs.sort(parMerite);
+  joueurs.forEach((j, i) => { j.rank = i + 1; });
+
+  // Ordre d'affichage : les connectés d'abord, chacun conservant son rang.
+  // Le tri de JavaScript est stable, l'ordre au mérite survit donc à l'intérieur
+  // de chaque groupe.
+  const affichage = [...joueurs].sort((a, b) => Number(b.online) - Number(a.online));
 
   res.json({
-    players: joueurs.map((j, i) => ({ ...j, rank: i + 1 })),
+    players: affichage,
     onlineCount: joueurs.filter((j) => j.online).length,
     totalCount: joueurs.length,
   });

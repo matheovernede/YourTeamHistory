@@ -140,6 +140,7 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
   const matchSpeedRef = useRef(1);
   const matchTimerRef = useRef(null);
   const panneauEquipeRef = useRef(null);
+  const filDirectRef = useRef(null);
   const [clState, setCLState] = useState(null);
   const [cupState, setCupState] = useState(null);
   const [cupResult, setCupResult] = useState(null);
@@ -310,6 +311,33 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
     loadMood();
     if (team.division >= 7) loadCLStatus();
   }, [team.id]);
+
+  /**
+   * Suit les faits de match au fil du direct.
+   *
+   * Le fil est limité en hauteur : passé quelques buts, les derniers tombaient
+   * sous la ligne de flottaison et il fallait faire défiler à la main pendant
+   * que le match continuait.
+   *
+   * On ne force le défilement que si le lecteur est DÉJÀ en bas. S'il est
+   * remonté lire une action précédente, le ramener de force lui arracherait
+   * l'écran des yeux à chaque nouveau but.
+   */
+  useEffect(() => {
+    const fil = filDirectRef.current;
+    if (!fil || liveEvents.length === 0) return;
+
+    // Le dernier événement vient d'être ajouté : on regarde où on était AVANT.
+    const distanceDuBas = fil.scrollHeight - fil.scrollTop - fil.clientHeight;
+    const dernierElement = fil.lastElementChild;
+    const marge = dernierElement ? dernierElement.offsetHeight + 24 : 60;
+
+    if (distanceDuBas <= marge) {
+      // Défilement instantané pour qui a demandé moins d'animations.
+      const mouvementReduit = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+      fil.scrollTo({ top: fil.scrollHeight, behavior: mouvementReduit ? 'auto' : 'smooth' });
+    }
+  }, [liveEvents]);
 
   async function loadStatus() {
     const data = await api.getSeasonStatus(team.id);
@@ -945,7 +973,7 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
               <span className="live-team-name">{liveMatch.match.opponent}</span>
             </div>
           </div>
-          <div className="live-events-feed">
+          <div className="live-events-feed" ref={filDirectRef}>
             {liveEvents.map((e, i) => {
               // Le camp de l'événement désigne le TERRAIN, pas votre équipe :
               // à l'extérieur, « home » est l'adversaire.

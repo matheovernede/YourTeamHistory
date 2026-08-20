@@ -98,10 +98,19 @@ export default function Players({ onBack, currentTeamId }) {
               </tr>
             </thead>
             <tbody>
-              {data.players.map((j) => (
+              {data.players.map((j, i) => {
+                // Les connectés sont remontés en tête : sans trait de
+                // séparation, l'ordre de la suite semblerait arbitraire.
+                const debutHorsLigne = !j.online && i > 0 && data.players[i - 1].online;
+                return (
                 <tr
                   key={j.teamId}
-                  className={`${j.teamId === currentTeamId ? 'is-me' : ''} ${selection === j.teamId ? 'is-open' : ''}`}
+                  className={[
+                    j.teamId === currentTeamId ? 'is-me' : '',
+                    selection === j.teamId ? 'is-open' : '',
+                    j.online ? 'is-online' : '',
+                    debutHorsLigne ? 'debut-hors-ligne' : '',
+                  ].filter(Boolean).join(' ')}
                   onClick={() => setSelection(selection === j.teamId ? null : j.teamId)}
                 >
                   <td className="col-rank">{j.rank}</td>
@@ -130,7 +139,8 @@ export default function Players({ onBack, currentTeamId }) {
                     </span>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
