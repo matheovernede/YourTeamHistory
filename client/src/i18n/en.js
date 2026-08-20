@@ -85,6 +85,23 @@ export default {
     musique: 'soundtrack by FufuNoir:',
   },
 
+  /**
+   * Position abbreviations.
+   *
+   * The codes stay the game's identifiers — formations, position fit, lineups —
+   * and must never change. Only the label is translated. The French ones are
+   * abbreviations of French words, unreadable to an English player.
+   */
+  postes: {
+    GAR: 'GK',
+    DC: 'CB', ARG: 'LB', ARD: 'RB', PG: 'LWB', PD: 'RWB',
+    MDF: 'CDM', MC: 'CM', MOC: 'CAM', MG: 'LM', MD: 'RM',
+    AIG: 'LW', AID: 'RW', BU: 'ST',
+  },
+
+  /** Squad lines, used by the transfer market counters. */
+  lignes: { GAR: 'GK', DEF: 'DEF', MIL: 'MID', ATT: 'ATT' },
+
   /** First steps, shown until the first season is under way. */
   guide: {
     titre: 'First steps',

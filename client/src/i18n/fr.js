@@ -85,6 +85,23 @@ export default {
 
   // ---------------------------------------------------------------- commun
 
+  /**
+   * Abréviations de poste.
+   *
+   * Les codes restent les identifiants du jeu — formations, adéquation au
+   * poste, composition — et ne doivent jamais changer. Seul l'affichage est
+   * traduit. En français, l'abréviation est déjà la bonne.
+   */
+  postes: {
+    GAR: 'GAR',
+    DC: 'DC', ARG: 'ARG', ARD: 'ARD', PG: 'PG', PD: 'PD',
+    MDF: 'MDF', MC: 'MC', MOC: 'MOC', MG: 'MG', MD: 'MD',
+    AIG: 'AIG', AID: 'AID', BU: 'BU',
+  },
+
+  /** Lignes de l'effectif, utilisées dans les compteurs du mercato. */
+  lignes: { GAR: 'GAR', DEF: 'DEF', MIL: 'MIL', ATT: 'ATT' },
+
   /** Guide des premiers pas, affiché tant que la première saison n'est pas lancée. */
   guide: {
     titre: 'Premiers pas',

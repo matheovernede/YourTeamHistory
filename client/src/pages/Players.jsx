@@ -24,7 +24,7 @@ function derniereActivite(joueur, t) {
 }
 
 export default function Players({ onBack, currentTeamId }) {
-  const { t } = useI18n();
+  const { t, tPoste } = useI18n();
   const [data, setData] = useState(null);
   const [erreur, setErreur] = useState(null);
   const [selection, setSelection] = useState(null);
@@ -196,7 +196,7 @@ export default function Players({ onBack, currentTeamId }) {
                   <ul className="players-squad">
                     {profil.topPlayers.map((p, i) => (
                       <li key={i}>
-                        <span className="squad-pos">{p.position}</span>
+                        <span className="squad-pos">{tPoste(p.position)}</span>
                         <span className="squad-name">{p.first_name} {p.last_name}</span>
                         <span className="squad-ovr">{p.overall}</span>
                         <span className="squad-stats">

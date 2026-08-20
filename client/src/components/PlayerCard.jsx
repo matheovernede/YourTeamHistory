@@ -9,12 +9,13 @@ function getPositionClass(pos) {
 }
 
 export default function PlayerCard({ player, actions }) {
-  const { t } = useI18n();
+  const { t, tPoste } = useI18n();
 
   return (
     <div className={`player-card ${player.is_starter ? 'starter' : ''}`}>
       <div className="player-header">
-        <span className={`badge ${getPositionClass(player.position)}`}>{player.position}</span>
+        {/* La classe CSS dérive du code d'origine ; seul le libellé est traduit. */}
+        <span className={`badge ${getPositionClass(player.position)}`}>{tPoste(player.position)}</span>
         <span className="player-overall">{player.overall}</span>
       </div>
       <div className="player-name">{player.first_name} {player.last_name}</div>

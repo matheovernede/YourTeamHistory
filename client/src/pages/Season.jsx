@@ -111,7 +111,7 @@ function computeTeamStats(starters, t) {
 }
 
 export default function Season({ manager, team, onUpdate, onManagerUpdate, onSeasonEnd, onWinterWindow }) {
-  const { t } = useI18n();
+  const { t, tPoste } = useI18n();
   const [status, setStatus] = useState(null);
   const [guideFerme, setGuideFerme] = useState(guideMasque);
   const [lastMatch, setLastMatch] = useState(null);
@@ -906,7 +906,7 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
           <ul className="mood-list">
             {mood.unhappy.slice(0, 5).map(p => (
               <li key={p.id} className={`mood-row ${p.level}`}>
-                <span className={`lp-pos ${posClass(p.position)}`}>{p.position}</span>
+                <span className={`lp-pos ${posClass(p.position)}`}>{tPoste(p.position)}</span>
                 <span className="mood-name">{p.name}</span>
                 <span className="mood-reasons">{p.reasons.join(', ')}</span>
                 <span className="mood-state">
@@ -1067,7 +1067,7 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
                       <span className="scouting-cadres-titre">{t('saison.scouting.dangers')}</span>
                       {status.nextOpponent.topPlayers.map((p, i) => (
                         <span key={i} className="scouting-joueur">
-                          <i className="sc-pos">{p.position}</i>
+                          <i className="sc-pos">{tPoste(p.position)}</i>
                           {p.first_name} {p.last_name}
                           <i className="sc-ovr">{p.overall}</i>
                           {p.goals > 0 && <i className="sc-buts">{t('saison.scouting.butsJoueur', { n: p.goals })}</i>}
@@ -1491,7 +1491,7 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
                         onKeyDown={(e) => { if (!indispo && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); handleSwapPlayers(p.id); } }}
                         onClick={() => { if (!indispo) handleSwapPlayers(p.id); }}
                       >
-                        <span className={`lp-pos ${posClass(p.position)}`}>{p.position}</span>
+                        <span className={`lp-pos ${posClass(p.position)}`}>{tPoste(p.position)}</span>
                         <span className="swap-name">{p.first_name} {p.last_name}</span>
                         {indispo ? (
                           <span className="swap-indispo">{unavailableLabel(p, t)}</span>
@@ -1570,7 +1570,7 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
                       setSelectedPitchPlayer(null);
                     }}
                   >
-                    <span className={`pitch-pos-badge ${posClass(p.position)}`}>{p.position}</span>
+                    <span className={`pitch-pos-badge ${posClass(p.position)}`}>{tPoste(p.position)}</span>
                     <span className="bench-ovr">{p.overall}</span>
                     <span className="bench-name">{p.last_name.length > 9 ? p.last_name.slice(0, 8) + '.' : p.last_name}</span>
                     <span className={`pitch-stamina-bar tone-${tone}`}>
@@ -1730,7 +1730,7 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
                 {playerStats.filter(p => p.goals > 0).slice(0, 12).map(p => (
                   <tr key={p.id}>
                     <td className="team-name-cell">{p.first_name} {p.last_name}</td>
-                    <td><span className={`lp-pos ${posClass(p.position)}`}>{p.position}</span></td>
+                    <td><span className={`lp-pos ${posClass(p.position)}`}>{tPoste(p.position)}</span></td>
                     <td>{p.appearances}</td>
                     <td className="pts">{p.goals}</td>
                     <td>{p.yellow_cards > 0 && `${p.yellow_cards}🟨 `}{p.red_cards > 0 && `${p.red_cards}🟥`}</td>
@@ -1916,7 +1916,7 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
             <div className="conversation-section" style={{marginBottom: '20px'}}>
               <div className="conv-card card">
                 <div className="conv-header">
-                  <span className="conv-player-badge">{conversation.player.position} {conversation.player.overall}</span>
+                  <span className="conv-player-badge">{tPoste(conversation.player.position)} {conversation.player.overall}</span>
                   <h3>{t('saison.gestion.veutParler', {
                     joueur: `${conversation.player.first_name} ${conversation.player.last_name}`,
                   })}</h3>
@@ -1975,7 +1975,7 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
               <p className="infirmerie-note">{t('saison.soins.note')}</p>
               {blesses.map((j) => (
                 <div key={j.id} className="infirmerie-ligne">
-                  <span className="inf-poste">{j.position}</span>
+                  <span className="inf-poste">{tPoste(j.position)}</span>
                   <span className="inf-nom">{j.first_name} {j.last_name}</span>
                   <span className="inf-ovr">{j.overall}</span>
                   <span className="inf-duree">
@@ -2230,7 +2230,7 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
               <h4>{t('saison.classement.titulaires')}</h4>
               {viewingPlayers.filter(p => p.is_starter).map(p => (
                 <div key={p.id} className="vt-player">
-                  <span className={`lp-pos ${posClass(p.position)}`}>{p.position}</span>
+                  <span className={`lp-pos ${posClass(p.position)}`}>{tPoste(p.position)}</span>
                   <span className="vt-name">{p.first_name} {p.last_name}</span>
                   <span className="vt-ovr">{p.overall}</span>
                 </div>
@@ -2240,7 +2240,7 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
               <h4>{t('saison.classement.remplacants')}</h4>
               {viewingPlayers.filter(p => !p.is_starter).map(p => (
                 <div key={p.id} className="vt-player sub">
-                  <span className={`lp-pos ${posClass(p.position)}`}>{p.position}</span>
+                  <span className={`lp-pos ${posClass(p.position)}`}>{tPoste(p.position)}</span>
                   <span className="vt-name">{p.first_name} {p.last_name}</span>
                   <span className="vt-ovr">{p.overall}</span>
                 </div>

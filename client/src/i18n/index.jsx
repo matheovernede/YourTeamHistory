@@ -67,7 +67,23 @@ export function I18nProvider({ children }) {
     [langue]
   );
 
-  const valeur = useMemo(() => ({ langue, setLangue, t }), [langue, setLangue, t]);
+  /**
+   * Abréviation de poste dans la langue courante.
+   *
+   * Fonction dédiée plutôt qu'un appel direct à `t` : un code inconnu doit
+   * s'afficher tel quel, et non sous la forme « postes.XX ». Un poste ajouté
+   * au jeu apparaîtra donc brut au lieu de casser l'affichage.
+   */
+  const tPoste = useCallback(
+    (code) => {
+      if (!code) return '';
+      const table = DICTIONNAIRES[langue] && DICTIONNAIRES[langue].postes;
+      return (table && table[code]) || code;
+    },
+    [langue]
+  );
+
+  const valeur = useMemo(() => ({ langue, setLangue, t, tPoste }), [langue, setLangue, t, tPoste]);
 
   return <I18nContext.Provider value={valeur}>{children}</I18nContext.Provider>;
 }

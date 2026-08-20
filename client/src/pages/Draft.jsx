@@ -219,15 +219,17 @@ export default function Draft({ manager, team, onFinish, isInitialDraft, isWinte
       <div className="draft-squad-summary">
         {['GAR', 'DEF', 'MIL', 'ATT'].map(line => {
           const manque = posCount[line] < RECOMMENDED[line];
+          // `line` reste la clé technique ; le libellé affiché est traduit.
+          const libelle = t(`lignes.${line}`);
           return (
             <span
               key={line}
               className={`pos-badge ${manque ? 'pos-badge-low' : 'pos-badge-ok'}`}
               title={manque
-                ? t('mercato.ligneManque', { n: posCount[line], ligne: line, conseille: RECOMMENDED[line] })
-                : t('mercato.ligneOk', { n: posCount[line], ligne: line })}
+                ? t('mercato.ligneManque', { n: posCount[line], ligne: libelle, conseille: RECOMMENDED[line] })
+                : t('mercato.ligneOk', { n: posCount[line], ligne: libelle })}
             >
-              {line}: {posCount[line]}
+              {libelle}: {posCount[line]}
               <i className="pos-badge-goal">/{RECOMMENDED[line]}</i>
             </span>
           );

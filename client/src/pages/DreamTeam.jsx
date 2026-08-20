@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { api } from '../api/client';
 import { useI18n } from '../i18n';
 import './DreamTeam.css';
@@ -18,7 +18,7 @@ const FORMATIONS = {
 // (GAR, DC, MC…) reste tel quel, c'est un identifiant partagé avec le serveur.
 
 export default function DreamTeam({ onBack, onStartCareer }) {
-  const { t } = useI18n();
+  const { t, tPoste } = useI18n();
   const [allPlayers, setAllPlayers] = useState([]);
   const [filterLeague, setFilterLeague] = useState('');
   const [filterPosition, setFilterPosition] = useState('');
@@ -287,7 +287,7 @@ export default function DreamTeam({ onBack, onStartCareer }) {
             </select>
             <select value={filterPosition} onChange={e => setFilterPosition(e.target.value)}>
               <option value="">{t('dreamteam.tousPostes')}</option>
-              {POSITIONS.map(p => <option key={p} value={p}>{p} - {t(`dreamteam.postes.${p}`)}</option>)}
+              {POSITIONS.map(p => <option key={p} value={p}>{tPoste(p)} - {t(`dreamteam.postes.${p}`)}</option>)}
             </select>
           </div>
 
@@ -301,7 +301,7 @@ export default function DreamTeam({ onBack, onStartCareer }) {
                 <div className="dt-player-ovr">{player.overall}</div>
                 <div className="dt-player-info">
                   <span className="dt-player-name">{player.first_name} {player.last_name}</span>
-                  <span className="dt-player-details">{player.position} | {player.club}</span>
+                  <span className="dt-player-details">{tPoste(player.position)} | {player.club}</span>
                 </div>
                 <div className="dt-player-stats">
                   <span>{t('dreamteam.stats.vit')} {player.pace}</span>
@@ -357,7 +357,7 @@ export default function DreamTeam({ onBack, onStartCareer }) {
                 <div key={player.id} className="dt-bench-player" onClick={() => removeFromTeam(player.id)}>
                   <span className="dt-bench-ovr">{player.overall}</span>
                   <span className="dt-bench-name">{player.last_name}</span>
-                  <span className="dt-bench-pos">{player.position}</span>
+                  <span className="dt-bench-pos">{tPoste(player.position)}</span>
                 </div>
               ))}
               {bench.length < 7 && (
