@@ -472,3 +472,31 @@
   outline: 2px solid #ffb3b1;
   outline-offset: 2px;
 }
+
+/* Niveau de difficulte : trois barres, remplies selon l'exigence.
+   Les pastilles de couleur qu'elles remplacent ne disaient rien a qui distingue
+   mal le vert du rouge, et la couleur seule ne suffit jamais a porter un sens. */
+.diff-level {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 16px;
+}
+
+.diff-level i {
+  width: 4px;
+  border-radius: 1px;
+  background: var(--border-strong, rgba(255, 255, 255, 0.18));
+  transition: background var(--transition-normal);
+}
+
+.diff-level i:nth-child(1) { height: 7px; }
+.diff-level i:nth-child(2) { height: 11px; }
+.diff-level i:nth-child(3) { height: 15px; }
+
+.diff-btn.easy   .diff-level i.on { background: var(--success); }
+.diff-btn.normal .diff-level i.on { background: var(--warning); }
+.diff-btn.hard   .diff-level i.on { background: var(--danger); }
+
+/* Non selectionne, le niveau reste lisible mais discret. */
+.diff-btn:not(.active) .diff-level i.on { opacity: 0.55; }

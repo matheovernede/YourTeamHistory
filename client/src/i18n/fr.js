@@ -25,12 +25,12 @@ export default {
     jouer: 'Jouer',
     connexion: 'Connexion...',
     ou: 'ou',
-    chargerSauvegarde: '📂 Charger une sauvegarde',
+    chargerSauvegarde: 'Charger une sauvegarde',
     sauvegardeInvalide: 'Fichier de sauvegarde invalide',
     dreamteam: 'DreamTeam',
-    classementManagers: '🏅 Classement des managers',
-    discord: '💬 Rejoindre le Discord',
-    kofi: '☕ Ce jeu vous plaît ? Soutenez son développement',
+    classementManagers: 'Classement des managers',
+    discord: 'Rejoindre le Discord',
+    kofi: 'Ce jeu vous plaît ? Soutenez son développement',
     bienvenue: 'Bienvenue {nom} ! Nommez votre équipe :',
     nomEquipeExemple: 'Ex: FC Tempête...',
     difficulte: 'Difficulté :',
@@ -56,8 +56,8 @@ export default {
 
   bilan: {
     titre: 'Bilan Saison {saison} — {division}',
-    promotion: '🎉 PROMOTION → {division}',
-    relegation: '📉 Relégation → {division}',
+    promotion: 'PROMOTION → {division}',
+    relegation: 'Relégation → {division}',
     points: '{n} pts',
     prime: 'Prime : +{montant}M€',
     draftInitial: 'Draft initial',
@@ -70,13 +70,16 @@ export default {
     budget: 'Budget',
     reputation: 'Réputation',
     saison: 'Saison',
-    managers: '🏅 Managers',
-    dreamteam: '⭐ DreamTeam',
-    discord: '💬 Discord',
-    soutenir: '☕ Soutenir',
+    managers: 'Managers',
+    dreamteam: 'DreamTeam',
+    discord: 'Discord',
+    soutenir: 'Soutenir',
     nouvelleCarriere: 'Nouvelle carrière',
     exporter: 'Exporter la sauvegarde',
     importer: 'Importer une sauvegarde',
+    // Libellés courts pour la barre du haut, où la place manque.
+    exporterCourt: 'Exporter',
+    importerCourt: 'Importer',
   },
 
   credits: {
@@ -166,24 +169,17 @@ export default {
 
   // ------------------------------------------------------------- navigation
 
-  navigation: {
-    effectif: 'Effectif',
-    match: 'Match',
-    transferts: 'Transferts',
-    classement: 'Classement',
-    nouvelleCarriere: '🔄 Nouvelle carrière',
-  },
 
   // ---------------------------------------------------------------- mercato
 
   mercato: {
     chargement: 'Chargement du mercato...',
-    autoComposer: '⚡ Composer mon équipe',
+    autoComposer: 'Composer mon équipe',
     autoResultat: '{n} joueurs recrutés pour {montant}. Vous pouvez ajuster, puis valider.',
     autoRien: 'Rien à recruter : votre effectif est déjà au complet.',
     titreHiver: "Mercato d'hiver",
     sousTitreHiver: "Marché restreint et prix majorés : on ne reconstruit pas une équipe en janvier",
-    reprendreSaison: '⚽ Reprendre la saison',
+    reprendreSaison: 'Reprendre la saison',
     titreInitial: 'Mercato Initial',
     titre: 'Mercato',
     sousTitreInitial: 'Recrutez au minimum 11 joueurs pour former votre équipe',
@@ -204,9 +200,9 @@ export default {
 
     ligneManque: '{n} {ligne} — il en est conseillé {conseille} pour tenir une saison',
     ligneOk: '{n} {ligne} — effectif suffisant',
-    rafraichir: '🔄 Rafraîchir le marché',
-    validerEffectif: '✅ Valider mon effectif',
-    terminerMercato: '✅ Terminer le mercato',
+    rafraichir: 'Rafraîchir le marché',
+    validerEffectif: 'Valider mon effectif',
+    terminerMercato: 'Terminer le mercato',
 
     ongletMarche: 'Marché',
     ongletEffectif: 'Mon effectif',
@@ -217,7 +213,7 @@ export default {
     filtreMilieux: 'Milieux',
     filtreAttaquants: 'Attaquants',
 
-    legende: '⭐ Légende',
+    legende: 'Légende',
     effectifPlein: 'Effectif plein ({max} joueurs)',
     recruter: 'Recruter',
     aucunJoueur: 'Aucun joueur disponible dans cette catégorie',
@@ -237,24 +233,6 @@ export default {
 
   // ------------------------------------------------------------------ match
 
-  match: {
-    titre: 'Jouer un Match',
-    saison: 'Saison {n}',
-    journee: 'J{n}',
-    victoires: '{n}V',
-    nuls: '{n}N',
-    defaites: '{n}D',
-    points: '{n} pts',
-    simulation: '⏳ Simulation...',
-    jouer: '⚽ Jouer le prochain match',
-    domicile: 'À domicile',
-    exterieur: "À l'extérieur",
-    victoire: 'Victoire ! +3 pts',
-    nul: 'Match nul +1 pt',
-    defaite: 'Défaite',
-    historique: '📋 Historique',
-    aucunMatch: 'Aucun match joué',
-  },
 
   // --------------------------------------------------------------- managers
 
@@ -420,6 +398,7 @@ export default {
       classement: 'Classement',
       compo: 'Compo',
       effectif: 'Effectif',
+      club: 'Club',
       gestion: 'Gestion',
       coupe: 'Coupe',
       palmares: 'Palmarès',
@@ -474,9 +453,9 @@ export default {
     },
 
     actions: {
-      jouerJournee: '⚽ Jouer la journée {n}',
-      sponsors: '🤝 Offres de sponsors',
-      finSaison: '🏁 Fin de saison !',
+      jouerJournee: 'Jouer la journée {n}',
+      sponsors: 'Offres de sponsors',
+      finSaison: 'Fin de saison !',
       finClassement: 'Vous terminez <strong>#{rang}</strong> du championnat avec <strong>{points} points</strong>.',
       bilanMercato: 'Bilan & Mercato →',
     },
@@ -490,12 +469,12 @@ export default {
 
     derby: {
       etiquette: ' — DERBY',
-      annonce: '🔥 Derby contre {adversaire} : deux fois plus de moral en jeu, et une prime majorée en cas de victoire.',
+      annonce: 'Derby contre {adversaire} : deux fois plus de moral en jeu, et une prime majorée en cas de victoire.',
     },
 
     /** Infirmerie : écourter une blessure contre paiement. */
     soins: {
-      titre: '🏥 Infirmerie',
+      titre: 'Infirmerie',
       note: "Un retour anticipé coûte d'autant plus cher que la blessure est longue. Le joueur revient disponible, mais pas au mieux de sa forme.",
       match: '{n} match',
       matchs: '{n} matchs',
@@ -521,6 +500,7 @@ export default {
 
     classement: {
       rival: 'Votre rival',
+      voirEffectif: "Voir l'effectif",
       colEquipe: 'Équipe',
       colPoints: 'Pts',
       colVictoires: 'V',
@@ -582,7 +562,7 @@ export default {
     },
 
     coupe: {
-      titre: '🏆 Coupe nationale',
+      titre: 'Coupe nationale',
       sousTitre: 'Élimination directe, ouverte à toutes les divisions — un tour à disputer entre deux journées de championnat.',
       gagnee: 'Vous avez remporté la coupe cette saison !',
       gagneeDetail: 'Un titre de plus au palmarès du club.',
@@ -647,7 +627,7 @@ export default {
     },
 
     sponsors: {
-      titre: '🤝 Offres de Sponsors',
+      titre: 'Offres de Sponsors',
       indice: 'Choisissez un sponsor pour la saison. Attention aux conséquences !',
       signer: 'Signer avec {nom}',
 
@@ -710,8 +690,6 @@ export default {
       cumule: 'Score cumule: {joueur} - {adversaire}',
       tabVictoire: 'Victoire aux tirs au but !',
       tabDefaite: 'Defaite aux tirs au but',
-      domicileCourt: 'Dom',
-      exterieurCourt: 'Ext',
 
       groupe: 'Groupe {nom}',
       colEquipe: 'Equipe',
@@ -730,37 +708,6 @@ export default {
 
   // -------------------------------------------- écrans hérités (hors flux)
 
-  effectifPage: {
-    formationChangee: 'Formation changée en {formation}',
-    maxTitulaires: 'Maximum 11 titulaires !',
-    compoMaj: 'Composition mise à jour !',
-    titre: 'Mon Effectif',
-    entrainer: '🏋️ Entraîner',
-    titulaires: 'Titulaires ({n}/11)',
-    remplacants: 'Remplaçants ({n})',
-    versRemplacant: 'Remplaçant',
-    versTitulaire: 'Titulaire',
-  },
 
-  transferts: {
-    recrute: '{joueur} recruté ! Nouveau budget: {budget}',
-    vendu: 'Joueur vendu pour {prix} ! Nouveau budget: {budget}',
-    titre: 'Transferts',
-    budget: 'Budget: {budget}',
-    ongletMarche: '🛒 Marché ({n})',
-    ongletVendre: '💸 Vendre ({n})',
-    acheter: 'Acheter ({prix})',
-    vendre: 'Vendre ({prix})',
-  },
 
-  classementMondial: {
-    titre: '🏆 Classement Mondial',
-    aucun: 'Aucun joueur classé pour le moment.',
-    invitation: 'Jouez des matchs pour apparaître ici !',
-    colManager: 'Manager',
-    colEquipe: 'Équipe',
-    colPoints: 'Pts',
-    colVictoires: 'V',
-    colButs: 'Buts',
-  },
 };

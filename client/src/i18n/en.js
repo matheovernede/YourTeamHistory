@@ -27,12 +27,12 @@ export default {
     jouer: 'Play',
     connexion: 'Signing in...',
     ou: 'or',
-    chargerSauvegarde: '📂 Load a saved game',
+    chargerSauvegarde: 'Load a saved game',
     sauvegardeInvalide: 'Invalid save file',
     dreamteam: 'DreamTeam',
-    classementManagers: '🏅 Manager rankings',
-    discord: '💬 Join the Discord',
-    kofi: '☕ Enjoying the game? Support its development',
+    classementManagers: 'Manager rankings',
+    discord: 'Join the Discord',
+    kofi: 'Enjoying the game? Support its development',
     bienvenue: 'Welcome {nom}! Name your club:',
     nomEquipeExemple: 'e.g. Storm FC...',
     difficulte: 'Difficulty:',
@@ -58,8 +58,8 @@ export default {
 
   bilan: {
     titre: 'Season {saison} review — {division}',
-    promotion: '🎉 PROMOTED → {division}',
-    relegation: '📉 Relegated → {division}',
+    promotion: 'PROMOTED → {division}',
+    relegation: 'Relegated → {division}',
     points: '{n} pts',
     prime: 'Prize money: +£{montant}M',
     draftInitial: 'Initial draft',
@@ -72,13 +72,16 @@ export default {
     budget: 'Budget',
     reputation: 'Reputation',
     saison: 'Season',
-    managers: '🏅 Managers',
-    dreamteam: '⭐ DreamTeam',
-    discord: '💬 Discord',
-    soutenir: '☕ Support',
+    managers: 'Managers',
+    dreamteam: 'DreamTeam',
+    discord: 'Discord',
+    soutenir: 'Support',
     nouvelleCarriere: 'New career',
     exporter: 'Export save file',
     importer: 'Import a save file',
+    // Short labels for the top bar, where space is tight.
+    exporterCourt: 'Export',
+    importerCourt: 'Import',
   },
 
   credits: {
@@ -168,24 +171,17 @@ export default {
 
   // ------------------------------------------------------------ navigation
 
-  navigation: {
-    effectif: 'Squad',
-    match: 'Match',
-    transferts: 'Transfers',
-    classement: 'Table',
-    nouvelleCarriere: '🔄 New career',
-  },
 
   // ------------------------------------------------------- transfer window
 
   mercato: {
     chargement: 'Loading the transfer window...',
-    autoComposer: '⚡ Build my squad',
+    autoComposer: 'Build my squad',
     autoResultat: '{n} players signed for {montant}. Adjust as you like, then confirm.',
     autoRien: 'Nothing to sign: your squad is already complete.',
     titreHiver: 'January Transfer Window',
     sousTitreHiver: 'A short list and inflated prices: nobody rebuilds a squad in January',
-    reprendreSaison: '⚽ Back to the season',
+    reprendreSaison: 'Back to the season',
     titreInitial: 'Initial Transfer Window',
     titre: 'Transfer Window',
     sousTitreInitial: 'Sign at least 11 players to put a squad together',
@@ -206,9 +202,9 @@ export default {
 
     ligneManque: '{n} {ligne} — {conseille} recommended to see out a season',
     ligneOk: '{n} {ligne} — enough cover',
-    rafraichir: '🔄 Refresh the market',
-    validerEffectif: '✅ Confirm my squad',
-    terminerMercato: '✅ Close the transfer window',
+    rafraichir: 'Refresh the market',
+    validerEffectif: 'Confirm my squad',
+    terminerMercato: 'Close the transfer window',
 
     ongletMarche: 'Market',
     ongletEffectif: 'My squad',
@@ -219,7 +215,7 @@ export default {
     filtreMilieux: 'Midfielders',
     filtreAttaquants: 'Forwards',
 
-    legende: '⭐ Legend',
+    legende: 'Legend',
     effectifPlein: 'Squad full ({max} players)',
     recruter: 'Sign',
     aucunJoueur: 'No players available in this category',
@@ -239,24 +235,6 @@ export default {
 
   // ----------------------------------------------------------------- match
 
-  match: {
-    titre: 'Play a Match',
-    saison: 'Season {n}',
-    journee: 'MD{n}',
-    victoires: '{n}W',
-    nuls: '{n}D',
-    defaites: '{n}L',
-    points: '{n} pts',
-    simulation: '⏳ Simulating...',
-    jouer: '⚽ Play the next match',
-    domicile: 'Home',
-    exterieur: 'Away',
-    victoire: 'Win! +3 pts',
-    nul: 'Draw +1 pt',
-    defaite: 'Defeat',
-    historique: '📋 History',
-    aucunMatch: 'No matches played',
-  },
 
   // -------------------------------------------------------------- managers
 
@@ -422,7 +400,10 @@ export default {
       classement: 'Table',
       compo: 'Line-up',
       effectif: 'Squad',
-      gestion: 'Club',
+      // « Club » nomme désormais le groupe d'onglets : la gestion reprend son
+      // propre nom, sans quoi deux entrées du menu s'appelleraient pareil.
+      club: 'Club',
+      gestion: 'Management',
       coupe: 'Cup',
       palmares: 'Honours',
       championsLeague: 'Champions League',
@@ -476,9 +457,9 @@ export default {
     },
 
     actions: {
-      jouerJournee: '⚽ Play matchday {n}',
-      sponsors: '🤝 Sponsor offers',
-      finSaison: '🏁 Season over!',
+      jouerJournee: 'Play matchday {n}',
+      sponsors: 'Sponsor offers',
+      finSaison: 'Season over!',
       finClassement: 'You finish <strong>#{rang}</strong> in the league on <strong>{points} points</strong>.',
       bilanMercato: 'Review & transfer window →',
     },
@@ -492,12 +473,12 @@ export default {
 
     derby: {
       etiquette: ' — DERBY',
-      annonce: '🔥 Derby against {adversaire}: twice the morale at stake, and a bigger bonus if you win.',
+      annonce: 'Derby against {adversaire}: twice the morale at stake, and a bigger bonus if you win.',
     },
 
     /** Treatment room: cut an injury short for a fee. */
     soins: {
-      titre: '🏥 Treatment room',
+      titre: 'Treatment room',
       note: 'The longer the injury, the dearer the early return. The player comes back available, but short of full fitness.',
       match: '{n} match',
       matchs: '{n} matches',
@@ -523,6 +504,7 @@ export default {
 
     classement: {
       rival: 'Your rivals',
+      voirEffectif: 'View squad',
       colEquipe: 'Team',
       colPoints: 'Pts',
       colVictoires: 'W',
@@ -584,7 +566,7 @@ export default {
     },
 
     coupe: {
-      titre: '🏆 National cup',
+      titre: 'National cup',
       sousTitre: 'Straight knockout, open to every division — one round to play between two league matchdays.',
       gagnee: 'You have won the cup this season!',
       gagneeDetail: 'One more trophy in the club cabinet.',
@@ -649,7 +631,7 @@ export default {
     },
 
     sponsors: {
-      titre: '🤝 Sponsor offers',
+      titre: 'Sponsor offers',
       indice: 'Pick a sponsor for the season. Mind the consequences!',
       signer: 'Sign with {nom}',
 
@@ -712,8 +694,6 @@ export default {
       cumule: 'Aggregate: {joueur} - {adversaire}',
       tabVictoire: 'Won on penalties!',
       tabDefaite: 'Lost on penalties',
-      domicileCourt: 'H',
-      exterieurCourt: 'A',
 
       groupe: 'Group {nom}',
       colEquipe: 'Team',
@@ -732,37 +712,6 @@ export default {
 
   // ----------------------------------------------- legacy screens (unused)
 
-  effectifPage: {
-    formationChangee: 'Formation changed to {formation}',
-    maxTitulaires: 'Maximum 11 starters!',
-    compoMaj: 'Line-up updated!',
-    titre: 'My Squad',
-    entrainer: '🏋️ Train',
-    titulaires: 'Starting XI ({n}/11)',
-    remplacants: 'Substitutes ({n})',
-    versRemplacant: 'Substitute',
-    versTitulaire: 'Starter',
-  },
 
-  transferts: {
-    recrute: '{joueur} signed! New budget: {budget}',
-    vendu: 'Player sold for {prix}! New budget: {budget}',
-    titre: 'Transfers',
-    budget: 'Budget: {budget}',
-    ongletMarche: '🛒 Market ({n})',
-    ongletVendre: '💸 Sell ({n})',
-    acheter: 'Buy ({prix})',
-    vendre: 'Sell ({prix})',
-  },
 
-  classementMondial: {
-    titre: '🏆 Global table',
-    aucun: 'No managers ranked yet.',
-    invitation: 'Play matches to appear here!',
-    colManager: 'Manager',
-    colEquipe: 'Team',
-    colPoints: 'Pts',
-    colVictoires: 'W',
-    colButs: 'Goals',
-  },
 };

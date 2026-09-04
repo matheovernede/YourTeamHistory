@@ -275,8 +275,14 @@ function App() {
             </div>
           </div>
           <div className="top-actions">
-            <button className="icon-btn" title={t('barre.exporter')} onClick={handleExportSave}>💾</button>
-            <button className="icon-btn" title={t('barre.importer')} onClick={handleImportSave}>📂</button>
+            {/* Deux pictogrammes sans texte n'indiquaient pas qu'il s'agissait
+                de la sauvegarde. Le mot le dit, l'infobulle précise. */}
+            <button className="btn-sauvegarde" title={t('barre.exporter')} onClick={handleExportSave}>
+              {t('barre.exporterCourt')}
+            </button>
+            <button className="btn-sauvegarde" title={t('barre.importer')} onClick={handleImportSave}>
+              {t('barre.importerCourt')}
+            </button>
             <button className="btn-players-top" onClick={() => setShowPlayers(true)}>{t('barre.managers')}</button>
             <button className="btn-dreamteam-top" onClick={() => setShowDreamTeam(true)}>{t('barre.dreamteam')}</button>
             <a

@@ -67,10 +67,11 @@ export default function Login({ onLogin, onLoadSave, onDreamTeam, onPlayers }) {
           <img className="login-badge" src="/logo-512.png" alt="" width="72" height="72" />
           <h1 className="login-title">YourTeamHistory</h1>
           <p className="login-tagline">{t('accueil.slogan')}</p>
+          {/* Un simple repère typographique remplace les pictogrammes : ils
+              décoraient sans rien dire de plus que le texte à côté. */}
           <ul className="login-features">
-            {['divisions', 'mercato', 'evenements', 'dreamteam'].map((cle, i) => (
+            {['divisions', 'mercato', 'evenements', 'dreamteam'].map((cle) => (
               <li key={cle}>
-                <span className="lf-icon">{['🏆', '🔁', '🤝', '⭐'][i]}</span>
                 {/* Les atouts contiennent une mise en gras : le texte traduit
                     décide où elle tombe, la place du terme changeant d'une
                     langue à l'autre. */}
@@ -165,17 +166,25 @@ export default function Login({ onLogin, onLoadSave, onDreamTeam, onPlayers }) {
                 {/* La valeur ('easy'/'normal'/'hard') est un identifiant envoyé
                     au serveur : seul le libellé est traduit. */}
                 {[
-                  { valeur: 'easy', icone: '🟢', nom: 'facile' },
-                  { valeur: 'normal', icone: '🟡', nom: 'normal' },
-                  { valeur: 'hard', icone: '🔴', nom: 'difficile' },
+                  { valeur: 'easy', niveau: 1, nom: 'facile' },
+                  { valeur: 'normal', niveau: 2, nom: 'normal' },
+                  { valeur: 'hard', niveau: 3, nom: 'difficile' },
                 ].map((d) => (
                   <button
                     key={d.valeur}
                     type="button"
-                    className={`diff-btn ${difficulty === d.valeur ? `active ${d.valeur}` : ''}`}
+                    className={`diff-btn ${d.valeur} ${difficulty === d.valeur ? 'active' : ''}`}
                     onClick={() => setDifficulty(d.valeur)}
+                    aria-pressed={difficulty === d.valeur}
                   >
-                    <span className="diff-icon">{d.icone}</span>
+                    {/* Trois barres remplies indiquent le niveau. Les pastilles
+                        de couleur qu'elles remplacent ne disaient rien à qui
+                        distingue mal le vert du rouge. */}
+                    <span className="diff-level" aria-hidden="true">
+                      {[1, 2, 3].map((n) => (
+                        <i key={n} className={n <= d.niveau ? 'on' : ''} />
+                      ))}
+                    </span>
                     <span className="diff-name">{t(`accueil.${d.nom}`)}</span>
                     <span className="diff-desc">{t(`accueil.${d.nom}Desc`)}</span>
                   </button>

@@ -453,3 +453,25 @@
     padding: var(--sp-5);
   }
 }
+
+/* Sauvegarde : deux boutons discrets mais nommes, la ou deux pictogrammes
+   n'indiquaient pas de quoi il s'agissait. */
+.btn-sauvegarde {
+  padding: 7px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+.btn-sauvegarde:hover {
+  background: var(--surface-2);
+  color: var(--text);
+  border-color: var(--border-strong, var(--border));
+}

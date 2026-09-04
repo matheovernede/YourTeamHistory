@@ -27,6 +27,9 @@ const STAMINA_TIRED = 50;
  * CSS `result-tag`. On la conserve telle quelle et on ne traduit QUE le libellé
  * affiché, via cette table.
  */
+/** Vues regroupées sous l'entrée « Club » de la navigation. */
+const VUES_CLUB = ['management', 'cup', 'history', 'cl'];
+
 const RESULT_KEYS = {
   'Victoire': 'victoire',
   'Match nul': 'matchNul',
@@ -141,6 +144,8 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
   const matchTimerRef = useRef(null);
   const panneauEquipeRef = useRef(null);
   const filDirectRef = useRef(null);
+  const menuClubRef = useRef(null);
+  const [menuClub, setMenuClub] = useState(false);
   const [clState, setCLState] = useState(null);
   const [cupState, setCupState] = useState(null);
   const [cupResult, setCupResult] = useState(null);
@@ -311,6 +316,22 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
     loadMood();
     if (team.division >= 7) loadCLStatus();
   }, [team.id]);
+
+  // Fermeture du menu Club au clic extérieur et à Échap : sans cela il resterait
+  // ouvert par-dessus le contenu.
+  useEffect(() => {
+    if (!menuClub) return;
+    const auClic = (e) => {
+      if (menuClubRef.current && !menuClubRef.current.contains(e.target)) setMenuClub(false);
+    };
+    const auClavier = (e) => { if (e.key === 'Escape') setMenuClub(false); };
+    document.addEventListener('mousedown', auClic);
+    document.addEventListener('keydown', auClavier);
+    return () => {
+      document.removeEventListener('mousedown', auClic);
+      document.removeEventListener('keydown', auClavier);
+    };
+  }, [menuClub]);
 
   /**
    * Suit les faits de match au fil du direct.
@@ -621,6 +642,13 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
               // sinon la journée qui ouvre la fenêtre passerait inaperçue.
               setMessage(t('saison.messages.mercatoHiverOuvert'));
               setTimeout(() => onWinterWindow(null, result.team), 2200);
+            } else if (result.match.isDerby && result.match.goalsFor !== result.match.goalsAgainst) {
+              // Un derby ne se solde pas comme un match ordinaire : le vestiaire
+              // encaisse double, autant le dire.
+              setMessage(t(result.match.goalsFor > result.match.goalsAgainst
+                ? 'saison.messages.derbyGagne'
+                : 'saison.messages.derbyPerdu'));
+              setTimeout(() => setMessage(''), 6000);
             }
           }, 800 / matchSpeedRef.current);
         } else {
@@ -840,6 +868,9 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
 
   return (
     <div className="season-page">
+      {/* L'en-tête ne contient plus que le titre. La navigation et le guide en
+          sont sortis : l'en-tête est en `overflow: hidden` pour arrondir son
+          décor, ce qui découpait le menu déroulant aux bords de la carte. */}
       <div className="season-header">
         <div className="season-info">
           <h1>{t('saison.entete.titre', { division: status.division, saison: status.season })}</h1>
@@ -848,6 +879,9 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
             <span className="rank-badge">#{status.rank}</span>
           </div>
         </div>
+      </div>
+
+      <div className="season-barre">
         {!guideFerme && (
           <GuideDebutant
             players={players}
@@ -859,9 +893,12 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
             }}
           />
         )}
+        {/* Quatre onglets principaux, le reste sous « Club ».
+            Huit entrées de même poids ne hiérarchisaient rien : le palmarès
+            s'affichait aussi grand que la composition, qu'il faut ouvrir avant
+            chaque match. */}
         <div className="season-nav">
           <button className={view === 'season' ? 'active' : ''} onClick={() => setView('season')}>{t('saison.nav.saison')}</button>
-          <button className={view === 'standings' ? 'active' : ''} onClick={() => setView('standings')}>{t('saison.nav.classement')}</button>
           <button className={view === 'lineup' ? 'active' : ''} onClick={() => setView('lineup')}>{t('saison.nav.compo')}</button>
           <button
             className={`${view === 'squad' ? 'active' : ''} nav-btn-effectif`}
@@ -871,23 +908,40 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
             {t('saison.nav.effectif')}
             {squadAlert && <span className={`nav-count-badge ${squadAlert.level}`}>{players.length}</span>}
           </button>
-          <button className={`${view === 'management' ? 'active' : ''} nav-btn-gestion`} onClick={handleOpenManagement}>
-            {t('saison.nav.gestion')}
-            {hasConvNotification && <span className="nav-notif-badge" />}
-          </button>
-          <button
-            className={`${view === 'cup' ? 'active' : ''} nav-btn-effectif`}
-            onClick={() => { setView('cup'); loadCupStatus(); }}
-          >
-            {t('saison.nav.coupe')}
-            {cupState && cupState.available && <span className="nav-notif-badge" />}
-          </button>
-          <button className={view === 'history' ? 'active' : ''} onClick={() => { setView('history'); loadHistory(); loadPlayerStats(); }}>
-            {t('saison.nav.palmares')}
-          </button>
-          {team.division >= 7 && (
-            <button className={`cl-tab ${view === 'cl' ? 'active' : ''}`} onClick={() => { setView('cl'); loadCLStatus(); }}>{t('saison.nav.championsLeague')}</button>
-          )}
+          <button className={view === 'standings' ? 'active' : ''} onClick={() => setView('standings')}>{t('saison.nav.classement')}</button>
+
+          <div className={`nav-club ${menuClub ? 'ouvert' : ''}`} ref={menuClubRef}>
+            <button
+              className={`nav-club-btn ${VUES_CLUB.includes(view) ? 'active' : ''}`}
+              onClick={() => setMenuClub((o) => !o)}
+              aria-expanded={menuClub}
+            >
+              {t('saison.nav.club')}
+              {(hasConvNotification || (cupState && cupState.available)) && <span className="nav-notif-badge" />}
+              <i className="nav-club-fleche" aria-hidden="true">▾</i>
+            </button>
+
+            {menuClub && (
+              <div className="nav-club-menu">
+                <button onClick={() => { handleOpenManagement(); setMenuClub(false); }}>
+                  {t('saison.nav.gestion')}
+                  {hasConvNotification && <span className="nav-notif-badge" />}
+                </button>
+                <button onClick={() => { setView('cup'); loadCupStatus(); setMenuClub(false); }}>
+                  {t('saison.nav.coupe')}
+                  {cupState && cupState.available && <span className="nav-notif-badge" />}
+                </button>
+                <button onClick={() => { setView('history'); loadHistory(); loadPlayerStats(); setMenuClub(false); }}>
+                  {t('saison.nav.palmares')}
+                </button>
+                {team.division >= 7 && (
+                  <button onClick={() => { setView('cl'); loadCLStatus(); setMenuClub(false); }}>
+                    {t('saison.nav.championsLeague')}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -1008,9 +1062,9 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
 
           {!seasonOver && (
             <div className="season-actions">
-              {/* Fiche d'avant-match. Le calendrier connaît l'adversaire à
-                  l'avance : autant permettre de le jauger plutôt que de
-                  découvrir son nom au coup d'envoi. */}
+              {/* Carte du prochain match. Le bouton pour jouer est DEDANS :
+                  placé après la fiche d'adversaire, il se perdait au milieu de
+                  la page alors que c'est la seule action attendue ici. */}
               {status.nextOpponent && (
                 <div className={`scouting ${status.nextOpponent.isDerby ? 'is-derby' : ''}`}>
                   <div className="scouting-tete">
@@ -1033,6 +1087,15 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
                       </span>
                     )}
                   </div>
+
+                  {/* L'enjeu du derby avait disparu en construisant cette fiche :
+                      il ne restait que l'étiquette, qui ne dit pas ce qu'on
+                      risque ni ce qu'on gagne. */}
+                  {status.nextOpponent.isDerby && (
+                    <p className="scouting-derby">
+                      {t('saison.derby.annonce', { adversaire: status.nextOpponent.name })}
+                    </p>
+                  )}
 
                   <div className="scouting-chiffres">
                     <div>
@@ -1076,19 +1139,30 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
                     </div>
                   )}
 
-                  <button
-                    className="scouting-voir"
-                    onClick={() => handleViewTeam({ id: status.nextOpponent.id, name: status.nextOpponent.name })}
-                  >
-                    {t('saison.scouting.voirEffectif')}
-                  </button>
+                  <div className="scouting-pied">
+                    <button
+                      className="scouting-voir"
+                      onClick={() => handleViewTeam({ id: status.nextOpponent.id, name: status.nextOpponent.name })}
+                    >
+                      {t('saison.scouting.voirEffectif')}
+                    </button>
+                    <button className="btn-jouer" onClick={handlePlayMatch} disabled={loading}>
+                      {t('saison.actions.jouerJournee', { n: status.played + 1 })}
+                    </button>
+                  </div>
                 </div>
               )}
-              <button className="btn-primary action-btn" onClick={handlePlayMatch} disabled={loading}>
-                {t('saison.actions.jouerJournee', { n: status.played + 1 })}
-              </button>
+
+              {/* Sans adversaire connu — division incomplète — le bouton doit
+                  rester accessible. */}
+              {!status.nextOpponent && (
+                <button className="btn-jouer btn-jouer-seul" onClick={handlePlayMatch} disabled={loading}>
+                  {t('saison.actions.jouerJournee', { n: status.played + 1 })}
+                </button>
+              )}
+
               {!sponsorChosen && status.played >= 5 && (
-                <button className="btn-secondary action-btn" onClick={handleGetSponsors}>
+                <button className="btn-secondaire-discret" onClick={handleGetSponsors}>
                   {t('saison.actions.sponsors')}
                 </button>
               )}
@@ -1189,7 +1263,11 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
                     {status.rival && equipe.id === status.rival.id && (
                       <span className="rival-badge" title={t('saison.classement.rival')}>🔥</span>
                     )}
-                    {equipe.id !== team.id && <span className="view-squad-hint">👁</span>}
+                    {/* Un œil n'annonçait pas ce que faisait le clic. Le mot le
+                        dit, et n'apparaît qu'au survol de la ligne. */}
+                    {equipe.id !== team.id && (
+                      <span className="view-squad-hint">{t('saison.classement.voirEffectif')}</span>
+                    )}
                   </td>
                   <td className="pts">{equipe.points}</td>
                   <td>{equipe.wins}</td>

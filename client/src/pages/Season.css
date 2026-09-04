@@ -3108,3 +3108,170 @@
   max-height: 260px;
   scroll-padding-bottom: 8px;
 }
+
+/* L'indice de clic devient un mot : un oeil n'annoncait pas ce qui allait
+   s'ouvrir. Il n'apparait qu'au survol pour ne pas alourdir le tableau. */
+.view-squad-hint {
+  margin-left: 8px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  color: var(--text-muted);
+  opacity: 0;
+  transition: opacity var(--transition-normal);
+}
+
+.clickable-row:hover .view-squad-hint { opacity: 1; }
+
+/* Enjeu du derby, dans la fiche d'avant-match. */
+.scouting-derby {
+  margin: 0 0 12px;
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  background: rgba(232, 88, 63, 0.12);
+  color: #ffb4a3;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* ---- Navigation resserree ---- */
+
+/* Groupe « Club » : les onglets qu'on ouvre rarement ne doivent pas peser
+   autant que la composition, consultee avant chaque match. */
+.nav-club { position: relative; }
+
+.nav-club-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nav-club-fleche {
+  font-size: 9px;
+  font-style: normal;
+  opacity: 0.6;
+  transition: transform var(--transition-normal);
+}
+
+.nav-club.ouvert .nav-club-fleche { transform: rotate(180deg); }
+
+.nav-club-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 60;
+  min-width: 190px;
+  padding: 5px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: rgba(10, 22, 17, 0.97);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+}
+
+.nav-club-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 11px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text);
+  font-size: 12.5px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.nav-club-menu button:hover { background: var(--surface-3, rgba(255, 255, 255, 0.07)); }
+
+/* ---- Carte du prochain match ---- */
+
+/* Le bouton pour jouer vit dans la carte : c'est la seule action attendue sur
+   cet ecran, elle ne doit pas se chercher. */
+.scouting-pied {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.btn-jouer {
+  flex: 1;
+  padding: 13px 20px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--grad-primary);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  cursor: pointer;
+  box-shadow: 0 4px 16px var(--primary-glow), var(--shadow-inset);
+  transition: all var(--transition-normal);
+}
+
+.btn-jouer:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 7px 22px var(--primary-glow), var(--shadow-inset);
+}
+
+.btn-jouer:disabled { opacity: 0.55; cursor: default; }
+
+.btn-jouer-seul { width: 100%; flex: none; }
+
+/* L'acces a l'effectif adverse reste secondaire face au coup d'envoi. */
+.scouting-voir { flex-shrink: 0; }
+
+/* Les sponsors sont une opportunite ponctuelle, pas une action de la journee. */
+.btn-secondaire-discret {
+  margin-top: 12px;
+  padding: 9px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+.btn-secondaire-discret:hover {
+  background: var(--surface-2);
+  color: var(--text);
+  border-color: var(--accent, #2eb257);
+}
+
+@media (max-width: 620px) {
+  .scouting-pied { flex-direction: column-reverse; align-items: stretch; }
+  .btn-jouer { width: 100%; }
+}
+
+/* Guide et navigation, sortis de l'en-tete.
+   Celui-ci est en overflow:hidden pour arrondir son decor, ce qui decoupait le
+   menu deroulant. Les placer a cote regle le probleme a la source, plutot que
+   de bricoler des z-index. */
+.season-barre {
+  position: relative;
+  z-index: 40;
+  margin-bottom: var(--sp-5);
+}
+
+.season-barre .guide-debutant { margin-bottom: var(--sp-3); }
+
+/* La navigation occupe toute la largeur, ce qui laisse respirer les onglets. */
+.season-barre .season-nav {
+  width: 100%;
+  justify-content: flex-start;
+}
+
+@media (max-width: 620px) {
+  .season-barre .season-nav button { padding: 9px 12px; font-size: 12px; }
+}
