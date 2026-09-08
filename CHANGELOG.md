@@ -23,6 +23,18 @@ Une phrase d'introduction, facultative.
 
 ---
 
+## 1.4.0 — Votre mercato, votre style de jeu
+
+- Négociez les recrutements : faites jusqu’à trois propositions, recevez une
+  contre-offre et signez au prix convenu. Les négociations restent en place
+  lorsque vous rechargez la page.
+- Renforcez votre effectif avec jusqu’à **trois joueurs en prêt**. Une indemnité
+  unique remplace le prix d’achat ; les prêts prennent fin à la fin de la saison.
+- Choisissez vos **consignes tactiques** : équilibré, pressing, possession,
+  contre-attaque ou bloc bas. Elles influencent les occasions et la fatigue
+  dans le championnat comme dans les coupes.
+- Les sauvegardes conservent les consignes et les joueurs prêtés.
+
 ## 1.3.1 — Lisible dans les deux langues
 
 - Les postes s'affichent enfin en anglais : **GK, CB, CAM, ST** au lieu des

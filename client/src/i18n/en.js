@@ -5,6 +5,42 @@
  * the original wording rather than a raw identifier.
  */
 export default {
+  interface: {
+    classic: 'Classic interface', new: 'New interface', switchHint: 'Change the look without changing your saved game',
+    workspace: 'YOUR WORKSPACE', navigation: 'Main navigation', clubTools: 'THE CLUB',
+    career: 'My career', market: 'Transfers', community: 'The managers', welcome: 'Welcome',
+    communityLink: 'Join the community', visitor: 'Visitor', edition: 'FOOTBALL IS YOURS.',
+    welcomeKicker: 'THE MANAGEMENT GAME THAT TELLS YOUR STORY', heroLine1: 'YOUR CLUB.', heroLine2: 'YOUR CALL.',
+    heroCopy: 'Your first eleven. A derby to win. A promotion to chase. Take charge and build your club, one match at a time.',
+    artCaption: 'MAKE YOUR MOVE.', divisions: 'divisions to climb', matchdays: 'matchdays per season', yourStory: 'story to write',
+  },
+  tactics: {
+    title: 'Tactical instructions', hint: 'Choose your approach before the match. It is saved immediately for every competition.',
+    fatigue: 'League: −{n} fitness points',
+    note: 'Pressing loses its bonuses when the starting eleven is tired. National cup fatigue is proportionally reduced. No approach guarantees a win.',
+    current: 'Approach: {name}', change: 'Change instructions',
+    balanced: { name: 'Balanced', description: 'A balance between the lines with moderate physical effort.' },
+    pressing: { name: 'Pressing', description: 'More presence in midfield and attack, but an exposed defence and high fatigue.' },
+    possession: { name: 'Possession', description: 'Stronger midfield control, at the cost of less direct attacking and extra effort.' },
+    counter: { name: 'Counter-attack', description: 'Stronger attack and a small defensive boost, while conceding ground in midfield.' },
+    low_block: { name: 'Low block', description: 'Defend more solidly and save energy, but create fewer chances.' },
+  },
+  deals: {
+    negotiate: 'Negotiate', close: 'Close terms', loanTitle: 'Loan until the end of the season',
+    loanTerms: 'One-off fee: {fee}. The loan ends at the end of season {season}.',
+    loanRules: 'Up to three loan players in the squad. No purchase option or resale. The fee is non-refundable.',
+    confirmLoan: 'Confirm loan · {price}', loanButton: 'Loan · {price}',
+    asking: 'Asking price: {price}', accepted: 'Offer accepted at {price}. You can sign now.',
+    counter: 'The club proposes {price}. Accept or increase your offer.',
+    yourOffer: 'Your offer in euros', attempts: '{n} offer(s) remaining', sendOffer: 'Send offer',
+    finalOffer: 'The club has made its final offer. Accept or choose another player.',
+    noCharge: 'No money is deducted until you sign.', sign: 'Sign · {price}',
+    loanBadge: 'On loan · until season {season}', cannotSell: 'A loan player cannot be sold.',
+    loanArrived: '{player} joins on loan until the end of season {season}.',
+    overview: 'Negotiate the price or strengthen your squad with a loan. {n}/3 active loans.',
+    stableMarket: 'Players and negotiations remain available throughout this window. New offers arrive in the next window.',
+    loanReturns: 'Loans ended: {players}. Remember to replace them during the transfer window.',
+  },
   langue: {
     nom: 'English',
     changer: 'Change language',
@@ -16,7 +52,6 @@ export default {
       divisions: '<b>7 divisions</b> to climb, from amateur leagues to the top flight',
       mercato: '<b>Transfer window</b> between seasons, 26 matchdays each',
       evenements: '<b>Sponsors & events</b> with consequences you cannot see coming',
-      dreamteam: '<b>DreamTeam</b>: 200 real players in sandbox mode',
     },
     titreConnexion: 'Take charge',
     sousTitreConnexion: 'Sign in or load a saved game.',
@@ -29,7 +64,6 @@ export default {
     ou: 'or',
     chargerSauvegarde: 'Load a saved game',
     sauvegardeInvalide: 'Invalid save file',
-    dreamteam: 'DreamTeam',
     classementManagers: 'Manager rankings',
     discord: 'Join the Discord',
     kofi: 'Enjoying the game? Support its development',
@@ -47,9 +81,6 @@ export default {
   },
 
   dialogues: {
-    pseudoCarriere: 'Enter your username for the career:',
-    nomEquipe: 'Name your club:',
-    erreurCarriere: 'Could not start the career',
     erreur: 'Error: ',
     confirmerNouvelleCarriere: 'Start a new career? Your progress will be lost.',
     erreurChargement: 'Could not load the save file',
@@ -73,7 +104,6 @@ export default {
     reputation: 'Reputation',
     saison: 'Season',
     managers: 'Managers',
-    dreamteam: 'DreamTeam',
     discord: 'Discord',
     soutenir: 'Support',
     nouvelleCarriere: 'New career',
@@ -281,73 +311,6 @@ export default {
 
     cadres: 'Key squad members',
     butsEnMatchs: '{buts} goals in {matchs} appearances',
-  },
-
-  // -------------------------------------------------------------- dreamteam
-
-  dreamteam: {
-    postes: {
-      GAR: 'Goalkeeper',
-      DC: 'Centre-back',
-      ARG: 'Left-back',
-      ARD: 'Right-back',
-      MC: 'Midfielder',
-      MOC: 'Attacking mid.',
-      MDF: 'Defensive mid.',
-      AIG: 'Left winger',
-      AID: 'Right winger',
-      BU: 'Striker',
-    },
-
-    confirmerReset: 'Reset your DreamTeam?',
-    retour: 'Back',
-
-    rechercher: 'Search for a player...',
-    toutesLigues: 'All leagues',
-    tousPostes: 'All positions',
-    aucunJoueur: 'No players found.',
-
-    stats: {
-      vit: 'PAC',
-      tir: 'SHO',
-      pas: 'PAS',
-      dri: 'DRI',
-      def: 'DEF',
-      phy: 'PHY',
-    },
-
-    formation: 'Formation:',
-    titulaires: 'Starting XI',
-    remplacants: 'Substitutes ({n}/7)',
-    ajouter: '+ Add',
-    statsMoyennes: 'Average stats',
-
-    jouer: 'Play',
-    carriere: 'R2 career',
-    amical: 'Friendly',
-    championsLeague: 'Champions League',
-
-    choisirDifficulte: 'Choose how strong the opposition should be:',
-    diffFaible: 'Weak (55)',
-    diffMoyen: 'Average (68)',
-    diffFort: 'Strong (78)',
-    diffLegende: 'Legendary (88)',
-    simulation: 'Simulating...',
-
-    victoire: 'Win!',
-    defaite: 'Defeat...',
-    nul: 'Draw',
-
-    clPresentation: 'An eight-team tournament: quarter-finals, semi-finals, final.',
-    clTirage: 'Make the draw',
-    clQuarts: 'Quarter-finals',
-    clDemis: 'Semi-finals',
-    clFinale: 'Final',
-    clJouerQuarts: 'Play the quarter-finals',
-    clJouerDemis: 'Play the semi-finals',
-    clJouerFinale: 'Play the final',
-    clVictoireJoueur: 'Congratulations! Your DreamTeam win the Champions League!',
-    clVictoireAutre: '{equipe} win the Champions League.',
   },
 
   // ---------------------------------------------------------------- season

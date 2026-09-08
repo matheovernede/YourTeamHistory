@@ -16,6 +16,17 @@
  */
 
 module.exports = {
+  recruitment: {
+    invalidTactic: 'Consigne tactique inconnue.', notYourTeam: 'Cette équipe ou ce joueur ne vous appartient pas.',
+    closed: 'Le mercato est fermé. Attendez la prochaine fenêtre de recrutement.',
+    expired: 'Cette offre n’est plus disponible. Actualisez le marché.', alreadyOwned: 'Ce joueur appartient déjà à votre effectif.',
+    invalidAmount: 'Proposez un montant entier positif, inférieur ou égal au prix demandé.',
+    budget: 'Votre budget ne permet pas cette opération.', finished: 'Cette négociation est terminée. Vous pouvez signer au prix proposé.',
+    increaseOffer: 'Votre nouvelle offre doit dépasser la précédente.', invalidMode: 'Type de recrutement inconnu.',
+    noLoan: 'Ce joueur n’est pas disponible en prêt.', full: 'Votre effectif a atteint la limite de 35 joueurs.',
+    loanLimit: 'Vous avez déjà trois joueurs en prêt dans votre effectif.', cannotSellLoan: 'Un joueur prêté ne peut pas être vendu.',
+    seasonUnfinished: 'Terminez les 26 journées avant de clôturer la saison.',
+  },
   erreur: {
     // ---- Entités introuvables ----
     equipeIntrouvable: 'Équipe non trouvée',
@@ -62,10 +73,6 @@ module.exports = {
     actionInconnue: 'Action inconnue',
     entrainementCooldown: 'Entrainement intensif en cooldown (attendre 3 journées)',
 
-    // ---- Dream team ----
-    joueursMinimumRequis: 'Au moins 11 joueurs requis',
-    joueursMinimumRequisEquipe: 'Au moins 11 joueurs requis pour votre equipe',
-    equipeAdverseInvalide: 'Equipe adverse invalide',
 
     /**
      * Paramètres d'API manquants. Les noms de champs (managerId, teamId…) sont
@@ -84,7 +91,6 @@ module.exports = {
       playerManager: 'playerId et managerId requis',
       managerTeamPlayer: 'managerId, teamId et player requis',
       managerTeam: 'managerId et teamId requis',
-      dreamteamCarriere: 'username, teamName et au moins 11 joueurs requis',
     },
 
     coupe: {

@@ -62,6 +62,7 @@ export const api = {
   createTeam: (managerId, teamName, difficulty) => request('/team/create', { method: 'POST', body: JSON.stringify({ managerId, teamName, difficulty }) }),
   getPlayers: (teamId) => request(`/team/${teamId}/players`),
   setFormation: (teamId, formation) => request(`/team/${teamId}/formation`, { method: 'PUT', body: JSON.stringify({ formation }) }),
+  setTactic: (teamId, managerId, tactic) => request(`/team/${teamId}/tactic`, { method: 'PUT', body: JSON.stringify({ managerId, tactic }) }),
   // `slots` : tableau de 11 identifiants indexé par emplacement de la formation.
   setLineup: (teamId, starterIds, slots) => request(`/team/${teamId}/lineup`, { method: 'PUT', body: JSON.stringify({ starterIds, slots }) }),
   train: (teamId) => request(`/team/${teamId}/train`, { method: 'POST' }),
@@ -77,7 +78,8 @@ export const api = {
 
   // `window` vaut 'winter' pendant le mercato d'hiver : marché restreint et majoré.
   getDraftPlayers: (division, reputation, teamId, difficulty, window) => request(`/draft/available?division=${division || 1}&reputation=${reputation || 50}&teamId=${teamId || ''}&difficulty=${difficulty || 'normal'}${window ? `&window=${window}` : ''}`),
-  draftBuy: (managerId, teamId, player) => request('/draft/buy', { method: 'POST', body: JSON.stringify({ managerId, teamId, player }) }),
+  draftBuy: (managerId, teamId, player, mode = 'buy') => request('/draft/buy', { method: 'POST', body: JSON.stringify({ managerId, teamId, offerId: player.id, mode }) }),
+  draftNegotiate: (managerId, teamId, offerId, amount) => request('/draft/negotiate', { method: 'POST', body: JSON.stringify({ managerId, teamId, offerId, amount }) }),
   // Recrute d'un coup l'effectif conseillé : 2 gardiens, 6 défenseurs, 6 milieux, 4 attaquants.
   draftAuto: (managerId, teamId, difficulty) => request('/draft/auto', { method: 'POST', body: JSON.stringify({ managerId, teamId, difficulty }) }),
   draftFinish: (managerId, teamId, window) => request('/draft/finish', { method: 'POST', body: JSON.stringify({ managerId, teamId, window }) }),
@@ -111,19 +113,4 @@ export const api = {
   initCL: (teamId) => request(`/season/${teamId}/cl/init`, { method: 'POST' }),
   playCLMatch: (teamId) => request(`/season/${teamId}/cl/play`, { method: 'POST' }),
 
-  // DreamTeam
-  getDreamTeamPlayers: (league, position) => {
-    let url = '/dreamteam/players';
-    const params = [];
-    if (league) params.push(`league=${encodeURIComponent(league)}`);
-    if (position) params.push(`position=${encodeURIComponent(position)}`);
-    if (params.length) url += '?' + params.join('&');
-    return request(url);
-  },
-
-  // DreamTeam gameplay
-  dreamTeamFriendly: (homePlayers, difficulty) => request('/dreamteam/friendly', { method: 'POST', body: JSON.stringify({ homePlayers, difficulty }) }),
-  dreamTeamCLDraw: () => request('/dreamteam/cl-draw', { method: 'POST' }),
-  dreamTeamCLMatch: (homePlayers, awayPlayers) => request('/dreamteam/cl-match', { method: 'POST', body: JSON.stringify({ homePlayers, awayPlayers }) }),
-  dreamTeamStartCareer: (username, teamName, players) => request('/dreamteam/start-career', { method: 'POST', body: JSON.stringify({ username, teamName, players }) }),
 };

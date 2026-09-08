@@ -7,17 +7,23 @@ import { KOFI_URL, DISCORD_URL } from './config';
 
 import Draft from './pages/Draft';
 import Season from './pages/Season';
-import DreamTeam from './pages/DreamTeam';
 import Players from './pages/Players';
 import LanguageSwitcher from './components/LanguageSwitcher';
 import { useI18n } from './i18n';
+import InterfaceFrame from './components/InterfaceFrame';
+
+function careerPhase(team) {
+  const played = (team.wins || 0) + (team.draws || 0) + (team.losses || 0);
+  if (played === 0 && team.summer_window_season !== team.season) return team.season === 1 ? 'draft' : 'mercato';
+  if (played >= 13 && played < 26 && team.winter_window_season !== team.season) return 'winter';
+  return 'play';
+}
 
 function App() {
   const [manager, setManager] = useState(null);
   const [team, setTeam] = useState(null);
   const [phase, setPhase] = useState('login');
   const [seasonSummary, setSeasonSummary] = useState(null);
-  const [showDreamTeam, setShowDreamTeam] = useState(false);
   const [showPlayers, setShowPlayers] = useState(false);
   const { t } = useI18n();
 
@@ -38,8 +44,8 @@ function App() {
   function handleTeamCreated(m, t) {
     setManager(m);
     setTeam(t);
-    setPhase('draft');
-    save(m, t, 'draft');
+    setPhase(careerPhase(t));
+    save(m, t, careerPhase(t));
   }
 
   function handleDraftFinish(updatedManager, updatedTeam) {
@@ -91,23 +97,6 @@ function App() {
     save(updatedManager, updatedTeam, 'play');
   }
 
-  async function handleDreamTeamCareer(players) {
-    const username = prompt(t('dialogues.pseudoCarriere'));
-    if (!username || username.trim().length < 2) return;
-    const teamName = prompt(t('dialogues.nomEquipe'));
-    if (!teamName || teamName.trim().length < 2) return;
-    try {
-      const result = await api.dreamTeamStartCareer(username.trim(), teamName.trim(), players);
-      setManager(result.manager);
-      setTeam(result.team);
-      setPhase('play');
-      setShowDreamTeam(false);
-      save(result.manager, result.team, 'play');
-    } catch (e) {
-      alert(t('dialogues.erreur') + (e.message || t('dialogues.erreurCarriere')));
-    }
-  }
-
   async function handleNewCareer() {
     if (!confirm(t('dialogues.confirmerNouvelleCarriere'))) return;
     if (manager) {
@@ -126,8 +115,8 @@ function App() {
       const result = await api.importSave(regResult.id, saveData);
       setManager(result.manager);
       setTeam(result.team);
-      setPhase('play');
-      save(result.manager, result.team, 'play');
+      setPhase(careerPhase(result.team));
+      save(result.manager, result.team, careerPhase(result.team));
     } catch {
       alert(t('dialogues.erreurChargement'));
     }
@@ -161,8 +150,8 @@ function App() {
         const result = await api.importSave(manager.id, saveData);
         setManager(result.manager);
         setTeam(result.team);
-        setPhase('play');
-        save(result.manager, result.team, 'play');
+        setPhase(careerPhase(result.team));
+        save(result.manager, result.team, careerPhase(result.team));
         window.location.reload();
       } catch {
         alert(t('dialogues.sauvegardeInvalide'));
@@ -175,14 +164,11 @@ function App() {
 
   if (showPlayers) {
     content = <Players onBack={() => setShowPlayers(false)} currentTeamId={team?.id} />;
-  } else if (showDreamTeam) {
-    content = <DreamTeam onBack={() => setShowDreamTeam(false)} onStartCareer={handleDreamTeamCareer} />;
   } else if (phase === 'login' || !manager) {
     content = (
       <Login
         onLogin={handleTeamCreated}
         onLoadSave={handleLoadSave}
-        onDreamTeam={() => setShowDreamTeam(true)}
         onPlayers={() => setShowPlayers(true)}
       />
     );
@@ -228,6 +214,7 @@ function App() {
         {seasonSummary && (
           <div className={`season-summary-banner ${seasonSummary.promotion ? 'promo' : ''} ${seasonSummary.relegation ? 'releg' : ''}`}>
             <h2>{t('bilan.titre', { saison: seasonSummary.season, division: seasonSummary.divisionName })}</h2>
+            {seasonSummary.loanReturns?.length > 0 && <p>{t('deals.loanReturns', { players: seasonSummary.loanReturns.join(', ') })}</p>}
             {seasonSummary.promotion && (
               <div className="promo-tag">{t('bilan.promotion', { division: seasonSummary.newDivision })}</div>
             )}
@@ -247,6 +234,7 @@ function App() {
         <Draft
           manager={manager}
           team={team}
+          onManagerUpdate={handleManagerUpdate}
           onFinish={handleMercatoFinish}
           isInitialDraft={phase === 'draft'}
           isWinterWindow={phase === 'winter'}
@@ -284,7 +272,6 @@ function App() {
               {t('barre.importerCourt')}
             </button>
             <button className="btn-players-top" onClick={() => setShowPlayers(true)}>{t('barre.managers')}</button>
-            <button className="btn-dreamteam-top" onClick={() => setShowDreamTeam(true)}>{t('barre.dreamteam')}</button>
             <a
               className="btn-discord-top"
               href={DISCORD_URL}
@@ -319,7 +306,9 @@ function App() {
   }
 
   return (
-    <>
+    <InterfaceFrame team={team} manager={manager}
+      section={showPlayers ? 'community' : !manager || phase === 'login' ? 'welcome' : ['draft', 'mercato', 'winter'].includes(phase) ? 'market' : 'career'}
+      onNavigate={section => { setShowPlayers(section === 'community'); }}>
       {content}
       {/* Placé au niveau le plus haut : la mention suit tous les écrans,
           accueil comme partie en cours. */}
@@ -331,7 +320,7 @@ function App() {
       </footer>
       <LanguageSwitcher />
       <MusicPlayer />
-    </>
+    </InterfaceFrame>
   );
 }
 

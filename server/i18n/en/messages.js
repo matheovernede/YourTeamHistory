@@ -14,6 +14,17 @@
  */
 
 module.exports = {
+  recruitment: {
+    invalidTactic: 'Unknown tactical instruction.', notYourTeam: 'This team or player does not belong to you.',
+    closed: 'The transfer window is closed. Wait for the next recruitment window.',
+    expired: 'This offer is no longer available. Refresh the market.', alreadyOwned: 'This player is already in your squad.',
+    invalidAmount: 'Offer a positive whole amount at or below the asking price.',
+    budget: 'Your budget is too low for this operation.', finished: 'This negotiation has ended. You can sign at the proposed price.',
+    increaseOffer: 'Your new offer must exceed the previous one.', invalidMode: 'Unknown recruitment type.',
+    noLoan: 'This player is not available on loan.', full: 'Your squad has reached the limit of 35 players.',
+    loanLimit: 'You already have three loan players in your squad.', cannotSellLoan: 'A loan player cannot be sold.',
+    seasonUnfinished: 'Complete all 26 matchdays before ending the season.',
+  },
   erreur: {
     // ---- Entités introuvables ----
     equipeIntrouvable: 'Team not found',
@@ -60,10 +71,6 @@ module.exports = {
     actionInconnue: 'Unknown action',
     entrainementCooldown: 'Intensive training is on cooldown (wait 3 matchdays)',
 
-    // ---- Dream team ----
-    joueursMinimumRequis: 'At least 11 players required',
-    joueursMinimumRequisEquipe: 'At least 11 players required for your team',
-    equipeAdverseInvalide: 'Invalid opposition team',
 
     requis: {
       managerId: 'managerId is required',
@@ -77,7 +84,6 @@ module.exports = {
       playerManager: 'playerId and managerId are required',
       managerTeamPlayer: 'managerId, teamId and player are required',
       managerTeam: 'managerId and teamId are required',
-      dreamteamCarriere: 'username, teamName and at least 11 players are required',
     },
 
     coupe: {

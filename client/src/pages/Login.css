@@ -263,25 +263,6 @@
   color: var(--text);
 }
 
-.btn-dreamteam {
-  width: 100%;
-  padding: 13px;
-  background: var(--grad-gold);
-  border: none;
-  color: #1a1400;
-  font-size: 14px;
-  font-weight: 800;
-  border-radius: var(--radius-md);
-  letter-spacing: 0.8px;
-  text-transform: uppercase;
-  box-shadow: 0 4px 18px var(--secondary-glow), var(--shadow-inset);
-}
-
-.btn-dreamteam:hover {
-  box-shadow: 0 8px 26px rgba(240, 192, 64, 0.36), var(--shadow-inset);
-  transform: translateY(-2px);
-}
-
 /* ---- Difficulté ---- */
 .difficulty-select {
   margin: var(--sp-3) 0 0;

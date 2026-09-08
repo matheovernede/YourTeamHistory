@@ -18,6 +18,17 @@ An optional opening line.
 
 ---
 
+## 1.4.0 — Your transfers, your style of play
+
+- Negotiate signings: make up to three offers, receive a counter-offer and sign
+  at the agreed price. Negotiations survive page reloads.
+- Strengthen your squad with up to **three loan players**. Pay a one-off fee
+  instead of the purchase price; loans end at the end of the season.
+- Choose your **tactical instructions**: balanced, pressing, possession,
+  counter-attack or low block. They affect chances and fatigue in both league
+  and cup matches.
+- Saved games preserve tactical instructions and loan players.
+
 ## 1.3.1 — Readable in both languages
 
 - Positions finally read in English: **GK, CB, CAM, ST** instead of French

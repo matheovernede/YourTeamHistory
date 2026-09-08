@@ -5,6 +5,12 @@ const { DRAFT_POOL, calculateDraftPrice } = require('../data/draftPool');
 const { SQUAD_MAX, RECOMMENDED, LINE_POSITIONS, countByLine } = require('../data/rules');
 const { langueDe, t } = require('../i18n');
 const { marquer } = require('../engine/funnel');
+const market = require('../engine/market');
+
+function marketFailure(res, err, langue) {
+  if (!err.marketKey) throw err;
+  return res.status(err.status).json({ error: t(err.marketKey, langue) });
+}
 
 const router = express.Router();
 
@@ -114,9 +120,20 @@ function construireMarche({ division, reputation, difficulty, teamId, window, ta
   }));
 }
 
-router.get('/available', (req, res) => {
-  const { division, reputation, teamId, difficulty, window } = req.query;
-  res.json(construireMarche({ division, reputation, teamId, difficulty, window }));
+router.get('/available', async (req, res, next) => {
+  try {
+    const { teamId, difficulty } = req.query;
+    const team = queryOne('SELECT * FROM teams WHERE id = ?', [teamId || '']);
+    if (!team) return res.status(404).json({ error: t('erreur.equipeIntrouvable', langueDe(req)) });
+    const manager = queryOne('SELECT * FROM managers WHERE id = ?', [team.manager_id]);
+    if (!manager) return res.status(404).json({ error: t('erreur.managerIntrouvable', langueDe(req)) });
+    res.json(await market.getMarket(team, window => construireMarche({
+      division: team.division, reputation: manager.reputation, teamId, difficulty, window,
+    })));
+  } catch (err) {
+    if (err.marketKey) return marketFailure(res, err, langueDe(req));
+    next(err);
+  }
 });
 
 /**
@@ -142,6 +159,11 @@ router.post('/auto', async (req, res) => {
   const team = queryOne('SELECT * FROM teams WHERE id = ?', [teamId]);
   if (!manager) return res.status(404).json({ error: t('erreur.managerIntrouvable', langue) });
   if (!team) return res.status(404).json({ error: t('erreur.equipeIntrouvable', langue) });
+  let activeWindow;
+  try {
+    market.ownedTeam(teamId, managerId);
+    activeWindow = market.requireWindow(team);
+  } catch (err) { return marketFailure(res, err, langue); }
 
   const effectif = queryAll('SELECT position FROM players WHERE team_id = ?', [teamId]);
   const presents = countByLine(effectif);
@@ -167,6 +189,7 @@ router.post('/auto', async (req, res) => {
     difficulty,
     teamId,
     taille: 160,
+    window: activeWindow,
   });
 
   const parLigne = { GAR: [], DEF: [], MIL: [], ATT: [] };
@@ -311,45 +334,38 @@ router.post('/auto', async (req, res) => {
   });
 });
 
-router.post('/buy', async (req, res) => {
-  const langue = langueDe(req);
-  const { managerId, teamId, player } = req.body;
-  if (!managerId || !teamId || !player) {
-    return res.status(400).json({ error: t('erreur.requis.managerTeamPlayer', langue) });
+router.post('/negotiate', async (req, res, next) => {
+  try { res.json(await market.negotiate(req.body)); }
+  catch (err) {
+    if (err.marketKey) return marketFailure(res, err, langueDe(req));
+    next(err);
   }
+});
 
-  const db = await getDb();
-  const manager = queryOne('SELECT * FROM managers WHERE id = ?', [managerId]);
-  if (!manager) return res.status(404).json({ error: t('erreur.managerIntrouvable', langue) });
-
-  if (manager.budget < player.value) {
-    return res.status(400).json({ error: t('erreur.budgetInsuffisant', langue) });
+router.post('/buy', async (req, res, next) => {
+  try {
+    // Compatibilité avec l'ancien client : seul l'identifiant est lu.
+    res.json(await market.sign({ ...req.body, offerId: req.body.offerId || req.body.player?.id }));
+  } catch (err) {
+    if (err.marketKey) return marketFailure(res, err, langueDe(req));
+    next(err);
   }
-
-  const playerCount = queryOne('SELECT COUNT(*) as count FROM players WHERE team_id = ?', [teamId]);
-  if (playerCount && playerCount.count >= SQUAD_MAX) {
-    return res.status(400).json({ error: t('erreur.effectifMaximum', langue, { nombre: SQUAD_MAX }) });
-  }
-
-  db.run('UPDATE managers SET budget = budget - ? WHERE id = ?', [player.value, managerId]);
-  db.run(
-    "INSERT INTO players (id, team_id, first_name, last_name, age, position, overall, pace, shooting, passing, dribbling, defending, physical, stamina, morale, value, is_starter) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,100,80,?,0)",
-    [uuid(), teamId, player.first_name, player.last_name, player.age, player.position, player.overall, player.pace, player.shooting, player.passing, player.dribbling, player.defending, player.physical, player.value]
-  );
-  saveDb();
-
-  const updatedManager = queryOne('SELECT * FROM managers WHERE id = ?', [managerId]);
-  const squad = queryAll('SELECT * FROM players WHERE team_id = ? ORDER BY overall DESC', [teamId]);
-
-  res.json({ newBudget: updatedManager.budget, squadSize: squad.length });
 });
 
 router.post('/finish', async (req, res) => {
   const langue = langueDe(req);
-  const { managerId, teamId, window } = req.body;
+  const { managerId, teamId } = req.body;
   if (!managerId || !teamId) {
     return res.status(400).json({ error: t('erreur.requis.managerTeam', langue) });
   }
+
+  let activeWindow;
+  try {
+    const team = market.ownedTeam(teamId, managerId);
+    activeWindow = market.currentWindow(team);
+    if (!activeWindow) return res.json({ team, manager: queryOne('SELECT * FROM managers WHERE id = ?', [managerId]) });
+  }
+  catch (err) { return marketFailure(res, err, langue); }
 
   const playerCount = queryOne('SELECT COUNT(*) as count FROM players WHERE team_id = ?', [teamId]);
   if (!playerCount || playerCount.count < 11) {
@@ -360,13 +376,14 @@ router.post('/finish', async (req, res) => {
   // s'arrêtaient, d'où la mesure à cet endroit précis.
   marquer({ run }, managerId, 'effectif_pret');
 
-  if (window === 'winter') {
+  if (activeWindow === 'winter') {
     // On marque la fenêtre comme utilisée pour la saison en cours, et on
     // s'arrête là : la composition est en place depuis treize journées, la
     // vider obligerait à tout refaire pour une ou deux recrues.
     const equipe = queryOne('SELECT season FROM teams WHERE id = ?', [teamId]);
     run('UPDATE teams SET winter_window_season = ? WHERE id = ?', [equipe ? equipe.season : 1, teamId]);
   } else {
+    run('UPDATE teams SET summer_window_season = season WHERE id = ?', [teamId]);
     // Entre deux saisons, l'effectif a pu changer en profondeur : on repart
     // d'une composition vierge. slot_index doit être vidé en même temps, sinon
     // d'anciens emplacements survivent et faussent la reconstruction.

@@ -15,6 +15,7 @@ const {
   getPositionGroup,
   getPositionFit,
 } = require('../data/formations');
+const { applyTactic, fatigueCost, normalizeTactic } = require('./tactics');
 
 function getStaminaFactor(stamina) {
   let factor = 1.0;
@@ -180,11 +181,13 @@ function applyDifficulty(ratings, edge) {
 function simulateMatch(homePlayers, awayPlayers, {
   homeFormation = null,
   awayFormation = null,
+  homeTactic = 'balanced',
+  awayTactic = 'balanced',
   difficulty = 'normal',
   homeIsPlayer = true,
 } = {}) {
-  let home = analyzeTeam(homePlayers, homeFormation);
-  let away = analyzeTeam(awayPlayers, awayFormation);
+  let home = applyTactic(analyzeTeam(homePlayers, homeFormation), homeTactic, homePlayers);
+  let away = applyTactic(analyzeTeam(awayPlayers, awayFormation), awayTactic, awayPlayers);
 
   // La difficulté renforce ou bride l'adversaire, jamais l'équipe du joueur.
   const edge = DIFFICULTY_EDGE[difficulty] ?? 0;
@@ -308,7 +311,11 @@ function simulateMatch(homePlayers, awayPlayers, {
     .filter(e => e.type === 'goal' && e.playerId)
     .map(e => ({ playerId: e.playerId, team: e.team }));
 
-  return { homeGoals, awayGoals, events, cards, injuries, scorers };
+  return { homeGoals, awayGoals, events, cards, injuries, scorers,
+    tactics: { home: normalizeTactic(homeTactic), away: normalizeTactic(awayTactic) },
+    expectedGoals: xG,
+    possession: Math.round(100 * home.midfield / (home.midfield + away.midfield)),
+  };
 }
 
 /**
@@ -333,11 +340,10 @@ function simulateAiMatchByStrength(homeOverall, awayOverall, rand = Math.random)
  *                              le vestiaire bien plus qu'une rencontre banale :
  *                              la victoire euphorise, la défaite laisse des traces.
  */
-function applyMatchEffects(db, teamId, won, drew, intensite = 1) {
+function applyMatchEffects(db, teamId, won, drew, intensite = 1, tactic = 'balanced') {
   const moraleChange = Math.round((won ? 4 : drew ? -1 : -4) * intensite);
 
-  // Titulaires: perdent 10 points de stamina par match
-  db.run('UPDATE players SET stamina = MAX(0, stamina - 10), morale = MAX(20, MIN(100, morale + ?)) WHERE team_id = ? AND is_starter = 1', [moraleChange, teamId]);
+  db.run('UPDATE players SET stamina = MAX(0, stamina - ?), morale = MAX(20, MIN(100, morale + ?)) WHERE team_id = ? AND is_starter = 1', [fatigueCost(tactic), moraleChange, teamId]);
 
   // Remplaçants: récupèrent 15% (de stamina max, donc +15 points)
   db.run('UPDATE players SET stamina = MIN(100, stamina + 15) WHERE team_id = ? AND is_starter = 0', [teamId]);

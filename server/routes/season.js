@@ -19,6 +19,7 @@ const { computeStandings } = require('../engine/standings');
 const { ensureRival, infosRival, estDerby, INTENSITE_MORAL, PRIME_DERBY } = require('../engine/rival');
 const { marquer, entonnoir } = require('../engine/funnel');
 const { touchManager } = require('./leaderboard');
+const { expireLoans } = require('../engine/market');
 const {
   updateDiscontent,
   resolveDepartures,
@@ -280,6 +281,8 @@ router.post('/:teamId/play-matchday', async (req, res) => {
     {
       homeFormation: isHome ? team.formation : opponent.formation,
       awayFormation: isHome ? opponent.formation : team.formation,
+      homeTactic: isHome ? team.tactic : opponent.tactic,
+      awayTactic: isHome ? opponent.tactic : team.tactic,
       difficulty: req.body.difficulty || 'normal',
       homeIsPlayer: isHome,
     }
@@ -342,7 +345,7 @@ router.post('/:teamId/play-matchday', async (req, res) => {
   const won = goalDiff > 0;
   const drew = goalDiff === 0;
   // Un derby marque le vestiaire deux fois plus qu'une rencontre ordinaire.
-  applyMatchEffects(db, team.id, won, drew, derby ? INTENSITE_MORAL : 1);
+  applyMatchEffects(db, team.id, won, drew, derby ? INTENSITE_MORAL : 1, team.tactic);
 
   // Le joueur a disputé un match : l'étape qui compte vraiment.
   if (played === 0) marquer(db, team.manager_id, 'premier_match');
@@ -420,6 +423,7 @@ router.post('/:teamId/play-matchday', async (req, res) => {
       homeGoals: result.homeGoals,
       awayGoals: result.awayGoals,
       events: result.events,
+      tactics: result.tactics,
       pointsEarned,
       resultText,
       resultLabel,
@@ -485,9 +489,10 @@ router.post('/:teamId/resolve-event', async (req, res) => {
   let departure = null;
 
   if (effects.remove_player) {
+    const permanentSquad = squad.filter(p => p.loan_end_season == null);
     // Garde-fou : on ne descend jamais sous les 11 joueurs, sinon la saison
     // devient injouable. Le marché échoue alors, sans contrepartie.
-    if (squad.length <= 11) {
+    if (squad.length <= 11 || permanentSquad.length === 0) {
       saveDb();
       const mgr = queryOne('SELECT * FROM managers WHERE id = ?', [managerId]);
       return res.json({
@@ -497,7 +502,7 @@ router.post('/:teamId/resolve-event', async (req, res) => {
         team,
       });
     }
-    departure = pickPlayerToRemove(squad, effects.remove_player);
+    departure = pickPlayerToRemove(permanentSquad, effects.remove_player);
   }
 
   if (effects.bench_player) {
@@ -1051,6 +1056,8 @@ router.post('/:teamId/end-season', async (req, res) => {
   const db = await getDb();
   const team = queryOne('SELECT * FROM teams WHERE id = ?', [req.params.teamId]);
   if (!team) return res.status(404).json({ error: t('erreur.equipeIntrouvable', langue) });
+  if (team.manager_id !== managerId || managerId === 'AI') return res.status(403).json({ error: t('recruitment.notYourTeam', langue) });
+  if (team.wins + team.draws + team.losses < 26) return res.status(400).json({ error: t('recruitment.seasonUnfinished', langue) });
 
   const division = getTeamDivision(team);
   const divisionInfo = getDivisionInfo(division);
@@ -1174,6 +1181,9 @@ router.post('/:teamId/end-season', async (req, res) => {
   db.run('UPDATE teams SET cl_data = NULL WHERE id = ?', [req.params.teamId]);
 
   // ---- Intersaison de l'effectif du joueur ----
+  // Les prêts ne génèrent ni indemnité de vente ni départ pour mécontentement.
+  const loanReturns = expireLoans(db, team.id, team.season);
+  db.run('DELETE FROM market_offers WHERE team_id = ? AND season <= ?', [team.id, team.season]);
   // Les mécontents partent AVANT la progression : inutile de faire évoluer
   // un joueur qui quitte le club.
   const departures = resolveDepartures(db, queryAll, queryOne, req.params.teamId, managerId, {
@@ -1228,6 +1238,7 @@ router.post('/:teamId/end-season', async (req, res) => {
       scorers,
       progression: progression.slice(0, 8),
       retirements,
+      loanReturns,
       departures: departures.map(d => ({ ...d, reasons: traduireMotifs(d.reasons, langue) })),
     },
     promotion,

@@ -1,4 +1,5 @@
 const express = require('express');
+const { fatigueCost } = require('../engine/tactics');
 const { v4: uuid } = require('uuid');
 const { getDb, queryOne, queryAll, saveDb } = require('../db/schema');
 const { simulateMatch } = require('../engine/match');
@@ -170,6 +171,7 @@ router.post('/:teamId/cup/play', async (req, res) => {
 
   const result = simulateMatch(players, generateOpponent(opponentOverall), {
     homeFormation: team.formation,
+    homeTactic: team.tactic,
     difficulty: req.body.difficulty || 'normal',
     homeIsPlayer: true,
   });
@@ -196,7 +198,7 @@ router.post('/:teamId/cup/play', async (req, res) => {
     scorers: (result.scorers || []).filter(s => s.team === 'home'),
   });
   tickAvailability(db, team.id);
-  db.run('UPDATE players SET stamina = MAX(0, stamina - 8) WHERE team_id = ? AND is_starter = 1', [team.id]);
+  db.run('UPDATE players SET stamina = MAX(0, stamina - ?) WHERE team_id = ? AND is_starter = 1', [fatigueCost(team.tactic, 8), team.id]);
 
   // Dotation, mise à l'échelle de la division
   const division = getTeamDivision(team);
@@ -230,6 +232,7 @@ router.post('/:teamId/cup/play', async (req, res) => {
     cupWon: nextState.won,
     prize,
     events: result.events,
+    tactics: result.tactics,
     suspensions: consequences.suspensions,
     injuries: consequences.injuries,
     // L'état parti en base (writeState, juste au-dessus) est l'original en

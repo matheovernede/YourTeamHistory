@@ -1,0 +1,13 @@
+.tactics-panel { margin-bottom: 20px; padding: 20px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--bg-card); }
+.tactics-heading h3 { margin-bottom: 6px; }
+.tactics-heading p, .tactics-note { color: var(--text-muted); font-size: 13px; line-height: 1.6; }
+.tactics-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 16px 0 12px; }
+.tactic-option { display: flex; flex-direction: column; gap: 10px; padding: 15px; border: 1px solid var(--border); border-radius: var(--radius-md); background: transparent; color: var(--text); text-align: left; cursor: pointer; }
+.tactic-option span { font-size: 12px; line-height: 1.6; color: var(--text-soft); }
+.tactic-option strong span { color: var(--primary-light); }
+.tactic-option small { margin-top: auto; padding-top: 8px; color: var(--text-muted); }
+.tactic-option.selected { border-color: var(--primary-light); background: var(--primary-soft); }
+.tactic-option:focus-visible { outline: 2px solid var(--primary-light); outline-offset: 3px; }
+.tactic-option:disabled { cursor: wait; opacity: .65; }
+.tactic-summary { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin: 12px 0; color: var(--text-soft); font-size: 13px; }
+@media (max-width: 480px) { .tactics-panel { padding: 14px; } .tactics-options { grid-template-columns: 1fr; } }

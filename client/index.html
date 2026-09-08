@@ -3,6 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      try { document.documentElement.dataset.interface = localStorage.getItem('yth_interface') === 'classic' ? 'classic' : 'studio'; }
+      catch { document.documentElement.dataset.interface = 'studio'; }
+    </script>
 
     <!-- Le PNG est donné en premier : les navigateurs retiennent le dernier
          format qu'ils savent lire, le SVG reste donc en repli. -->

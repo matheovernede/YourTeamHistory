@@ -5,6 +5,7 @@ const { isValidFormation, getFormationSlots, getPositionGroup } = require('../da
 const { isAvailable, unavailabilityReason } = require('../engine/discipline');
 const { langueDe, t } = require('../i18n');
 const { marquer } = require('../engine/funnel');
+const { isValidTactic } = require('../engine/tactics');
 
 const router = express.Router();
 
@@ -59,6 +60,16 @@ router.post('/create', async (req, res) => {
 router.get('/:teamId/players', (req, res) => {
   const players = queryAll('SELECT * FROM players WHERE team_id = ? ORDER BY is_starter DESC, slot_index, position', [req.params.teamId]);
   res.json(players);
+});
+
+router.put('/:teamId/tactic', (req, res) => {
+  const langue = langueDe(req);
+  const { managerId, tactic } = req.body;
+  if (!isValidTactic(tactic)) return res.status(400).json({ error: t('recruitment.invalidTactic', langue) });
+  const team = queryOne('SELECT * FROM teams WHERE id = ? AND manager_id = ?', [req.params.teamId, managerId || '']);
+  if (!team || team.manager_id === 'AI') return res.status(403).json({ error: t('recruitment.notYourTeam', langue) });
+  run('UPDATE teams SET tactic = ? WHERE id = ?', [tactic, team.id]);
+  res.json({ team: queryOne('SELECT * FROM teams WHERE id = ?', [team.id]) });
 });
 
 router.put('/:teamId/formation', (req, res) => {

@@ -10,7 +10,6 @@ const leaderboardRoutes = require('./routes/leaderboard');
 const draftRoutes = require('./routes/draft');
 const seasonRoutes = require('./routes/season');
 const championsLeagueRoutes = require('./routes/championsLeague');
-const dreamteamRoutes = require('./routes/dreamteam');
 const cupRoutes = require('./routes/cup');
 
 const app = express();
@@ -47,7 +46,6 @@ app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/draft', draftRoutes);
 app.use('/api/season', seasonRoutes);
 app.use('/api/season', championsLeagueRoutes);
-app.use('/api/dreamteam', dreamteamRoutes);
 app.use('/api/season', cupRoutes);
 
 /**

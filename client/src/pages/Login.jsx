@@ -3,8 +3,9 @@ import { api } from '../api/client';
 import { KOFI_URL, DISCORD_URL } from '../config';
 import { useI18n } from '../i18n';
 import './Login.css';
+import StudioWelcome from '../components/StudioWelcome';
 
-export default function Login({ onLogin, onLoadSave, onDreamTeam, onPlayers }) {
+export default function Login({ onLogin, onLoadSave, onPlayers }) {
   const { t } = useI18n();
   const [username, setUsername] = useState('');
   const [teamName, setTeamName] = useState('');
@@ -64,13 +65,14 @@ export default function Login({ onLogin, onLoadSave, onDreamTeam, onPlayers }) {
     <div className="login-page">
       <div className="login-shell">
         <aside className="login-brand">
+          <StudioWelcome />
           <img className="login-badge" src="/logo-512.png" alt="" width="72" height="72" />
           <h1 className="login-title">YourTeamHistory</h1>
           <p className="login-tagline">{t('accueil.slogan')}</p>
           {/* Un simple repère typographique remplace les pictogrammes : ils
               décoraient sans rien dire de plus que le texte à côté. */}
           <ul className="login-features">
-            {['divisions', 'mercato', 'evenements', 'dreamteam'].map((cle) => (
+            {['divisions', 'mercato', 'evenements'].map((cle) => (
               <li key={cle}>
                 {/* Les atouts contiennent une mise en gras : le texte traduit
                     décide où elle tombe, la place du terme changeant d'une
@@ -123,9 +125,6 @@ export default function Login({ onLogin, onLoadSave, onDreamTeam, onPlayers }) {
               {t('accueil.chargerSauvegarde')}
             </button>
             <div className="login-separator"><span>{t('accueil.ou')}</span></div>
-            <button className="btn-dreamteam" onClick={onDreamTeam}>
-              {t('accueil.dreamteam')}
-            </button>
             <button className="btn-players" onClick={onPlayers}>
               {t('accueil.classementManagers')}
             </button>

@@ -3,6 +3,7 @@ const { v4: uuid } = require('uuid');
 const { getDb, queryOne, queryAll, run, saveDb } = require('../db/schema');
 const { SQUAD_MAX, SQUAD_MIN_TO_SELL } = require('../data/rules');
 const { langueDe, t } = require('../i18n');
+const { currentWindow } = require('../engine/market');
 
 const router = express.Router();
 
@@ -31,6 +32,10 @@ router.post('/buy', async (req, res) => {
 
   const manager = queryOne('SELECT * FROM managers WHERE id = ?', [managerId]);
   if (!manager) return res.status(404).json({ error: t('erreur.managerIntrouvable', langue) });
+  const team = queryOne('SELECT * FROM teams WHERE id = ? AND manager_id = ?', [teamId, managerId]);
+  const seller = queryOne("SELECT * FROM teams WHERE id = ? AND manager_id = 'AI'", [player.team_id]);
+  if (!team || !seller || player.loan_end_season != null) return res.status(403).json({ error: t('recruitment.notYourTeam', langue) });
+  if (!currentWindow(team)) return res.status(400).json({ error: t('recruitment.closed', langue) });
 
   if (manager.budget < player.value) {
     return res.status(400).json({ error: t('erreur.budgetInsuffisant', langue), needed: player.value, available: manager.budget });
@@ -43,7 +48,7 @@ router.post('/buy', async (req, res) => {
 
   db.run('UPDATE managers SET budget = budget - ? WHERE id = ?', [player.value, managerId]);
   const oldTeamId = player.team_id;
-  db.run('UPDATE players SET team_id = ?, is_starter = 0 WHERE id = ?', [teamId, playerId]);
+  db.run('UPDATE players SET team_id = ?, is_starter = 0, slot_index = NULL WHERE id = ?', [teamId, playerId]);
   db.run('INSERT INTO transfers (id, player_id, from_team_id, to_team_id, fee) VALUES (?,?,?,?,?)', [uuid(), playerId, oldTeamId, teamId, player.value]);
   saveDb();
 
@@ -64,6 +69,7 @@ router.post('/sell', async (req, res) => {
 
   const team = queryOne('SELECT * FROM teams WHERE id = ? AND manager_id = ?', [player.team_id, managerId]);
   if (!team) return res.status(403).json({ error: t('erreur.joueurPasAVous', langue) });
+  if (player.loan_end_season != null) return res.status(400).json({ error: t('recruitment.cannotSellLoan', langue) });
 
   const playerCount = queryOne('SELECT COUNT(*) as count FROM players WHERE team_id = ?', [player.team_id]);
   if (playerCount.count <= SQUAD_MIN_TO_SELL) {

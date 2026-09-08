@@ -147,3 +147,5 @@
   font-size: 12px;
   padding: 6px 10px;
 }
+
+.loan-badge { font-size: 11px; line-height: 1.5; color: var(--info); background: var(--info-soft); border-radius: var(--radius-sm); padding: 4px 8px; margin: 8px 0; }

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { api } from '../api/client';
 import PlayerCard from '../components/PlayerCard';
+import TacticsPanel from '../components/TacticsPanel';
 import GuideDebutant, { guideMasque, CLE_MASQUE } from '../components/GuideDebutant';
 import {
   FORMATION_POSITIONS,
@@ -947,6 +948,11 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
 
       {message && <div className="season-message">{message}<button onClick={() => setMessage('')}>×</button></div>}
 
+      {view === 'season' && <div className="tactic-summary">
+        <span>{t('tactics.current', { name: t(`tactics.${status?.team?.tactic || team.tactic || 'balanced'}.name`) })}</span>
+        <button className="btn-ghost btn-small" onClick={() => setView('lineup')} disabled={loading}>{t('tactics.change')}</button>
+      </div>}
+
       {mood && mood.unhappy.length > 0 && (
         <div className={`mood-alert ${mood.unhappy.some(p => p.transferRequest) ? 'critical' : ''}`}>
           <div className="mood-alert-head">
@@ -1293,6 +1299,11 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
 
       {view === 'lineup' && (
         <div className="lineup-view">
+          <TacticsPanel team={status?.team || team} managerId={manager.id} disabled={loading}
+            onBusy={setLoading} onUpdate={updated => {
+              onUpdate(updated);
+              setStatus(prev => prev ? { ...prev, team: updated } : prev);
+            }} />
           <div className="lineup-header">
             <div className="lineup-formation">
               <label>{t('saison.compo.formation')}</label>
@@ -1871,14 +1882,14 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
           <div className="squad-info">
             <span>{t('saison.effectif.nombre', { n: players.length })}</span>
             <span>{t('saison.effectif.valeurTotale', {
-              valeur: formatMoney(players.reduce((s, p) => s + (p.value || 0), 0)),
+              valeur: formatMoney(players.reduce((s, p) => s + (p.loan_end_season != null ? 0 : (p.value || 0)), 0)),
             })}</span>
           </div>
           <div className="players-grid">
             {players.map(p => {
               // Le serveur refuse toute vente en dessous de 15 joueurs :
               // on désactive au même seuil pour éviter un clic voué à l'échec.
-              const canSell = players.length >= SQUAD_MIN_SELL;
+              const canSell = players.length >= SQUAD_MIN_SELL && p.loan_end_season == null;
               return (
                 <PlayerCard
                   key={p.id}
@@ -1888,7 +1899,7 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
                       className="btn-small btn-danger"
                       onClick={() => handleSellPlayer(p)}
                       disabled={!canSell}
-                      title={canSell ? undefined : t('saison.effectif.minimumVente', { min: SQUAD_MIN_SELL })}
+                      title={p.loan_end_season != null ? t('deals.cannotSell') : canSell ? undefined : t('saison.effectif.minimumVente', { min: SQUAD_MIN_SELL })}
                     >
                       {t('saison.effectif.vendre', { prix: formatMoney(Math.round((p.value || 0) * 0.8)) })}
                     </button>

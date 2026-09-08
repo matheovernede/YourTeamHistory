@@ -25,7 +25,10 @@ router.post('/play', async (req, res) => {
   const homePlayers = queryAll('SELECT * FROM players WHERE team_id = ?', [teamId]);
   const awayPlayers = queryAll('SELECT * FROM players WHERE team_id = ?', [opponent.id]);
 
-  const result = simulateMatch(homePlayers, awayPlayers);
+  const result = simulateMatch(homePlayers, awayPlayers, {
+    homeFormation: team.formation, awayFormation: opponentTeam.formation,
+    homeTactic: team.tactic, awayTactic: opponentTeam.tactic,
+  });
 
   const matchId = uuid();
   const week = team.wins + team.draws + team.losses + 1;
@@ -39,14 +42,14 @@ router.post('/play', async (req, res) => {
   if (result.homeGoals > result.awayGoals) {
     pointsEarned = 3;
     db.run('UPDATE teams SET wins = wins + 1, points = points + 3, goals_for = goals_for + ?, goals_against = goals_against + ? WHERE id = ?', [result.homeGoals, result.awayGoals, teamId]);
-    applyMatchEffects(db, teamId, true, false);
+    applyMatchEffects(db, teamId, true, false, 1, team.tactic);
   } else if (result.homeGoals === result.awayGoals) {
     pointsEarned = 1;
     db.run('UPDATE teams SET draws = draws + 1, points = points + 1, goals_for = goals_for + ?, goals_against = goals_against + ? WHERE id = ?', [result.homeGoals, result.awayGoals, teamId]);
-    applyMatchEffects(db, teamId, false, true);
+    applyMatchEffects(db, teamId, false, true, 1, team.tactic);
   } else {
     db.run('UPDATE teams SET losses = losses + 1, goals_for = goals_for + ?, goals_against = goals_against + ? WHERE id = ?', [result.homeGoals, result.awayGoals, teamId]);
-    applyMatchEffects(db, teamId, false, false);
+    applyMatchEffects(db, teamId, false, false, 1, team.tactic);
   }
 
   saveDb();

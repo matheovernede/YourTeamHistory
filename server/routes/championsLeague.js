@@ -229,9 +229,9 @@ function playGroupMatch(db, team, clState, res, langue) {
   let matchResult;
 
   if (isHome) {
-    matchResult = simulateMatch(homePlayers, generateFakePlayers(opponentOverall), { homeFormation: team.formation });
+    matchResult = simulateMatch(homePlayers, generateFakePlayers(opponentOverall), { homeFormation: team.formation, homeTactic: team.tactic });
   } else {
-    matchResult = simulateMatch(generateFakePlayers(opponentOverall), homePlayers, { awayFormation: team.formation });
+    matchResult = simulateMatch(generateFakePlayers(opponentOverall), homePlayers, { awayFormation: team.formation, awayTactic: team.tactic, homeIsPlayer: false });
   }
 
   const playerGoals = isHome ? matchResult.homeGoals : matchResult.awayGoals;
@@ -240,7 +240,7 @@ function playGroupMatch(db, team, clState, res, langue) {
   // Apply stamina/morale effects
   const won = playerGoals > opponentGoals;
   const drew = playerGoals === opponentGoals;
-  applyMatchEffects(db, team.id, won, drew);
+  applyMatchEffects(db, team.id, won, drew, 1, team.tactic);
 
   // Update group standings for player's match
   updateGroupStandings(clState.groups, team.name, opponentName, playerGoals, opponentGoals);
@@ -294,6 +294,7 @@ function playGroupMatch(db, team, clState, res, langue) {
       opponentGoals,
       isHome,
       events: matchResult.events,
+      tactics: matchResult.tactics,
       ...resultatCl(won, drew, langue),
     },
     groups: clState.groups,
@@ -321,9 +322,9 @@ function playKnockoutMatch(db, team, clState, res, langue) {
   let matchResult;
 
   if (isHome || clState.phase === 'final') {
-    matchResult = simulateMatch(homePlayers, generateFakePlayers(opponentOverall), { homeFormation: team.formation });
+    matchResult = simulateMatch(homePlayers, generateFakePlayers(opponentOverall), { homeFormation: team.formation, homeTactic: team.tactic });
   } else {
-    matchResult = simulateMatch(generateFakePlayers(opponentOverall), homePlayers, { awayFormation: team.formation });
+    matchResult = simulateMatch(generateFakePlayers(opponentOverall), homePlayers, { awayFormation: team.formation, awayTactic: team.tactic, homeIsPlayer: false });
   }
 
   const playerGoals = (isHome || clState.phase === 'final') ? matchResult.homeGoals : matchResult.awayGoals;
@@ -332,7 +333,7 @@ function playKnockoutMatch(db, team, clState, res, langue) {
   // Apply effects
   const won = playerGoals > opponentGoals;
   const drew = playerGoals === opponentGoals;
-  applyMatchEffects(db, team.id, won, drew);
+  applyMatchEffects(db, team.id, won, drew, 1, team.tactic);
 
   // Record result
   const resultEntry = {
@@ -431,6 +432,7 @@ function playKnockoutMatch(db, team, clState, res, langue) {
       isHome,
       leg: match.leg,
       events: matchResult.events,
+      tactics: matchResult.tactics,
       ...resultatCl(won, drew, langue),
       aggregate: resultEntry.aggregate || null,
       penalties: resultEntry.penalties || false,

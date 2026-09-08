@@ -169,6 +169,7 @@ function initTables() {
   // Chaque ALTER est isolé : si une colonne existe déjà, les autres passent
   // quand même (une seule instruction groupée échouerait en bloc).
   const playerColumns = [
+    'loan_end_season INTEGER DEFAULT NULL',
     'yellow_cards INTEGER DEFAULT 0',      // cumul sur la saison
     'red_cards INTEGER DEFAULT 0',
     'suspended_matches INTEGER DEFAULT 0', // journées de suspension restantes
@@ -185,6 +186,8 @@ function initTables() {
   }
 
   const teamColumns = [
+    "tactic TEXT DEFAULT 'balanced'",
+    'summer_window_season INTEGER DEFAULT 0',
     'cup_data TEXT',              // état de la coupe nationale
     'titles INTEGER DEFAULT 0',   // championnats remportés
     'cups INTEGER DEFAULT 0',     // coupes remportées
@@ -200,6 +203,16 @@ function initTables() {
   for (const col of teamColumns) {
     try { db.run(`ALTER TABLE teams ADD COLUMN ${col}`); } catch (e) { /* déjà présente */ }
   }
+
+  // Offres conservées pour toute la fenêtre : recharger ne réinitialise pas
+  // une négociation et aucun prix ni attribut envoyé par le client ne fait foi.
+  db.run(`CREATE TABLE IF NOT EXISTS market_offers (
+    id TEXT PRIMARY KEY, team_id TEXT NOT NULL, season INTEGER NOT NULL,
+    window TEXT NOT NULL, player_data TEXT NOT NULL, asking_price INTEGER NOT NULL,
+    minimum_price INTEGER NOT NULL, agreed_price INTEGER, last_offer INTEGER,
+    attempts INTEGER DEFAULT 0, status TEXT DEFAULT 'available'
+  )`);
+  db.run('CREATE INDEX IF NOT EXISTS market_offers_team ON market_offers(team_id, season, window)');
 
 
 

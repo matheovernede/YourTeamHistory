@@ -416,3 +416,18 @@
   opacity: 0.5;
   cursor: default;
 }
+.market-explainer { padding: 16px; margin-bottom: 18px; border: 1px solid var(--border); border-radius: var(--radius-md); color: var(--text-soft); line-height: 1.6; }
+.market-explainer small { color: var(--text-muted); }
+.market-player .player-actions { display: block; }
+.market-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: center; }
+.market-actions > .btn-secondary { grid-column: 1 / -1; }
+.market-actions .draft-tier { text-align: right; }
+.deal-panel { grid-column: 1 / -1; padding: 14px; margin-top: 8px; border: 1px solid var(--primary); border-radius: var(--radius-md); background: var(--primary-soft); min-width: 0; }
+.deal-heading { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.deal-heading button { flex: 0 !important; font-size: 20px !important; }
+.deal-panel p { font-size: 12px; line-height: 1.6; margin: 10px 0; color: var(--text-soft); }
+.deal-panel .deal-response { color: var(--primary-light); }
+.deal-panel form { display: grid; gap: 8px; margin: 14px 0; }
+.deal-panel label, .deal-panel small { font-size: 12px; }
+.deal-panel input { width: 100%; min-width: 0; padding: 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); background: var(--bg-card); }
+.deal-panel > button, .deal-panel form button { width: 100%; }

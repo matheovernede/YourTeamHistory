@@ -3,6 +3,42 @@
  * retombe ici, ce qui évite d'afficher un identifiant brut à l'écran.
  */
 export default {
+  interface: {
+    classic: 'Interface classique', new: 'Nouvelle interface', switchHint: 'Changer de présentation sans modifier votre partie',
+    workspace: 'VOTRE ESPACE', navigation: 'Navigation principale', clubTools: 'LE CLUB',
+    career: 'Ma carrière', market: 'Mercato', community: 'Les managers', welcome: 'Bienvenue',
+    communityLink: 'Rejoindre la communauté', visitor: 'Visiteur', edition: 'LE FOOTBALL VOUS APPARTIENT.',
+    welcomeKicker: 'LE JEU DE GESTION QUI ÉCRIT VOTRE HISTOIRE', heroLine1: 'LE CLUB,', heroLine2: 'C’EST VOUS.',
+    heroCopy: 'Un premier onze. Un derby à gagner. Une montée à décrocher. Prenez les commandes et faites grandir votre club, match après match.',
+    artCaption: 'À VOUS DE JOUER.', divisions: 'divisions à gravir', matchdays: 'journées par saison', yourStory: 'histoire à écrire',
+  },
+  tactics: {
+    title: 'Consignes tactiques', hint: 'Choisissez votre approche avant le match. Elle est enregistrée immédiatement pour toutes les compétitions.',
+    fatigue: 'Championnat : −{n} points de forme',
+    note: 'Le pressing perd ses bonus avec un onze fatigué. En coupe nationale, la fatigue est proportionnellement réduite. Aucune consigne ne garantit la victoire.',
+    current: 'Approche : {name}', change: 'Changer de consigne',
+    balanced: { name: 'Équilibré', description: 'Un équilibre entre les lignes et une dépense physique modérée.' },
+    pressing: { name: 'Pressing', description: 'Plus de présence au milieu et en attaque, mais une défense exposée et une fatigue élevée.' },
+    possession: { name: 'Possession', description: 'Renforce la maîtrise du milieu, au prix d’une attaque moins directe et d’un effort supplémentaire.' },
+    counter: { name: 'Contre-attaque', description: 'Renforce l’attaque et légèrement la défense, en cédant du terrain au milieu.' },
+    low_block: { name: 'Bloc bas', description: 'Défend plus solidement et économise les forces, mais crée moins d’occasions.' },
+  },
+  deals: {
+    negotiate: 'Négocier', close: 'Fermer les conditions', loanTitle: 'Prêt jusqu’à la fin de saison',
+    loanTerms: 'Indemnité unique : {fee}. Le prêt se termine à la fin de la saison {season}.',
+    loanRules: 'Trois prêts maximum dans l’effectif. Sans option d’achat ni revente. L’indemnité n’est pas remboursable.',
+    confirmLoan: 'Confirmer le prêt · {price}', loanButton: 'Prêt · {price}',
+    asking: 'Prix demandé : {price}', accepted: 'Offre acceptée à {price}. Vous pouvez signer.',
+    counter: 'Le club propose {price}. Acceptez ou augmentez votre offre.',
+    yourOffer: 'Votre offre en euros', attempts: '{n} proposition(s) restante(s)', sendOffer: 'Envoyer l’offre',
+    finalOffer: 'Le club a fait sa dernière proposition. Vous pouvez accepter ou choisir un autre joueur.',
+    noCharge: 'Aucun montant n’est débité avant la signature.', sign: 'Signer · {price}',
+    loanBadge: 'En prêt · fin saison {season}', cannotSell: 'Un joueur prêté ne peut pas être vendu.',
+    loanArrived: '{player} rejoint le club en prêt jusqu’à la fin de la saison {season}.',
+    overview: 'Négociez le prix ou renforcez l’équipe avec un prêt. {n}/3 prêts en cours.',
+    stableMarket: 'Les joueurs et les négociations restent disponibles pendant ce mercato. Les offres changent à la prochaine fenêtre.',
+    loanReturns: 'Fin de prêt : {players}. Pensez à les remplacer pendant le mercato.',
+  },
   langue: {
     nom: 'Français',
     changer: 'Changer la langue',
@@ -14,7 +50,6 @@ export default {
       divisions: '<b>7 divisions</b> à gravir, de Régional 2 à la Ligue 1',
       mercato: '<b>Mercato</b> entre chaque saison, 26 journées par exercice',
       evenements: '<b>Sponsors & événements</b> aux conséquences cachées',
-      dreamteam: '<b>DreamTeam</b> : 200 joueurs réels en mode bac à sable',
     },
     titreConnexion: 'Prenez les commandes',
     sousTitreConnexion: 'Connectez-vous ou reprenez une sauvegarde.',
@@ -27,7 +62,6 @@ export default {
     ou: 'ou',
     chargerSauvegarde: 'Charger une sauvegarde',
     sauvegardeInvalide: 'Fichier de sauvegarde invalide',
-    dreamteam: 'DreamTeam',
     classementManagers: 'Classement des managers',
     discord: 'Rejoindre le Discord',
     kofi: 'Ce jeu vous plaît ? Soutenez son développement',
@@ -45,9 +79,6 @@ export default {
   },
 
   dialogues: {
-    pseudoCarriere: 'Entrez votre pseudo pour la carrière :',
-    nomEquipe: 'Nom de votre équipe :',
-    erreurCarriere: 'Impossible de lancer la carrière',
     erreur: 'Erreur : ',
     confirmerNouvelleCarriere: 'Commencer une nouvelle carrière ? Votre progression sera perdue.',
     erreurChargement: 'Erreur lors du chargement de la sauvegarde',
@@ -71,7 +102,6 @@ export default {
     reputation: 'Réputation',
     saison: 'Saison',
     managers: 'Managers',
-    dreamteam: 'DreamTeam',
     discord: 'Discord',
     soutenir: 'Soutenir',
     nouvelleCarriere: 'Nouvelle carrière',
@@ -279,73 +309,6 @@ export default {
 
     cadres: "Cadres de l'effectif",
     butsEnMatchs: '{buts} buts en {matchs} matchs',
-  },
-
-  // --------------------------------------------------------------- dreamteam
-
-  dreamteam: {
-    postes: {
-      GAR: 'Gardien',
-      DC: 'Def. Central',
-      ARG: 'Arr. Gauche',
-      ARD: 'Arr. Droit',
-      MC: 'Milieu',
-      MOC: 'Milieu Off.',
-      MDF: 'Milieu Def.',
-      AIG: 'Ailier Gauche',
-      AID: 'Ailier Droit',
-      BU: 'Buteur',
-    },
-
-    confirmerReset: 'Reinitialiser votre DreamTeam ?',
-    retour: 'Retour',
-
-    rechercher: 'Rechercher un joueur...',
-    toutesLigues: 'Toutes les ligues',
-    tousPostes: 'Tous les postes',
-    aucunJoueur: 'Aucun joueur trouve.',
-
-    stats: {
-      vit: 'VIT',
-      tir: 'TIR',
-      pas: 'PAS',
-      dri: 'DRI',
-      def: 'DEF',
-      phy: 'PHY',
-    },
-
-    formation: 'Formation:',
-    titulaires: 'Titulaires',
-    remplacants: 'Remplacants ({n}/7)',
-    ajouter: '+ Ajouter',
-    statsMoyennes: 'Stats moyennes',
-
-    jouer: 'Jouer',
-    carriere: 'Carriere R2',
-    amical: 'Match amical',
-    championsLeague: 'Champions League',
-
-    choisirDifficulte: "Choisissez la difficulte de l'adversaire :",
-    diffFaible: 'Faible (55)',
-    diffMoyen: 'Moyen (68)',
-    diffFort: 'Fort (78)',
-    diffLegende: 'Legende (88)',
-    simulation: 'Simulation en cours...',
-
-    victoire: 'Victoire !',
-    defaite: 'Defaite...',
-    nul: 'Match nul',
-
-    clPresentation: 'Tournoi a 8 equipes : Quarts, Demis, Finale.',
-    clTirage: 'Lancer le tirage',
-    clQuarts: 'Quarts de finale',
-    clDemis: 'Demi-finales',
-    clFinale: 'Finale',
-    clJouerQuarts: 'Jouer les quarts',
-    clJouerDemis: 'Jouer les demis',
-    clJouerFinale: 'Jouer la finale',
-    clVictoireJoueur: 'Felicitations ! Votre DreamTeam remporte la Champions League !',
-    clVictoireAutre: '{equipe} remporte la Champions League.',
   },
 
   // ----------------------------------------------------------------- saison

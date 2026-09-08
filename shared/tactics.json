@@ -1,0 +1,7 @@
+{
+  "balanced": { "attack": 1, "midfield": 1, "defense": 1, "fatigue": 10 },
+  "pressing": { "attack": 1.08, "midfield": 1.10, "defense": 0.90, "fatigue": 15 },
+  "possession": { "attack": 0.97, "midfield": 1.15, "defense": 0.98, "fatigue": 11 },
+  "counter": { "attack": 1.10, "midfield": 0.87, "defense": 1.03, "fatigue": 10 },
+  "low_block": { "attack": 0.80, "midfield": 0.90, "defense": 1.18, "fatigue": 8 }
+}

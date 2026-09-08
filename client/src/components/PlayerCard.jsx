@@ -19,6 +19,7 @@ export default function PlayerCard({ player, actions }) {
         <span className="player-overall">{player.overall}</span>
       </div>
       <div className="player-name">{player.first_name} {player.last_name}</div>
+      {player.loan_end_season != null && <div className="loan-badge">{t('deals.loanBadge', { season: player.loan_end_season })}</div>}
       <div className="player-meta">
         <span>{t('joueur.age', { n: player.age })}</span>
         <span>{(player.value / 1000000).toFixed(1)}M€</span>
