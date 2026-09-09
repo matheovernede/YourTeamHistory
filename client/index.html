@@ -4,8 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <script>
-      try { document.documentElement.dataset.interface = localStorage.getItem('yth_interface') === 'classic' ? 'classic' : 'studio'; }
-      catch { document.documentElement.dataset.interface = 'studio'; }
+      document.documentElement.dataset.interface = 'studio';
+      try { document.documentElement.dataset.studioTheme = localStorage.getItem('yth_studio_theme') === 'dark' ? 'dark' : 'light'; }
+      catch { document.documentElement.dataset.studioTheme = 'light'; }
     </script>
 
     <!-- Le PNG est donné en premier : les navigateurs retiennent le dernier

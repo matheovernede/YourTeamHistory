@@ -4,7 +4,7 @@
  */
 export default {
   interface: {
-    classic: 'Interface classique', new: 'Nouvelle interface', switchHint: 'Changer de présentation sans modifier votre partie',
+    darkMode: 'Mode sombre', lightMode: 'Mode clair',
     workspace: 'VOTRE ESPACE', navigation: 'Navigation principale', clubTools: 'LE CLUB',
     career: 'Ma carrière', market: 'Mercato', community: 'Les managers', welcome: 'Bienvenue',
     communityLink: 'Rejoindre la communauté', visitor: 'Visiteur', edition: 'LE FOOTBALL VOUS APPARTIENT.',
@@ -140,11 +140,11 @@ export default {
     titre: 'Premiers pas',
     masquer: 'Ne plus afficher',
     recruter: {
-      texte: "Votre effectif est incomplet. Passez par le mercato pour recruter au moins onze joueurs — le bouton « Composer mon équipe » le fait en un clic.",
+      texte: "Votre effectif est incomplet. Passez par le mercato pour recruter au moins onze joueurs — le bouton « Recruter automatiquement » le fait en un clic.",
     },
     composer: {
       texte: "Avant de jouer, choisissez vos onze titulaires. Sans composition, la journée ne peut pas se disputer.",
-      bouton: 'Aller à la compo',
+      bouton: 'Choisir mes titulaires',
     },
     jouer: {
       texte: "Votre équipe est prête. Lancez votre première journée de championnat : vingt-six vous attendent cette saison.",
@@ -173,16 +173,18 @@ export default {
 
   /** Fiche joueur (composant partagé). */
   joueur: {
+    overall: "Note globale",
+    value: "Valeur estimée",
     age: '{n} ans',
     forme: 'Forme',
     moral: 'Moral',
     stats: {
-      pac: 'PAC',
-      tir: 'TIR',
-      pas: 'PAS',
-      dri: 'DRI',
-      def: 'DEF',
-      phy: 'PHY',
+      pac: "Vitesse",
+      tir: "Tir",
+      pas: "Passes",
+      dri: "Dribble",
+      def: "Défense",
+      phy: "Physique",
     },
   },
 
@@ -203,14 +205,20 @@ export default {
   // ---------------------------------------------------------------- mercato
 
   mercato: {
+    nextMissing: "Encore {n} joueur(s) à recruter pour atteindre les 11 nécessaires. Vous pourrez ensuite choisir vos titulaires.",
+    nextReady: "Votre effectif compte au moins 11 joueurs. Passez à la composition pour choisir vos titulaires.",
+    nextWindow: "Une fois vos recrutements terminés, fermez le mercato pour reprendre les matchs.",
+    countsHelp: "Par poste : joueurs présents / nombre conseillé, remplaçants compris.",
+    autoHelp: "Le recrutement automatique achète des joueurs avec votre budget pour compléter les postes manquants.",
+    budgetLabel: "Budget disponible",
     chargement: 'Chargement du mercato...',
-    autoComposer: 'Composer mon équipe',
+    autoComposer: "Recruter automatiquement",
     autoResultat: '{n} joueurs recrutés pour {montant}. Vous pouvez ajuster, puis valider.',
     autoRien: 'Rien à recruter : votre effectif est déjà au complet.',
     titreHiver: "Mercato d'hiver",
-    sousTitreHiver: "Marché restreint et prix majorés : on ne reconstruit pas une équipe en janvier",
+    sousTitreHiver: "Renforcez votre équipe à mi-saison. Le choix est plus limité et les prix sont plus élevés.",
     reprendreSaison: 'Reprendre la saison',
-    titreInitial: 'Mercato Initial',
+    titreInitial: "Construire mon effectif",
     titre: 'Mercato',
     sousTitreInitial: 'Recrutez au minimum 11 joueurs pour former votre équipe',
     sousTitre: 'Renforcez votre effectif pour la prochaine saison',
@@ -230,11 +238,10 @@ export default {
 
     ligneManque: '{n} {ligne} — il en est conseillé {conseille} pour tenir une saison',
     ligneOk: '{n} {ligne} — effectif suffisant',
-    rafraichir: 'Rafraîchir le marché',
-    validerEffectif: 'Valider mon effectif',
+    validerEffectif: "Passer à la composition",
     terminerMercato: 'Terminer le mercato',
 
-    ongletMarche: 'Marché',
+    ongletMarche: "Joueurs à recruter",
     ongletEffectif: 'Mon effectif',
 
     filtreTous: 'Tous',
@@ -245,7 +252,7 @@ export default {
 
     legende: 'Légende',
     effectifPlein: 'Effectif plein ({max} joueurs)',
-    recruter: 'Recruter',
+    recruter: 'Acheter',
     aucunJoueur: 'Aucun joueur disponible dans cette catégorie',
 
     resumeUn: '{n} joueur · valeur totale {valeur}',
@@ -359,7 +366,7 @@ export default {
     nav: {
       saison: 'Saison',
       classement: 'Classement',
-      compo: 'Compo',
+      compo: "Composition",
       effectif: 'Effectif',
       club: 'Club',
       gestion: 'Gestion',
@@ -479,11 +486,12 @@ export default {
     },
 
     compo: {
+      help: "Cliquez sur un emplacement du terrain pour choisir un joueur, ou utilisez la sélection automatique. Enregistrez ensuite votre onze avant de jouer.",
       formation: 'Formation :',
-      meilleurOnze: 'Meilleur XI',
-      vider: 'Vider',
-      sauvegarderModifie: 'Sauvegarder •',
-      sauvegarder: 'Sauvegarder',
+      meilleurOnze: "Choisir les 11 titulaires",
+      vider: "Retirer les titulaires",
+      sauvegarderModifie: "Enregistrer les changements",
+      sauvegarder: "Enregistrer le onze",
       nonSauvegarde: "Modifications non sauvegardées — elles seront perdues si vous quittez l'onglet.",
 
       alerteGardien: 'Aucun gardien de but dans les cages',

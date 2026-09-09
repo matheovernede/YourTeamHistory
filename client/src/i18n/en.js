@@ -6,7 +6,7 @@
  */
 export default {
   interface: {
-    classic: 'Classic interface', new: 'New interface', switchHint: 'Change the look without changing your saved game',
+    darkMode: 'Dark mode', lightMode: 'Light mode',
     workspace: 'YOUR WORKSPACE', navigation: 'Main navigation', clubTools: 'THE CLUB',
     career: 'My career', market: 'Transfers', community: 'The managers', welcome: 'Welcome',
     communityLink: 'Join the community', visitor: 'Visitor', edition: 'FOOTBALL IS YOURS.',
@@ -140,7 +140,7 @@ export default {
     titre: 'First steps',
     masquer: 'Do not show again',
     recruter: {
-      texte: 'Your squad is short of players. Head to the transfer market and sign at least eleven — the "Build my squad" button does it in one click.',
+      texte: 'Your squad is short of players. Head to the transfer market and sign at least eleven — the "Recruit automatically" button does it in one click.',
     },
     composer: {
       texte: 'Before kick-off, pick your eleven starters. Without a lineup the matchday cannot be played.',
@@ -175,16 +175,18 @@ export default {
 
   /** Player card (shared component). */
   joueur: {
+    overall: "Overall rating",
+    value: "Estimated value",
     age: '{n} yrs',
     forme: 'Fitness',
     moral: 'Morale',
     stats: {
-      pac: 'PAC',
-      tir: 'SHO',
-      pas: 'PAS',
-      dri: 'DRI',
-      def: 'DEF',
-      phy: 'PHY',
+      pac: "Pace",
+      tir: "Shooting",
+      pas: "Passing",
+      dri: "Dribbling",
+      def: "Defence",
+      phy: "Physical",
     },
   },
 
@@ -205,14 +207,20 @@ export default {
   // ------------------------------------------------------- transfer window
 
   mercato: {
+    nextMissing: "Recruit {n} more player(s) to reach the minimum of 11. You can then choose your starting XI.",
+    nextReady: "You have at least 11 players. Continue to the lineup to choose your starting XI.",
+    nextWindow: "When you have finished recruiting, close the transfer window to resume matches.",
+    countsHelp: "By position: current players / recommended number, including substitutes.",
+    autoHelp: "Automatic recruitment spends your budget to fill the missing positions.",
+    budgetLabel: "Available budget",
     chargement: 'Loading the transfer window...',
-    autoComposer: 'Build my squad',
+    autoComposer: "Recruit automatically",
     autoResultat: '{n} players signed for {montant}. Adjust as you like, then confirm.',
     autoRien: 'Nothing to sign: your squad is already complete.',
     titreHiver: 'January Transfer Window',
-    sousTitreHiver: 'A short list and inflated prices: nobody rebuilds a squad in January',
+    sousTitreHiver: "Strengthen your squad mid-season. Fewer players are available and prices are higher.",
     reprendreSaison: 'Back to the season',
-    titreInitial: 'Initial Transfer Window',
+    titreInitial: "Build my squad",
     titre: 'Transfer Window',
     sousTitreInitial: 'Sign at least 11 players to put a squad together',
     sousTitre: 'Strengthen your squad for next season',
@@ -232,11 +240,10 @@ export default {
 
     ligneManque: '{n} {ligne} — {conseille} recommended to see out a season',
     ligneOk: '{n} {ligne} — enough cover',
-    rafraichir: 'Refresh the market',
-    validerEffectif: 'Confirm my squad',
+    validerEffectif: "Choose my starting XI",
     terminerMercato: 'Close the transfer window',
 
-    ongletMarche: 'Market',
+    ongletMarche: "Players to recruit",
     ongletEffectif: 'My squad',
 
     filtreTous: 'All',
@@ -247,7 +254,7 @@ export default {
 
     legende: 'Legend',
     effectifPlein: 'Squad full ({max} players)',
-    recruter: 'Sign',
+    recruter: 'Buy',
     aucunJoueur: 'No players available in this category',
 
     resumeUn: '{n} player · total value {valeur}',
@@ -361,7 +368,7 @@ export default {
     nav: {
       saison: 'Season',
       classement: 'Table',
-      compo: 'Line-up',
+      compo: "Lineup",
       effectif: 'Squad',
       // « Club » nomme désormais le groupe d'onglets : la gestion reprend son
       // propre nom, sans quoi deux entrées du menu s'appelleraient pareil.
@@ -483,11 +490,12 @@ export default {
     },
 
     compo: {
+      help: "Click a slot on the pitch to choose a player, or use automatic selection. Then save your starting XI before playing.",
       formation: 'Formation:',
-      meilleurOnze: 'Best XI',
-      vider: 'Clear',
-      sauvegarderModifie: 'Save •',
-      sauvegarder: 'Save',
+      meilleurOnze: "Select the starting XI",
+      vider: "Remove all starters",
+      sauvegarderModifie: "Save changes",
+      sauvegarder: "Save lineup",
       nonSauvegarde: 'Unsaved changes — they will be lost if you leave this tab.',
 
       alerteGardien: 'No goalkeeper between the posts',

@@ -2,11 +2,11 @@ import { useLayoutEffect, useState } from 'react';
 import { useI18n } from '../i18n';
 import { DISCORD_URL } from '../config';
 
-const STORAGE_KEY = 'yth_interface';
+const THEME_KEY = 'yth_studio_theme';
 
-function initialInterface() {
-  try { return localStorage.getItem(STORAGE_KEY) === 'classic' ? 'classic' : 'studio'; }
-  catch { return 'studio'; }
+function initialTheme() {
+  try { return localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'light'; }
+  catch { return 'light'; }
 }
 
 function NavIcon({ type }) {
@@ -19,20 +19,20 @@ function NavIcon({ type }) {
 
 export default function InterfaceFrame({ children, section, team, manager, onNavigate }) {
   const { t } = useI18n();
-  const [skin, setSkin] = useState(initialInterface);
-  const studio = skin === 'studio';
+  const [theme, setTheme] = useState(initialTheme);
   const landing = section === 'welcome';
 
   useLayoutEffect(() => {
-    document.documentElement.dataset.interface = skin;
+    document.documentElement.dataset.interface = 'studio';
+    document.documentElement.dataset.studioTheme = theme;
     const color = document.querySelector('meta[name="theme-color"]');
-    if (color) color.content = studio ? '#f4f2ed' : '#2eb257';
-    try { localStorage.setItem(STORAGE_KEY, skin); } catch { /* Le choix reste actif pour cette session. */ }
-  }, [skin, studio]);
+    if (color) color.content = theme === 'dark' ? '#0d1712' : '#f4f5ef';
+    try { localStorage.setItem(THEME_KEY, theme); } catch { /* Préférence conservée en mémoire. */ }
+  }, [theme]);
 
   return (
-    <div className={`interface-frame ${studio ? 'studio-frame' : 'classic-frame'} ${landing ? 'is-landing' : ''}`}>
-      {studio && !landing && <aside className="studio-sidebar">
+    <div className={`interface-frame studio-frame ${landing ? 'is-landing' : ''}`}>
+      {!landing && <aside className="studio-sidebar">
         <a className="studio-brand" href="#main-content" aria-label="YourTeamHistory"><span className="studio-monogram">YTH<span>↗</span></span><span>YOUR TEAM<br /><b>HISTORY.</b></span></a>
         <div className="studio-sidebar-caption">{t('interface.workspace')}</div>
         <nav className="studio-primary-nav" aria-label={t('interface.navigation')}>
@@ -50,12 +50,20 @@ export default function InterfaceFrame({ children, section, team, manager, onNav
         </div>
       </aside>}
       <div className="interface-content">
-        {studio && <header className="studio-topline">
+        <header className="studio-topline">
           {landing ? <a className="studio-wordmark" href="#main-content">YOURTEAM<span>HISTORY</span><i>FC</i></a> : <div className="studio-breadcrumb">YOURTEAMHISTORY <span>/</span> <strong>{t(`interface.${section}`)}</strong></div>}
           <span className="studio-edition">{t('interface.edition')}</span>
-        </header>}
-        <button className="interface-switch" type="button" onClick={() => setSkin(studio ? 'classic' : 'studio')}
-          title={t('interface.switchHint')}><span aria-hidden="true">◐</span>{t(studio ? 'interface.classic' : 'interface.new')}</button>
+        </header>
+        <div className="studio-controls">
+        <button className="studio-theme-switch" type="button"
+          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          aria-pressed={theme === 'dark'} aria-label={t('interface.darkMode')}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+            {theme === 'dark' ? <><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" /></> : <path d="M20 14a8 8 0 0 1-10-10 8.5 8.5 0 1 0 10 10Z" />}
+          </svg>
+          <span>{t(theme === 'dark' ? 'interface.lightMode' : 'interface.darkMode')}</span>
+        </button>
+        </div>
         <main id="main-content" tabIndex={-1}>{children}</main>
       </div>
     </div>

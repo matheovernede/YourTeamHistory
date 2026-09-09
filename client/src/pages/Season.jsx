@@ -1304,7 +1304,8 @@ export default function Season({ manager, team, onUpdate, onManagerUpdate, onSea
               onUpdate(updated);
               setStatus(prev => prev ? { ...prev, team: updated } : prev);
             }} />
-          <div className="lineup-header">
+          <p className="lineup-help">{t('saison.compo.help')}</p>
+            <div className="lineup-header">
             <div className="lineup-formation">
               <label>{t('saison.compo.formation')}</label>
               <select value={formation} onChange={handleSetFormation}>

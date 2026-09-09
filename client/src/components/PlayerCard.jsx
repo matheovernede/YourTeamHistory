@@ -16,13 +16,13 @@ export default function PlayerCard({ player, actions }) {
       <div className="player-header">
         {/* La classe CSS dérive du code d'origine ; seul le libellé est traduit. */}
         <span className={`badge ${getPositionClass(player.position)}`}>{tPoste(player.position)}</span>
-        <span className="player-overall">{player.overall}</span>
+        <span className="player-overall"><small>{t('joueur.overall')}</small>{player.overall}</span>
       </div>
       <div className="player-name">{player.first_name} {player.last_name}</div>
       {player.loan_end_season != null && <div className="loan-badge">{t('deals.loanBadge', { season: player.loan_end_season })}</div>}
       <div className="player-meta">
         <span>{t('joueur.age', { n: player.age })}</span>
-        <span>{(player.value / 1000000).toFixed(1)}M€</span>
+        <span title={t('joueur.value')}>{t('joueur.value')} · {(player.value / 1000000).toFixed(1)}M€</span>
       </div>
       <div className="player-stats">
         <div className="stat"><span>{t('joueur.stats.pac')}</span><div className="stat-bar"><div style={{width: `${player.pace}%`}} /></div></div>
@@ -34,11 +34,11 @@ export default function PlayerCard({ player, actions }) {
       </div>
       <div className="player-condition">
         <div className="condition-item">
-          <span>{t('joueur.forme')}</span>
+          <span>{t('joueur.forme')} {player.stamina}%</span>
           <div className="stat-bar stamina"><div style={{width: `${player.stamina}%`}} /></div>
         </div>
         <div className="condition-item">
-          <span>{t('joueur.moral')}</span>
+          <span>{t('joueur.moral')} {player.morale}%</span>
           <div className="stat-bar morale"><div style={{width: `${player.morale}%`}} /></div>
         </div>
       </div>

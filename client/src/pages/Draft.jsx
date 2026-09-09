@@ -187,12 +187,6 @@ export default function Draft({ manager, team, onFinish, onManagerUpdate, isInit
     }
   }
 
-  function refreshMarket() {
-    if (busy) return;
-    setLoading(true);
-    loadDraft();
-  }
-
   const filtered = filter === 'all' ? available : available.filter(p => {
     if (filter === 'att') return ['BU', 'AIG', 'AID'].includes(p.position);
     if (filter === 'mid') return ['MC', 'MOC', 'MDF', 'MG', 'MD'].includes(p.position);
@@ -235,10 +229,10 @@ export default function Draft({ manager, team, onFinish, onManagerUpdate, isInit
           </p>
         </div>
         <div className="draft-status">
-          <div className="draft-budget">{(budget / 1000000).toFixed(1)}M€</div>
+          <div className="draft-budget"><span className="draft-budget-label">{t('mercato.budgetLabel')}</span>{formatMoney(budget)}</div>
           <div className="draft-count">
             <span className={squad.length >= 11 ? 'count-ok' : 'count-need'}>
-              {squad.length}{isInitialDraft ? '/11' : `/${SQUAD_MAX}`}
+              {squad.length}/{SQUAD_MAX}
             </span>
             {t('mercato.joueurs')}
           </div>
@@ -253,6 +247,7 @@ export default function Draft({ manager, team, onFinish, onManagerUpdate, isInit
 
       {message && <div className="draft-message" role="status">{message}</div>}
       <div className="market-explainer">
+        <p className="draft-next-step">{t(isInitialDraft ? (squad.length < 11 ? 'mercato.nextMissing' : 'mercato.nextReady') : 'mercato.nextWindow', { n: Math.max(0, 11 - squad.length) })}</p>
         <p>{t('deals.overview', { n: loanCount })}</p>
         <small>{t('deals.stableMarket')}</small>
       </div>
@@ -264,6 +259,7 @@ export default function Draft({ manager, team, onFinish, onManagerUpdate, isInit
       )}
 
       <div className="draft-squad-summary">
+        <p className="draft-summary-help">{t('mercato.countsHelp')}</p>
         {['GAR', 'DEF', 'MIL', 'ATT'].map(line => {
           const manque = posCount[line] < RECOMMENDED[line];
           // `line` reste la clé technique ; le libellé affiché est traduit.
@@ -283,18 +279,19 @@ export default function Draft({ manager, team, onFinish, onManagerUpdate, isInit
         })}
         {/* Composer une équipe en un clic : c'est devant l'écran de recrutement
             que la plupart des nouveaux venus abandonnaient. */}
-        <button className="btn-auto-squad" onClick={handleAutoSquad} disabled={loading || busy}>
+        <button className="btn-auto-squad" aria-describedby="auto-recruit-help" onClick={handleAutoSquad} disabled={loading || busy}>
           {t('mercato.autoComposer')}
         </button>
-        <button className="btn-refresh" onClick={refreshMarket} disabled={busy}>{t('mercato.rafraichir')}</button>
-        {(isInitialDraft ? squad.length >= 11 : true) && (
-          <button className="btn-primary btn-finish" onClick={handleFinish} disabled={busy}>
+        {(
+          <button className="btn-primary btn-finish" onClick={handleFinish} disabled={busy || squad.length < 11}>
             {isWinterWindow
               ? t('mercato.reprendreSaison')
               : isInitialDraft ? t('mercato.validerEffectif') : t('mercato.terminerMercato')}
           </button>
         )}
       </div>
+
+      <p className="draft-auto-help" id="auto-recruit-help">{t('mercato.autoHelp')}</p>
 
       <div className="draft-tabs">
         <button className={`draft-tab ${tab === 'market' ? 'active' : ''}`} onClick={() => setTab('market')}>
